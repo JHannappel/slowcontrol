@@ -37,7 +37,6 @@ template <typename T> class configValue: public configValueBase {
     T buf2;
     buf >> buf2;
     lValue = buf2;
-    std::cout << "set cfg value '" << fGetName() << "' to '" << lValue << "'\n";
   }
   virtual void fAsString(std::string& aString) const {
     std::string a;
@@ -53,13 +52,11 @@ template <> class configValue<std::chrono::system_clock::duration>: public confi
  configValue(const char *aName,
 	     std::map<std::string, configValueBase*>& aMap): 
   configValueBase(aName,aMap) {
-    std::cerr << aName << " look freedom is " << lValue.is_lock_free() << std::endl;
   };
  configValue(const char *aName,
 	     std::map<std::string, configValueBase*>& aMap,
 	     const std::chrono::system_clock::duration& aValue):
   configValueBase(aName,aMap), lValue(aValue) {
-    std::cerr << aName << " look freedom is " << lValue.is_lock_free() << std::endl;
   };
   std::chrono::system_clock::duration fGetValue() const {return lValue.load();};
   operator std::chrono::system_clock::duration () const {
@@ -76,7 +73,6 @@ template <> class configValue<std::chrono::system_clock::duration>: public confi
   virtual void fAsString(std::string& aString) const {
     auto a=std::to_string(std::chrono::duration_cast<std::chrono::duration<double>>(lValue.load()).count());
     aString+=a;
-    std::cout << "set cfg value '" << fGetName() << "' to " <<  std::chrono::duration_cast<std::chrono::duration<double>>(lValue.load()).count()<< " seconds, '"<<a<<"' \n";
   }
 };
 
