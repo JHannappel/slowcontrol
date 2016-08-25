@@ -7,6 +7,9 @@
 #include <dirent.h>
 #include <string.h>
 #include <iostream>
+#include <limits>
+#include <sys/vfs.h>
+
 class cpuTemperature: public SlowcontrolMeasurementFloat {
 protected:
   std::string lPath;
@@ -80,6 +83,34 @@ public:
       }
     }
     fclose(f);
+  };
+};
+
+
+class fsSize: public SlowcontrolMeasurementFloat {
+protected:
+  std::string lMountPoint;
+public:
+  fsSize(int aHostCompound,
+	 const std::string& aDevice,
+	 const std::string& aMountPoint): lMountPoint(aMountPoint) {
+    std::string description("free space on ");
+    description += slowcontrol::fGetHostName();
+    description += " ";
+    description += aDevice;
+    fInitializeUid(description);
+    description = aMountPoint;
+    description += "free space";
+    slowcontrol::fAddToCompound(aHostCompound,fGetUid(),description);
+  };
+  virtual bool fHasDefaultReadFunction() const {
+    return true;
+  };
+  virtual void fReadCurrentValue() {
+    struct statfs buf;
+    if (statfs(lMountPoint.c_str(), &buf) == 0) {
+      fStore((double)buf.f_bavail * (double)buf.f_bsize / (1024. * 1024. * 1024.));
+    };
   };
 };
 
@@ -217,6 +248,28 @@ static void populateDiskwatches(int aCompund, std::vector<diskwatch*>& aDiskwatc
   closedir(devdir);
 }
 
+static void populateFswatches(int aHostCompound) {
+  std::ifstream mtab("/proc/mounts");
+  std::string device;
+  std::string mountpoint;
+  std::string fstype;
+  std::cerr << "start read mtab \n";
+  while (!mtab.eof() && !mtab.bad()) {
+    mtab >> device;
+    mtab >> mountpoint;
+    mtab >> fstype;
+    mtab.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    std::cerr << "maybe found " << device << " mounted on " << mountpoint << " as " << fstype << std::endl;
+    if (fstype.compare("ext3")==0 
+	|| fstype.compare("ext4")==0
+	|| fstype.compare("btrfs")==0) {
+      std::cerr << "found " << device << " mounted on " << mountpoint << std::endl;
+      new fsSize(aHostCompound,device,mountpoint);
+    }
+  }
+  std::cerr << "stop read mtab \n";
+}
+
 int main(int argc, const char *argv[]) {
   OptionParser parser("slowcontrol program for checking comuter health");
   parser.fParse(argc,argv);
@@ -225,6 +278,7 @@ int main(int argc, const char *argv[]) {
   std::vector<diskwatch*> diskwatches;
   populateTemperature(compound);
   populateDiskwatches(compound,diskwatches);
+  populateFswatches(compound);
   new freeMemory(compound);
   daemon->fStartThreads();
   while (true) {
