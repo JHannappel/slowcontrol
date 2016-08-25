@@ -21,6 +21,8 @@ class slowcontrol {
 			     bool *aInsertWasDone = nullptr);
   static void fAddToCompound(int aCompound, int aUid, const char* aName);
   static void fAddSubCompound(int aParent, int aChild, const char* aName);
+  static void fAddToCompound(int aCompound, int aUid, const std::string& aName);
+  static void fAddSubCompound(int aParent, int aChild, const std::string& aName);
 };
 
 #endif

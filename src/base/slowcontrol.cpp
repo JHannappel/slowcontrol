@@ -17,7 +17,7 @@ PGconn *slowcontrol::fGetDbconn() {
       retries = std::min<unsigned int>(retries+1, 120);
       sleep(retries);
       std::cerr << "retry to create db connection in " << std::this_thread::get_id() << std::endl;
-      dbc = PQconnectdb("host=raspberrypi dbname=testdb user=hannappe");
+      dbc = PQconnectdb(gDatabaseString);
     }
     gConnections[std::this_thread::get_id()] = dbc;
     return dbc;
@@ -61,7 +61,6 @@ int slowcontrol::fSelectOrInsert(const char *aTable, const char *aIdColumn,
   query += keyValue;
   query += ";";
   auto result = PQexec(slowcontrol::fGetDbconn(), query.c_str());
-  std::cerr << query << " gave " << PQresStatus(PQresultStatus(result)) << std::endl;
   if (PQntuples(result) != 1) {
     PQclear(result);
     query = "INSERT INTO ";
@@ -84,8 +83,6 @@ int slowcontrol::fSelectOrInsert(const char *aTable, const char *aIdColumn,
     query += aIdColumn;
     query += ";";
     result = PQexec(slowcontrol::fGetDbconn(), query.c_str());
-    std::cerr << query << " gave " << PQresStatus(PQresultStatus(result)) << std::endl;
-
     if (aInsertWasDone != nullptr) {
       *aInsertWasDone = true;
     }
@@ -144,4 +141,10 @@ void slowcontrol::fAddSubCompound(int aParent, int aChild, const char* aName) {
     PQfreemem(name);
   }
   PQclear(result);
+}
+void slowcontrol::fAddToCompound(int aCompound, int aUid, const std::string& aName) {
+  fAddToCompound(aCompound,aUid,aName.c_str());
+}
+void slowcontrol::fAddSubCompound(int aParent, int aChild, const std::string& aName) {
+  fAddSubCompound(aParent,aChild,aName.c_str());
 }
