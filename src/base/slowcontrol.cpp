@@ -75,9 +75,7 @@ int slowcontrol::fSelectOrInsert(const char *aTable, const char *aIdColumn,
     query += keyValue;
     if (aExtraColum != nullptr) {
       query += ",";
-      auto extraValue = PQescapeLiteral(slowcontrol::fGetDbconn(),aExtraValue,strlen(aExtraValue));
-      query += extraValue;
-      PQfreemem(extraValue);
+      fAddEscapedStringToQuery(aExtraValue, query);
     }
     query += ") RETURNING ";
     query += aIdColumn;
@@ -112,11 +110,9 @@ void slowcontrol::fAddToCompound(int aCompound, int aUid, const char* aName) {
     query += ", ";
     query += std::to_string(aUid);
     query += ", ";
-    auto name = PQescapeLiteral(slowcontrol::fGetDbconn(), aName, strlen(aName));
-    query += name;
+    fAddEscapedStringToQuery(aName, query);
     query += ");";
     result = PQexec(slowcontrol::fGetDbconn(), query.c_str());
-    PQfreemem(name);
   }
   PQclear(result);
 }
@@ -134,11 +130,9 @@ void slowcontrol::fAddSubCompound(int aParent, int aChild, const char* aName) {
     query += ", ";
     query += std::to_string(aChild);
     query += ", ";
-    auto name = PQescapeLiteral(slowcontrol::fGetDbconn(), aName, strlen(aName));
-    query += name;
+    fAddEscapedStringToQuery(aName, query);
     query += ");";
     result = PQexec(slowcontrol::fGetDbconn(), query.c_str());
-    PQfreemem(name);
   }
   PQclear(result);
 }
@@ -147,4 +141,14 @@ void slowcontrol::fAddToCompound(int aCompound, int aUid, const std::string& aNa
 }
 void slowcontrol::fAddSubCompound(int aParent, int aChild, const std::string& aName) {
   fAddSubCompound(aParent,aChild,aName.c_str());
+}
+
+
+void slowcontrol::fAddEscapedStringToQuery(const char *aString, std::string& aQuery) {
+  auto escaped = PQescapeLiteral(fGetDbconn(), aString, strlen(aString));
+  aQuery += escaped;
+  PQfreemem(escaped);
+}
+void slowcontrol::fAddEscapedStringToQuery(const std::string& aString, std::string& aQuery) {
+  fAddEscapedStringToQuery(aString.c_str(), aQuery);
 }

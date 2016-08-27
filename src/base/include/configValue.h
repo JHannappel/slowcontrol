@@ -39,10 +39,9 @@ template <typename T> class configValue: public configValueBase {
     lValue = buf2;
   }
   virtual void fAsString(std::string& aString) const {
-    std::string a;
-    std::stringstream buf(a);
-    buf << lValue.load();
-    aString+=a;
+    std::ostringstream buf("");
+    buf << fGetValue();
+    aString += buf.str();
   }
 };
 

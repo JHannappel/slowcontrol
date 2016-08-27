@@ -35,19 +35,14 @@ void SlowcontrolMeasurementBase::fSaveOption(const configValueBase& aCfgValue,
   std::string query("INSERT INTO uid_configs (uid,name,value,comment) VALUES (");
   query += std::to_string(fGetUid());
   query += ",";
-  auto name = PQescapeLiteral(slowcontrol::fGetDbconn(), 
-			      aCfgValue.fGetName().c_str(), aCfgValue.fGetName().size());
-  query += name;
-  PQfreemem(name);
+  slowcontrol::fAddEscapedStringToQuery(aCfgValue.fGetName(), query);
   query += ",";
-  aCfgValue.fAsString(query);
+  std::string valueRaw;
+  aCfgValue.fAsString(valueRaw);
+  slowcontrol::fAddEscapedStringToQuery(valueRaw, query);
   query += ",";
-  auto comment = PQescapeLiteral(slowcontrol::fGetDbconn(), 
-				 aComment, strlen(aComment));
-  query += comment;
-  PQfreemem(comment);
+  slowcontrol::fAddEscapedStringToQuery(aComment, query);
   query += ");";
-  std::cout << query << std::endl;
   auto result=PQexec(slowcontrol::fGetDbconn(), query.c_str());
   PQclear(result);
 }
