@@ -51,6 +51,7 @@ public:
     lMaxDeltaT.fSetValue(std::chrono::minutes(60));
     lReadoutInterval.fSetValue(std::chrono::minutes(10));
     fInitializeUid(description);
+    fConfigure();
     slowcontrol::fAddToCompound(aDiskCompound,fGetUid(),aName);
   };
 };
@@ -64,6 +65,7 @@ public:
     lDeadBand.fSetValue(1000);
     lReadoutInterval.fSetValue(std::chrono::seconds(10));
     fInitializeUid(description);
+    fConfigure();
     slowcontrol::fAddToCompound(aHostCompound,fGetUid(),"freeMemory");
   }
   virtual bool fHasDefaultReadFunction() const {
@@ -100,6 +102,7 @@ public:
     description += aDevice;
     lDeadBand.fSetValue(10);
     fInitializeUid(description);
+    fConfigure();
     description = aMountPoint;
     description += "free space";
     slowcontrol::fAddToCompound(aHostCompound,fGetUid(),description);
