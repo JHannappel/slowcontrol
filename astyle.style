@@ -1,0 +1,14 @@
+style=google
+indent=tab
+add-brackets
+pad-oper
+pad-header
+attach-classes
+attach-inlines
+lineend=linux
+formatted
+suffix=none
+indent-preproc-cond
+indent-preproc-define
+indent-switches
+indent-namespaces
