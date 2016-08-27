@@ -52,7 +52,7 @@ $result = pg_query($dbconn,"SELECT * from compound_uids INNER JOIN uid_list USIN
 echo "<table>\n";
 while ($row = pg_fetch_assoc($result)) {
   echo "<tr>\n";
-  echo "<td> ${row['child_name']} </td>\n";
+  echo "<td> <a href=\"valueconfig.php?uid=${row['uid']}\">${row['child_name']} </a></td>\n";
   echo "<td> ${row['description']} </td>\n";
   $r2 = pg_query($dbconn,"SELECT * FROM ${row['data_table']} WHERE uid=${row['uid']} ORDER BY time desc limit 1;");
   $v=pg_fetch_assoc($r2);
