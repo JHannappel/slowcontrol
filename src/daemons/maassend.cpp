@@ -98,6 +98,7 @@ public:
     description += slowcontrol::fGetHostName();
     description += " ";
     description += aDevice;
+    lDeadBand.fSetValue(10);
     fInitializeUid(description);
     description = aMountPoint;
     description += "free space";
