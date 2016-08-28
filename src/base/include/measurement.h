@@ -17,8 +17,10 @@
 class SlowcontrolMeasurementBase {
   protected:
 	std::map<std::string, configValueBase*> lConfigValues;
+  public:
 	configValue<std::chrono::system_clock::duration> lMaxDeltaT;
 	configValue<std::chrono::system_clock::duration> lReadoutInterval;
+  protected:
 	std::mutex lSendQueueMutex;
 	size_t lMinValueIndex;
 	size_t lMaxValueIndex;
@@ -29,7 +31,7 @@ class SlowcontrolMeasurementBase {
 	virtual void fInitializeUid(const std::string& aDescription);
   public:
 	SlowcontrolMeasurementBase(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
-	                           decltype(lReadoutInterval.fGetValue()) aDefaultReadoutIterval);
+	                           decltype(lReadoutInterval.fGetValue()) aDefaultReadoutInterval);
 	virtual decltype(lReadoutInterval.fGetValue()) fGetReadoutInterval() const {
 		return lReadoutInterval.fGetValue();
 	}
@@ -45,12 +47,13 @@ class defaultReaderInterface {
 	virtual void fReadCurrentValue() = 0;
 };
 
-
 template <typename T> class SlowcontrolMeasurement: public SlowcontrolMeasurementBase {
   public:
+	typedef T valueType;
+	typedef std::chrono::system_clock::time_point timeType;
 	class timedValue {
 	  public:
-		std::chrono::system_clock::time_point lTime;
+		timeType lTime;
 		T lValue;
 		timedValue() {};
 		timedValue(decltype(lTime) aTime, decltype(lValue) aValue) :
@@ -59,16 +62,18 @@ template <typename T> class SlowcontrolMeasurement: public SlowcontrolMeasuremen
   protected:
 	std::vector<timedValue> lValues;
 	std::deque<timedValue> lSendQueue;
+  public:
 	configValue<T> lDeadBand;
-
+  protected:
 	virtual void fSendValue(const timedValue& aValue) = 0;
-
+	virtual void fCheckValue(timeType /*aTime*/,
+	                         T /*aValue*/) {};
 
   public:
 	SlowcontrolMeasurement(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
-	                       decltype(lReadoutInterval.fGetValue()) aDefaultReadoutIterval,
+	                       decltype(lReadoutInterval.fGetValue()) aDefaultReadoutInterval,
 	                       decltype(lDeadBand.fGetValue()) aDefaultDeadBand) :
-		SlowcontrolMeasurementBase(aDefaultMaxDeltat, aDefaultReadoutIterval),
+		SlowcontrolMeasurementBase(aDefaultMaxDeltat, aDefaultReadoutInterval),
 		lDeadBand("DeadBand", lConfigValues, aDefaultDeadBand) {};
 	T fAbs(T aValue) {
 		if (aValue > 0) {
@@ -80,12 +85,13 @@ template <typename T> class SlowcontrolMeasurement: public SlowcontrolMeasuremen
 	virtual void fStore(const T& aValue) {
 		fStore(aValue, std::chrono::system_clock::now());
 	};
-	virtual void fStore(const T& aValue, std::chrono::system_clock::time_point aTime) {
+	virtual void fStore(const T& aValue, timeType aTime) {
 		if ((lValues.size() > 2)
 		        && lValues.at(lValues.size() - 1).lValue == aValue
 		        && lValues.at(lValues.size() - 2).lValue == aValue) { // no change
 			lValues.at(lValues.size() - 1).lTime = aTime;
 		} else {
+			fCheckValue(aTime, aValue);
 			lValues.emplace_back(aTime, aValue);
 		}
 		if (aValue < lValues.at(lMinValueIndex).lValue) {
@@ -135,6 +141,7 @@ template <typename T> class SlowcontrolMeasurement: public SlowcontrolMeasuremen
 	};
 };
 
+
 class SlowcontrolMeasurementFloat: public SlowcontrolMeasurement<float> {
   protected:
 	const char *fGetDefaultTableName() const {
@@ -142,9 +149,33 @@ class SlowcontrolMeasurementFloat: public SlowcontrolMeasurement<float> {
 	};
   public:
 	SlowcontrolMeasurementFloat(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
-	                            decltype(lReadoutInterval.fGetValue()) aDefaultReadoutIterval,
+	                            decltype(lReadoutInterval.fGetValue()) aDefaultReadoutInterval,
 	                            decltype(lDeadBand.fGetValue()) aDefaultDeadBand);
 	virtual void fSendValue(const timedValue& aValue);
+};
+
+
+template <typename baseClass> class boundCheckerInterface: public baseClass {
+  protected:
+	configValue<typename baseClass::valueType> lLowerBound;
+	configValue<typename baseClass::valueType> lUppperBound;
+  public:
+	boundCheckerInterface(decltype(baseClass::lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
+	                      decltype(baseClass::lReadoutInterval.fGetValue()) aDefaultReadoutInterval,
+	                      decltype(baseClass::lDeadBand.fGetValue()) aDefaultDeadBand,
+	                      decltype(lLowerBound.fGetValue()) aLowerBound,
+	                      decltype(lUppperBound.fGetValue()) aUpperBound) :
+		baseClass(aDefaultMaxDeltat, aDefaultReadoutInterval, aDefaultDeadBand),
+		lLowerBound("lowerBound", this->lConfigValues, aLowerBound),
+		lUppperBound("upperBound", this->lConfigValues, aUpperBound) {
+	};
+	virtual void fCheckValue(typename baseClass::timeType /*aTime*/,
+	                         typename baseClass::valueType aValue) {
+		if (lLowerBound.fGetValue() > aValue ||
+		        lUppperBound.fGetValue() < aValue) {
+			std::cout << " value out of bounds " << aValue;
+		}
+	};
 };
 
 #endif

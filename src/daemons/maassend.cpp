@@ -10,15 +10,17 @@
 #include <limits>
 #include <sys/vfs.h>
 
-class cpuTemperature: public SlowcontrolMeasurementFloat,
-	public defaultReaderInterface {
+class cpuTemperature: public boundCheckerInterface<SlowcontrolMeasurementFloat>,
+	public defaultReaderInterface
+
+{
   protected:
 	std::string lPath;
   public:
 	cpuTemperature(const char *aPath):
-		SlowcontrolMeasurementFloat(std::chrono::minutes(5),
-		                            std::chrono::seconds(30),
-		                            2),
+		boundCheckerInterface(std::chrono::minutes(5),
+		                      std::chrono::seconds(30),
+		                      2, 10, 90),
 		lPath(aPath) {
 		std::string name;
 		name = slowcontrol::fGetHostName();

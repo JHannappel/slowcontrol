@@ -48,34 +48,37 @@ slowcontrolDaemon* slowcontrolDaemon::fGetInstance() {
 	return gInstance;
 }
 void slowcontrolDaemon::fReaderThread() {
-	std::chrono::system_clock::duration maxReadoutInterval(0);
-	for (auto& measurement : fGetInstance()->lMeasurementsWithDefaultReader) {
-		if (maxReadoutInterval < measurement.lBase->fGetReadoutInterval()) {
-			maxReadoutInterval = measurement.lBase->fGetReadoutInterval();
-		}
-	}
-	maxReadoutInterval /= fGetInstance()->lMeasurementsWithDefaultReader.size();
-	std::multimap<std::chrono::system_clock::time_point, defaultReadableMeasurement> scheduledMeasurements;
-	auto then = std::chrono::system_clock::now();
-	for (auto& measurement : fGetInstance()->lMeasurementsWithDefaultReader) {
-		std::cout << "scheduled uid " << measurement.lBase->fGetUid() << " for " <<
-		          std::chrono::duration_cast<std::chrono::seconds>(then.time_since_epoch()).count() << "\n";
-		scheduledMeasurements.emplace(then, measurement);
-		then += maxReadoutInterval;
-
-	}
 	while (true) {
-		auto it = scheduledMeasurements.begin();
-		std::this_thread::sleep_until(it->first);
-		auto measurement = it->second;
+		std::chrono::system_clock::duration maxReadoutInterval(0);
+		for (auto& measurement : fGetInstance()->lMeasurementsWithDefaultReader) {
+			if (maxReadoutInterval < measurement.lBase->fGetReadoutInterval()) {
+				maxReadoutInterval = measurement.lBase->fGetReadoutInterval();
+			}
+		}
+		maxReadoutInterval /= fGetInstance()->lMeasurementsWithDefaultReader.size();
+		std::multimap<std::chrono::system_clock::time_point, defaultReadableMeasurement> scheduledMeasurements;
+		auto then = std::chrono::system_clock::now();
+		for (auto& measurement : fGetInstance()->lMeasurementsWithDefaultReader) {
+			std::cout << "scheduled uid " << measurement.lBase->fGetUid() << " for " <<
+			          std::chrono::duration_cast<std::chrono::seconds>(then.time_since_epoch()).count() << "\n";
+			scheduledMeasurements.emplace(then, measurement);
+			then += maxReadoutInterval;
 
-		auto justBeforeReadout = std::chrono::system_clock::now();
-		measurement.lReader->fReadCurrentValue();
+		}
+		while (fGetInstance()->lMeasurementsWithDefaultReader.size()
+		        == scheduledMeasurements.size()) {
+			auto it = scheduledMeasurements.begin();
+			std::this_thread::sleep_until(it->first);
+			auto measurement = it->second;
 
-		scheduledMeasurements.erase(it);
-		scheduledMeasurements.emplace(justBeforeReadout
-		                              + measurement.lBase->fGetReadoutInterval(),
-		                              measurement);
+			auto justBeforeReadout = std::chrono::system_clock::now();
+			measurement.lReader->fReadCurrentValue();
+
+			scheduledMeasurements.erase(it);
+			scheduledMeasurements.emplace(justBeforeReadout
+			                              + measurement.lBase->fGetReadoutInterval(),
+			                              measurement);
+		}
 	}
 }
 void slowcontrolDaemon::fStorerThread() {
