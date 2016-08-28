@@ -28,7 +28,8 @@ class SlowcontrolMeasurementBase {
 	                 const char *comment);
 	virtual void fInitializeUid(const std::string& aDescription);
   public:
-	SlowcontrolMeasurementBase();
+	SlowcontrolMeasurementBase(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
+	                           decltype(lReadoutInterval.fGetValue()) aDefaultReadoutIterval);
 	virtual bool fHasDefaultReadFunction() const;
 	virtual decltype(lReadoutInterval.fGetValue()) fGetReadoutInterval() const {
 		return lReadoutInterval.fGetValue();
@@ -61,7 +62,11 @@ template <typename T> class SlowcontrolMeasurement: public SlowcontrolMeasuremen
 
 
   public:
-	SlowcontrolMeasurement() : lDeadBand("DeadBand", lConfigValues) {};
+	SlowcontrolMeasurement(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
+	                       decltype(lReadoutInterval.fGetValue()) aDefaultReadoutIterval,
+	                       decltype(lDeadBand.fGetValue()) aDefaultDeadBand) :
+		SlowcontrolMeasurementBase(aDefaultMaxDeltat, aDefaultReadoutIterval),
+		lDeadBand("DeadBand", lConfigValues, aDefaultDeadBand) {};
 	T fAbs(T aValue) {
 		if (aValue > 0) {
 			return aValue;
@@ -133,6 +138,9 @@ class SlowcontrolMeasurementFloat: public SlowcontrolMeasurement<float> {
 		return "measurements_float";
 	};
   public:
+	SlowcontrolMeasurementFloat(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
+	                            decltype(lReadoutInterval.fGetValue()) aDefaultReadoutIterval,
+	                            decltype(lDeadBand.fGetValue()) aDefaultDeadBand);
 	virtual void fSendValue(const timedValue& aValue);
 };
 

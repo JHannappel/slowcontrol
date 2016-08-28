@@ -4,9 +4,10 @@
 
 #include <string.h>
 
-SlowcontrolMeasurementBase::SlowcontrolMeasurementBase():
-	lMaxDeltaT("MaxDeltaT", lConfigValues, std::chrono::minutes(5)),
-	lReadoutInterval("ReadoutInterval", lConfigValues, std::chrono::seconds(30)),
+SlowcontrolMeasurementBase::SlowcontrolMeasurementBase(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
+        decltype(lReadoutInterval.fGetValue()) aDefaultReadoutIterval):
+	lMaxDeltaT("MaxDeltaT", lConfigValues, aDefaultMaxDeltat),
+	lReadoutInterval("ReadoutInterval", lConfigValues, aDefaultReadoutIterval),
 	lMinValueIndex(0),
 	lMaxValueIndex(0) {
 };
@@ -74,7 +75,13 @@ void SlowcontrolMeasurementBase::fConfigure() {
 
 };
 
-
+SlowcontrolMeasurementFloat::SlowcontrolMeasurementFloat(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
+        decltype(lReadoutInterval.fGetValue()) aDefaultReadoutIterval,
+        decltype(lDeadBand.fGetValue()) aDefaultDeadBand) :
+	SlowcontrolMeasurement<float>(aDefaultMaxDeltat,
+	                              aDefaultReadoutIterval,
+	                              aDefaultDeadBand) {
+}
 void SlowcontrolMeasurementFloat::fSendValue(const timedValue& aValue) {
 	std::string query("INSERT INTO ");
 	query += fGetDefaultTableName();

@@ -9,7 +9,10 @@ class owTemperature: public SlowcontrolMeasurementFloat {
   protected:
 	std::string lPath;
   public:
-	owTemperature(const char *aPath) {
+	owTemperature(const char *aPath):
+		SlowcontrolMeasurementFloat(std::chrono::minutes(20),
+																std::chrono::seconds(30),
+																0.5) {
 		std::string basePath = "/1w/";
 		basePath += aPath;
 		basePath += "/";

@@ -15,6 +15,9 @@ class cpuTemperature: public SlowcontrolMeasurementFloat {
 	std::string lPath;
   public:
 	cpuTemperature(const char *aPath):
+		SlowcontrolMeasurementFloat(std::chrono::minutes(5),
+																std::chrono::seconds(30),
+																2),
 		lPath(aPath) {
 		std::string name;
 		name = slowcontrol::fGetHostName();
@@ -40,16 +43,16 @@ class diskValue: public SlowcontrolMeasurementFloat {
 	diskValue(const std::string& aSerial,
 	          int aId,
 	          const char *aName,
-	          int aDiskCompound) {
+	          int aDiskCompound) :
+		SlowcontrolMeasurementFloat(std::chrono::minutes(60),
+																std::chrono::minutes(10),
+																1) {
 		std::string description("disk");
 		description += aSerial;
 		description += "_";
 		description += std::to_string(aId);
 		description += "_";
 		description += aName;
-		lDeadBand.fSetValue(1);
-		lMaxDeltaT.fSetValue(std::chrono::minutes(60));
-		lReadoutInterval.fSetValue(std::chrono::minutes(10));
 		fInitializeUid(description);
 		fConfigure();
 		slowcontrol::fAddToCompound(aDiskCompound, fGetUid(), aName);
@@ -58,12 +61,13 @@ class diskValue: public SlowcontrolMeasurementFloat {
 
 class freeMemory: public SlowcontrolMeasurementFloat {
   public:
-	freeMemory(int aHostCompound) {
+	freeMemory(int aHostCompound):
+		SlowcontrolMeasurementFloat(std::chrono::minutes(30),
+																std::chrono::seconds(10),
+																1000) {
 		std::string description;
 		description = slowcontrol::fGetHostName();
 		description += ":free_memory";
-		lDeadBand.fSetValue(1000);
-		lReadoutInterval.fSetValue(std::chrono::seconds(10));
 		fInitializeUid(description);
 		fConfigure();
 		slowcontrol::fAddToCompound(aHostCompound, fGetUid(), "freeMemory");
@@ -95,7 +99,11 @@ class fsSize: public SlowcontrolMeasurementFloat {
   public:
 	fsSize(int aHostCompound,
 	       const std::string& aDevice,
-	       const std::string& aMountPoint): lMountPoint(aMountPoint) {
+	       const std::string& aMountPoint): 
+		SlowcontrolMeasurementFloat(std::chrono::minutes(20),
+																std::chrono::seconds(10),
+																1),
+		lMountPoint(aMountPoint) {
 		std::string description("free space on ");
 		description += slowcontrol::fGetHostName();
 		description += " ";
