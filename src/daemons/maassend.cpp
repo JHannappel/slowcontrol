@@ -10,14 +10,15 @@
 #include <limits>
 #include <sys/vfs.h>
 
-class cpuTemperature: public SlowcontrolMeasurementFloat {
+class cpuTemperature: public SlowcontrolMeasurementFloat,
+	public defaultReaderInterface {
   protected:
 	std::string lPath;
   public:
 	cpuTemperature(const char *aPath):
 		SlowcontrolMeasurementFloat(std::chrono::minutes(5),
-																std::chrono::seconds(30),
-																2),
+		                            std::chrono::seconds(30),
+		                            2),
 		lPath(aPath) {
 		std::string name;
 		name = slowcontrol::fGetHostName();
@@ -26,9 +27,6 @@ class cpuTemperature: public SlowcontrolMeasurementFloat {
 		lDeadBand.fSetValue(1);
 		fInitializeUid(name);
 		fConfigure();
-	};
-	virtual bool fHasDefaultReadFunction() const {
-		return true;
 	};
 	virtual void fReadCurrentValue() {
 		std::ifstream thermometer(lPath.c_str());
@@ -45,8 +43,8 @@ class diskValue: public SlowcontrolMeasurementFloat {
 	          const char *aName,
 	          int aDiskCompound) :
 		SlowcontrolMeasurementFloat(std::chrono::minutes(60),
-																std::chrono::minutes(10),
-																1) {
+		                            std::chrono::minutes(10),
+		                            1) {
 		std::string description("disk");
 		description += aSerial;
 		description += "_";
@@ -59,12 +57,13 @@ class diskValue: public SlowcontrolMeasurementFloat {
 	};
 };
 
-class freeMemory: public SlowcontrolMeasurementFloat {
+class freeMemory: public SlowcontrolMeasurementFloat,
+	public defaultReaderInterface {
   public:
 	freeMemory(int aHostCompound):
 		SlowcontrolMeasurementFloat(std::chrono::minutes(30),
-																std::chrono::seconds(10),
-																1000) {
+		                            std::chrono::seconds(10),
+		                            1000) {
 		std::string description;
 		description = slowcontrol::fGetHostName();
 		description += ":free_memory";
@@ -72,9 +71,6 @@ class freeMemory: public SlowcontrolMeasurementFloat {
 		fConfigure();
 		slowcontrol::fAddToCompound(aHostCompound, fGetUid(), "freeMemory");
 	}
-	virtual bool fHasDefaultReadFunction() const {
-		return true;
-	};
 	virtual void fReadCurrentValue() {
 		FILE *f;
 		double v = 0;
@@ -93,16 +89,17 @@ class freeMemory: public SlowcontrolMeasurementFloat {
 };
 
 
-class fsSize: public SlowcontrolMeasurementFloat {
+class fsSize: public SlowcontrolMeasurementFloat,
+	public defaultReaderInterface {
   protected:
 	std::string lMountPoint;
   public:
 	fsSize(int aHostCompound,
 	       const std::string& aDevice,
-	       const std::string& aMountPoint): 
+	       const std::string& aMountPoint):
 		SlowcontrolMeasurementFloat(std::chrono::minutes(20),
-																std::chrono::seconds(10),
-																1),
+		                            std::chrono::seconds(10),
+		                            1),
 		lMountPoint(aMountPoint) {
 		std::string description("free space on ");
 		description += slowcontrol::fGetHostName();
@@ -114,9 +111,6 @@ class fsSize: public SlowcontrolMeasurementFloat {
 		description = aMountPoint;
 		description += "free space";
 		slowcontrol::fAddToCompound(aHostCompound, fGetUid(), description);
-	};
-	virtual bool fHasDefaultReadFunction() const {
-		return true;
 	};
 	virtual void fReadCurrentValue() {
 		struct statfs buf;

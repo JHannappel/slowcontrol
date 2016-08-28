@@ -27,9 +27,6 @@ void SlowcontrolMeasurementBase::fInitializeUid(const std::string& aDescription)
 	slowcontrolDaemon::fGetInstance()->fRegisterMeasurement(this);
 };
 
-bool SlowcontrolMeasurementBase::fHasDefaultReadFunction() const {
-	return false;
-};
 
 void SlowcontrolMeasurementBase::fSaveOption(const configValueBase& aCfgValue,
         const char *aComment) {

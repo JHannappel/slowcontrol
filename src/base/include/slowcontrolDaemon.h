@@ -7,11 +7,20 @@
 #include <mutex>
 #include <condition_variable>
 class SlowcontrolMeasurementBase;
+class defaultReaderInterface;
 
 class slowcontrolDaemon {
   protected:
+	class defaultReadableMeasurement {
+	  public:
+		SlowcontrolMeasurementBase* lBase;
+		defaultReaderInterface* lReader;
+		defaultReadableMeasurement(decltype(lBase) aBase,
+		                           decltype(lReader) aReader) :
+			lBase(aBase), lReader(aReader) {};
+	};
 	std::map<int32_t, SlowcontrolMeasurementBase*> lMeasurements;
-	std::vector<SlowcontrolMeasurementBase*> lMeasurementsWithDefaultReader;
+	std::vector<defaultReadableMeasurement> lMeasurementsWithDefaultReader;
 	static slowcontrolDaemon* gInstance;
 	static void fReaderThread();
 	static void fStorerThread();

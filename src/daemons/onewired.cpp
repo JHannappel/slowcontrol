@@ -5,14 +5,15 @@
 #include <dirent.h>
 #include <string.h>
 #include <iostream>
-class owTemperature: public SlowcontrolMeasurementFloat {
+class owTemperature: public SlowcontrolMeasurementFloat,
+	public defaultReaderInterface {
   protected:
 	std::string lPath;
   public:
 	owTemperature(const char *aPath):
 		SlowcontrolMeasurementFloat(std::chrono::minutes(20),
-																std::chrono::seconds(30),
-																0.5) {
+		                            std::chrono::seconds(30),
+		                            0.5) {
 		std::string basePath = "/1w/";
 		basePath += aPath;
 		basePath += "/";
@@ -21,9 +22,6 @@ class owTemperature: public SlowcontrolMeasurementFloat {
 		lDeadBand.fSetValue(0.5);
 		fInitializeUid(aPath);
 		fConfigure();
-	};
-	virtual bool fHasDefaultReadFunction() const {
-		return true;
 	};
 	virtual void fReadCurrentValue() {
 		std::ifstream thermometer(lPath.c_str());

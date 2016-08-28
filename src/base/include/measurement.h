@@ -30,16 +30,19 @@ class SlowcontrolMeasurementBase {
   public:
 	SlowcontrolMeasurementBase(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
 	                           decltype(lReadoutInterval.fGetValue()) aDefaultReadoutIterval);
-	virtual bool fHasDefaultReadFunction() const;
 	virtual decltype(lReadoutInterval.fGetValue()) fGetReadoutInterval() const {
 		return lReadoutInterval.fGetValue();
 	}
-	virtual void fReadCurrentValue() {};
 	virtual void fSendValues() = 0;
 	int32_t fGetUid() const {
 		return lUid;
 	};
 	virtual void fConfigure();
+};
+
+class defaultReaderInterface {
+  public:
+	virtual void fReadCurrentValue() = 0;
 };
 
 
