@@ -25,6 +25,7 @@ class SlowcontrolMeasurementBase {
 	size_t lMinValueIndex;
 	size_t lMaxValueIndex;
 	int32_t lUid;
+	int32_t lState;
 	virtual const char *fGetDefaultTableName() const = 0;
 	void fSaveOption(const configValueBase& aCfgValue,
 	                 const char *comment);
@@ -40,6 +41,8 @@ class SlowcontrolMeasurementBase {
 		return lUid;
 	};
 	virtual void fConfigure();
+	virtual int32_t fSetState(const std::string& aStateName,
+	                          const std::string& aReason);
 };
 
 class defaultReaderInterface {
@@ -68,7 +71,12 @@ template <typename T> class SlowcontrolMeasurement: public SlowcontrolMeasuremen
 	virtual void fSendValue(const timedValue& aValue) = 0;
 	virtual void fCheckValue(timeType /*aTime*/,
 	                         T /*aValue*/) {};
-
+	virtual void fConfigure() {
+		SlowcontrolMeasurementBase::fConfigure();
+		if (!lValues.empty()) {
+			fCheckValue(lValues.back().lTime, lValues.back().lValue);
+		}
+	};
   public:
 	SlowcontrolMeasurement(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
 	                       decltype(lReadoutInterval.fGetValue()) aDefaultReadoutInterval,
@@ -158,22 +166,59 @@ class SlowcontrolMeasurementFloat: public SlowcontrolMeasurement<float> {
 template <typename baseClass> class boundCheckerInterface: public baseClass {
   protected:
 	configValue<typename baseClass::valueType> lLowerBound;
-	configValue<typename baseClass::valueType> lUppperBound;
+	configValue<typename baseClass::valueType> lUpperBound;
+	int32_t lNormalType = 0;
+	int32_t lLowValueType = 0;
+	int32_t lHighValueType = 0;
   public:
 	boundCheckerInterface(decltype(baseClass::lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
 	                      decltype(baseClass::lReadoutInterval.fGetValue()) aDefaultReadoutInterval,
 	                      decltype(baseClass::lDeadBand.fGetValue()) aDefaultDeadBand,
 	                      decltype(lLowerBound.fGetValue()) aLowerBound,
-	                      decltype(lUppperBound.fGetValue()) aUpperBound) :
+	                      decltype(lUpperBound.fGetValue()) aUpperBound) :
 		baseClass(aDefaultMaxDeltat, aDefaultReadoutInterval, aDefaultDeadBand),
 		lLowerBound("lowerBound", this->lConfigValues, aLowerBound),
-		lUppperBound("upperBound", this->lConfigValues, aUpperBound) {
+		lUpperBound("upperBound", this->lConfigValues, aUpperBound) {
 	};
 	virtual void fCheckValue(typename baseClass::timeType /*aTime*/,
 	                         typename baseClass::valueType aValue) {
-		if (lLowerBound.fGetValue() > aValue ||
-		        lUppperBound.fGetValue() < aValue) {
-			std::cout << " value out of bounds " << aValue;
+		if (lLowerBound.fGetValue() > aValue) {
+			if (this->lState != lLowValueType) {
+				std::string reason("value is ");
+				reason += std::to_string(aValue);
+				reason += ", limit is ";
+				reason += std::to_string(lLowerBound.fGetValue());
+				auto lowValueType = this->fSetState("valueTooLow", reason);
+				if (lLowValueType == 0) {
+					lLowValueType = lowValueType;
+				}
+			}
+		} else if (lUpperBound.fGetValue() < aValue) {
+			if (this->lState != lHighValueType) {
+				std::string reason("value is ");
+				reason += std::to_string(aValue);
+				reason += ", limit is ";
+				reason += std::to_string(lUpperBound.fGetValue());
+				auto highValueType = this->fSetState("valueTooHigh", reason);
+				if (lHighValueType == 0) {
+					lHighValueType = highValueType;
+				}
+			}
+		} else { // value inside normal bounds
+			if (this->lState != lNormalType) {
+				std::string reason("value is ");
+				reason += std::to_string(aValue);
+				reason += ", limit is ";
+				if (this->lState == lLowValueType) {
+					reason += std::to_string(lLowerBound.fGetValue());
+				} else {
+					reason += std::to_string(lUpperBound.fGetValue());
+				}
+				auto normalType = this->fSetState("normal", reason);
+				if (lNormalType == 0) {
+					lNormalType = normalType;
+				}
+			}
 		}
 	};
 };

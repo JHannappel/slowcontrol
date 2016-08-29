@@ -1,7 +1,7 @@
 #include "measurement.h"
 #include "slowcontrol.h"
 #include "slowcontrolDaemon.h"
-
+#include "states.h"
 #include <string.h>
 
 SlowcontrolMeasurementBase::SlowcontrolMeasurementBase(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
@@ -10,6 +10,7 @@ SlowcontrolMeasurementBase::SlowcontrolMeasurementBase(decltype(lMaxDeltaT.fGetV
 	lReadoutInterval("ReadoutInterval", lConfigValues, aDefaultReadoutIterval),
 	lMinValueIndex(0),
 	lMaxValueIndex(0) {
+	lState = measurement_state::fGetState("normal");
 };
 
 void SlowcontrolMeasurementBase::fInitializeUid(const std::string& aDescription) {
@@ -69,8 +70,26 @@ void SlowcontrolMeasurementBase::fConfigure() {
 			fSaveOption(*(it.second), "later default");
 		}
 	}
-
 };
+
+int32_t SlowcontrolMeasurementBase::fSetState(const std::string& aStateName,
+        const std::string& aReason) {
+	auto newState = measurement_state::fGetState(aStateName);
+	if (newState != lState) {
+		std::string query("UPDATE uid_states SET type =");
+		query += std::to_string(newState);
+		query += ", valid_from = now(), reason=";
+		slowcontrol::fAddEscapedStringToQuery(aReason, query);
+		query += " WHERE uid=";
+		query += std::to_string(fGetUid());
+		query += ";";
+		auto result = PQexec(slowcontrol::fGetDbconn(), query.c_str());
+		PQclear(result);
+		lState = newState;
+	}
+	return newState;
+}
+
 
 SlowcontrolMeasurementFloat::SlowcontrolMeasurementFloat(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
         decltype(lReadoutInterval.fGetValue()) aDefaultReadoutIterval,

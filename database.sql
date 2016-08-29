@@ -94,6 +94,35 @@ CREATE TABLE measurements_float (
 --
 --
 
+CREATE TABLE state_types (
+    typename text NOT NULL,
+    explanation text,
+    type integer NOT NULL
+);
+
+
+
+--
+--
+
+CREATE SEQUENCE state_types_type_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+
+--
+--
+
+ALTER SEQUENCE state_types_type_seq OWNED BY state_types.type;
+
+
+--
+--
+
 CREATE TABLE uid_config_history (
     uid integer,
     name text,
@@ -150,7 +179,38 @@ ALTER SEQUENCE uid_list_uid_seq OWNED BY uid_list.uid;
 --
 --
 
+CREATE TABLE uid_state_history (
+    uid integer,
+    type integer,
+    valid_from timestamp with time zone,
+    valid_to timestamp with time zone,
+    reason text
+);
+
+
+
+--
+--
+
+CREATE TABLE uid_states (
+    uid integer NOT NULL,
+    type integer,
+    valid_from timestamp with time zone,
+    reason text
+);
+
+
+
+--
+--
+
 ALTER TABLE ONLY compound_list ALTER COLUMN id SET DEFAULT nextval('compound_list_id_seq'::regclass);
+
+
+--
+--
+
+ALTER TABLE ONLY state_types ALTER COLUMN type SET DEFAULT nextval('state_types_type_seq'::regclass);
 
 
 --
@@ -190,6 +250,20 @@ ALTER TABLE ONLY compound_uids
 --
 --
 
+ALTER TABLE ONLY state_types
+    ADD CONSTRAINT state_types_pkey PRIMARY KEY (typename);
+
+
+--
+--
+
+ALTER TABLE ONLY state_types
+    ADD CONSTRAINT state_types_type_key UNIQUE (type);
+
+
+--
+--
+
 ALTER TABLE ONLY uid_configs
     ADD CONSTRAINT uid_configs_pkey PRIMARY KEY (uid, name);
 
@@ -211,6 +285,13 @@ ALTER TABLE ONLY uid_list
 --
 --
 
+ALTER TABLE ONLY uid_states
+    ADD CONSTRAINT uid_states_pkey PRIMARY KEY (uid);
+
+
+--
+--
+
 CREATE RULE uid_config_history_saver AS
     ON UPDATE TO uid_configs DO  INSERT INTO uid_config_history (uid, name, value, comment, valid_from)
   VALUES (old.uid, old.name, old.value, old.comment, old.last_change);
@@ -222,6 +303,14 @@ CREATE RULE uid_config_history_saver AS
 CREATE RULE uid_config_notify AS
     ON UPDATE TO uid_configs DO
  NOTIFY uid_configs_update;
+
+
+--
+--
+
+CREATE RULE uid_state_history_saver AS
+    ON UPDATE TO uid_states DO  INSERT INTO uid_state_history (uid, type, valid_from, valid_to, reason)
+  VALUES (old.uid, old.type, old.valid_from, new.valid_from, old.reason);
 
 
 --
@@ -250,6 +339,34 @@ ALTER TABLE ONLY compound_uids
 
 ALTER TABLE ONLY compound_uids
     ADD CONSTRAINT compound_uids_uid_fkey FOREIGN KEY (uid) REFERENCES uid_list(uid);
+
+
+--
+--
+
+ALTER TABLE ONLY uid_state_history
+    ADD CONSTRAINT uid_state_history_type_fkey FOREIGN KEY (type) REFERENCES state_types(type);
+
+
+--
+--
+
+ALTER TABLE ONLY uid_state_history
+    ADD CONSTRAINT uid_state_history_uid_fkey FOREIGN KEY (uid) REFERENCES uid_list(uid);
+
+
+--
+--
+
+ALTER TABLE ONLY uid_states
+    ADD CONSTRAINT uid_states_type_fkey FOREIGN KEY (type) REFERENCES state_types(type);
+
+
+--
+--
+
+ALTER TABLE ONLY uid_states
+    ADD CONSTRAINT uid_states_uid_fkey FOREIGN KEY (uid) REFERENCES uid_list(uid);
 
 
 --

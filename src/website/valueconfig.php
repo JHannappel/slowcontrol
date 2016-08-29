@@ -71,5 +71,18 @@ while ($row = pg_fetch_assoc($result)) {
 	echo "<a href=\"graph.php?uid=${row['uid']}\">graph</a>\n";
 	echo "<a href=\"graph.php?uid=${row['uid']}&starttime='today'\">graph since today</a>\n";
 	echo "<a href=\"graph.php?uid=${row['uid']}&starttime='yesterday'\">graph since yesterday</a>\n";
+	
+	echo "<table>\n";
+	$result2 = pg_query($dbconn,"SELECT uid,type,valid_from,timestamp 'infinity' AS valid_to,reason,typename,explanation FROM uid_states INNER JOIN state_types USING (type) WHERE uid = $uid UNION SELECT uid,type,valid_from,valid_to,reason,typename,explanation FROM uid_state_history INNER JOIN state_types USING (type) WHERE uid = $uid ORDER BY valid_from DESC LIMIT 5;");
+	while ($row2=pg_fetch_assoc($result2)) {
+		echo "<tr>\n";
+		echo "<td>${row2['typename']}</td>\n";
+		echo "<td>${row2['explanation']}</td>\n";
+		echo "<td>${row2['reason']}</td>\n";
+		echo "<td>${row2['valid_from']}</td>\n";
+		echo "<td>${row2['valid_to']}</td>\n";
+		echo "</tr>\n";
+	}
+	echo "</table>\n";
  }
 ?>
