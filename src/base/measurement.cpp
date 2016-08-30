@@ -72,7 +72,7 @@ void SlowcontrolMeasurementBase::fConfigure() {
 	}
 };
 
-int32_t SlowcontrolMeasurementBase::fSetState(const std::string& aStateName,
+measurement_state::stateType SlowcontrolMeasurementBase::fSetState(const std::string& aStateName,
         const std::string& aReason) {
 	auto newState = measurement_state::fGetState(aStateName);
 	if (newState != lState) {

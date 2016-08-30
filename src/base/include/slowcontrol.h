@@ -8,6 +8,8 @@
 #include <unistd.h>
 
 class slowcontrol {
+  public:
+	typedef int32_t uidType;
   private:
 	static std::map<std::thread::id, PGconn *> gConnections;
 	static std::string gHostname;

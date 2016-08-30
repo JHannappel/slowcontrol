@@ -11,10 +11,14 @@
 #include <algorithm>
 #include <iostream>
 
+
 #include "configValue.h"
 #include "slowcontrolDaemon.h"
+#include "states.h"
 
 class SlowcontrolMeasurementBase {
+  public:
+	typedef int32_t uidType;
   protected:
 	std::map<std::string, configValueBase*> lConfigValues;
   public:
@@ -24,8 +28,8 @@ class SlowcontrolMeasurementBase {
 	std::mutex lSendQueueMutex;
 	size_t lMinValueIndex;
 	size_t lMaxValueIndex;
-	int32_t lUid;
-	int32_t lState;
+	uidType lUid;
+	measurement_state::stateType lState;
 	virtual const char *fGetDefaultTableName() const = 0;
 	void fSaveOption(const configValueBase& aCfgValue,
 	                 const char *comment);
@@ -37,12 +41,12 @@ class SlowcontrolMeasurementBase {
 		return lReadoutInterval.fGetValue();
 	}
 	virtual void fSendValues() = 0;
-	int32_t fGetUid() const {
+	uidType fGetUid() const {
 		return lUid;
 	};
 	virtual void fConfigure();
-	virtual int32_t fSetState(const std::string& aStateName,
-	                          const std::string& aReason);
+	virtual measurement_state::stateType fSetState(const std::string& aStateName,
+	        const std::string& aReason);
 };
 
 class defaultReaderInterface {
@@ -167,9 +171,9 @@ template <typename baseClass> class boundCheckerInterface: public baseClass {
   protected:
 	configValue<typename baseClass::valueType> lLowerBound;
 	configValue<typename baseClass::valueType> lUpperBound;
-	int32_t lNormalType = 0;
-	int32_t lLowValueType = 0;
-	int32_t lHighValueType = 0;
+	measurement_state::stateType lNormalType = 0;
+	measurement_state::stateType lLowValueType = 0;
+	measurement_state::stateType lHighValueType = 0;
   public:
 	boundCheckerInterface(decltype(baseClass::lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
 	                      decltype(baseClass::lReadoutInterval.fGetValue()) aDefaultReadoutInterval,

@@ -6,6 +6,8 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <slowcontrol.h>
+
 class SlowcontrolMeasurementBase;
 class defaultReaderInterface;
 
@@ -19,7 +21,7 @@ class slowcontrolDaemon {
 		                           decltype(lReader) aReader) :
 			lBase(aBase), lReader(aReader) {};
 	};
-	std::map<int32_t, SlowcontrolMeasurementBase*> lMeasurements;
+	std::map<slowcontrol::uidType, SlowcontrolMeasurementBase*> lMeasurements;
 	std::vector<defaultReadableMeasurement> lMeasurementsWithDefaultReader;
 	static slowcontrolDaemon* gInstance;
 	static void fReaderThread();

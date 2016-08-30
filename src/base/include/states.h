@@ -4,11 +4,13 @@
 #include <map>
 
 class measurement_state {
+  public:
+	typedef int32_t stateType;
   protected:
 	static std::mutex gStatesMutex;
-	static std::map<std::string, int32_t> gStates;
+	static std::map<std::string, stateType> gStates;
   public:
-	static int32_t fGetState(const std::string& aStateName);
+	static stateType fGetState(const std::string& aStateName);
 };
 
 

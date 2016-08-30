@@ -1,10 +1,10 @@
 #include "states.h"
 #include "slowcontrol.h"
 
-std::map<std::string, int32_t> measurement_state::gStates;
+std::map<std::string, measurement_state::stateType> measurement_state::gStates;
 std::mutex measurement_state::gStatesMutex;
 
-int32_t measurement_state::fGetState(const std::string& aStateName) {
+measurement_state::stateType measurement_state::fGetState(const std::string& aStateName) {
 	std::lock_guard<decltype(gStatesMutex)> mapLock(gStatesMutex);
 	if (gStates.empty()) { // populate the map from the database
 		auto result = PQexec(slowcontrol::fGetDbconn(), "SELECT typename,type FROM state_types;");
