@@ -10,7 +10,7 @@
 #include <limits>
 #include <sys/vfs.h>
 
-class cpuTemperature: public boundCheckerInterface<SlowcontrolMeasurementFloat>,
+class cpuTemperature: public boundCheckerInterface<SlowcontrolMeasurementFloat, false, true>,
 	public defaultReaderInterface
 
 {
@@ -38,15 +38,15 @@ class cpuTemperature: public boundCheckerInterface<SlowcontrolMeasurementFloat>,
 	};
 };
 
-class diskValue: public SlowcontrolMeasurementFloat {
+class diskValue: public boundCheckerInterface<SlowcontrolMeasurementFloat> {
   public:
 	diskValue(const std::string& aSerial,
 	          int aId,
 	          const char *aName,
 	          int aDiskCompound) :
-		SlowcontrolMeasurementFloat(std::chrono::minutes(60),
-		                            std::chrono::minutes(10),
-		                            1) {
+		boundCheckerInterface(std::chrono::minutes(60),
+		                      std::chrono::minutes(10),
+		                      1, std::numeric_limits<valueType>::lowest(), std::numeric_limits<valueType>::max()) {
 		std::string description("disk");
 		description += aSerial;
 		description += "_";
@@ -59,13 +59,13 @@ class diskValue: public SlowcontrolMeasurementFloat {
 	};
 };
 
-class freeMemory: public SlowcontrolMeasurementFloat,
+class freeMemory: public boundCheckerInterface<SlowcontrolMeasurementFloat, true, false>,
 	public defaultReaderInterface {
   public:
 	freeMemory(int aHostCompound):
-		SlowcontrolMeasurementFloat(std::chrono::minutes(30),
-		                            std::chrono::seconds(10),
-		                            1000) {
+		boundCheckerInterface(std::chrono::minutes(30),
+		                      std::chrono::seconds(10),
+		                      1000, 2000, 0) {
 		std::string description;
 		description = slowcontrol::fGetHostName();
 		description += ":free_memory";
@@ -91,7 +91,7 @@ class freeMemory: public SlowcontrolMeasurementFloat,
 };
 
 
-class fsSize: public SlowcontrolMeasurementFloat,
+class fsSize: public boundCheckerInterface<SlowcontrolMeasurementFloat, true, false>,
 	public defaultReaderInterface {
   protected:
 	std::string lMountPoint;
@@ -99,9 +99,9 @@ class fsSize: public SlowcontrolMeasurementFloat,
 	fsSize(int aHostCompound,
 	       const std::string& aDevice,
 	       const std::string& aMountPoint):
-		SlowcontrolMeasurementFloat(std::chrono::minutes(20),
-		                            std::chrono::seconds(10),
-		                            1),
+		boundCheckerInterface(std::chrono::minutes(20),
+		                      std::chrono::seconds(10),
+		                      1, 10, 0),
 		lMountPoint(aMountPoint) {
 		std::string description("free space on ");
 		description += slowcontrol::fGetHostName();

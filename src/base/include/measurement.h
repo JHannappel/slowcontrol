@@ -166,11 +166,22 @@ class SlowcontrolMeasurementFloat: public SlowcontrolMeasurement<float> {
 	virtual void fSendValue(const timedValue& aValue);
 };
 
+template <typename T> class dummyConfigValue {
+  public:
+	dummyConfigValue(const char */*aName*/,
+	                 std::map<std::string, configValueBase*>& /*aMap*/,
+	                 const T& /*aValue*/ = 0) {};
+	T fGetValue() const {
+		return 0;
+	};
+};
 
-template <typename baseClass> class boundCheckerInterface: public baseClass {
+template <typename baseClass, bool checkLowBound = true, bool checkHighBound = true> class boundCheckerInterface: public baseClass {
   protected:
-	configValue<typename baseClass::valueType> lLowerBound;
-	configValue<typename baseClass::valueType> lUpperBound;
+	typename std::conditional<checkLowBound, configValue<typename baseClass::valueType>,
+	         dummyConfigValue<typename baseClass::valueType>>::type lLowerBound;
+	typename std::conditional<checkHighBound, configValue<typename baseClass::valueType>,
+	         dummyConfigValue<typename baseClass::valueType>>::type lUpperBound;
 	measurement_state::stateType lNormalType = 0;
 	measurement_state::stateType lLowValueType = 0;
 	measurement_state::stateType lHighValueType = 0;
@@ -186,7 +197,7 @@ template <typename baseClass> class boundCheckerInterface: public baseClass {
 	};
 	virtual void fCheckValue(typename baseClass::timeType /*aTime*/,
 	                         typename baseClass::valueType aValue) {
-		if (lLowerBound.fGetValue() > aValue) {
+		if (checkLowBound && lLowerBound.fGetValue() > aValue) {
 			if (this->lState != lLowValueType) {
 				std::string reason("value is ");
 				reason += std::to_string(aValue);
@@ -197,7 +208,7 @@ template <typename baseClass> class boundCheckerInterface: public baseClass {
 					lLowValueType = lowValueType;
 				}
 			}
-		} else if (lUpperBound.fGetValue() < aValue) {
+		} else if (checkHighBound && lUpperBound.fGetValue() < aValue) {
 			if (this->lState != lHighValueType) {
 				std::string reason("value is ");
 				reason += std::to_string(aValue);
