@@ -5,6 +5,9 @@ $dbconn = pg_connect($dbstring);
 if (!$dbconn) {
 	die('Could not connect: ' . pg_last_error());
 };
+
+page_head($dbconn,"valueconfig");
+
 if (isset($_GET['uid'])) {
 	$condition="WHERE uid in (${_GET['uid']})";
  } else {
@@ -50,7 +53,8 @@ while ($row = pg_fetch_assoc($result)) {
   echo "<td> <input type=\"text\" name=\"value\" value=\"\"> </td>\n";
   echo "<td> <input type=\"text\" name=\"comment\" value=\"\"> </td>\n";
   echo "<td><input type=\"submit\" value=\"Add\" ></td>\n";     
-  echo "<td> ${row2['last_change']} </td>\n";
+	echo "<td> --- </td>\n";
+	echo "<td> \m/ </td>\n";
   echo "</form>\n";
   echo "</tr>\n";
   echo "</table>\n";
@@ -85,4 +89,6 @@ while ($row = pg_fetch_assoc($result)) {
 	}
 	echo "</table>\n";
  }
+
+page_foot();
 ?>

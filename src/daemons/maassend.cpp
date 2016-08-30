@@ -29,6 +29,7 @@ class cpuTemperature: public boundCheckerInterface<SlowcontrolMeasurementFloat, 
 		lDeadBand.fSetValue(1);
 		fInitializeUid(name);
 		fConfigure();
+		std::cerr << __func__ << " size is " << sizeof(*this) << std::endl;
 	};
 	virtual void fReadCurrentValue() {
 		std::ifstream thermometer(lPath.c_str());
@@ -72,6 +73,7 @@ class freeMemory: public boundCheckerInterface<SlowcontrolMeasurementFloat, true
 		fInitializeUid(description);
 		fConfigure();
 		slowcontrol::fAddToCompound(aHostCompound, fGetUid(), "freeMemory");
+		std::cerr << __func__ << " size is " << sizeof(*this) << std::endl;
 	}
 	virtual void fReadCurrentValue() {
 		FILE *f;
@@ -113,6 +115,7 @@ class fsSize: public boundCheckerInterface<SlowcontrolMeasurementFloat, true, fa
 		description = aMountPoint;
 		description += "free space";
 		slowcontrol::fAddToCompound(aHostCompound, fGetUid(), description);
+		std::cerr << __func__ << " size is " << sizeof(*this) << std::endl;
 	};
 	virtual void fReadCurrentValue() {
 		struct statfs buf;

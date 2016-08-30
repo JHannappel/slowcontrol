@@ -1,0 +1,112 @@
+#main {
+    /* 	margin-left:12em; */
+    /* 	padding-left:10px; */
+    /* 	background: #FFFF80; */
+    /* 	position:absolute; */
+    margin-top:0px;
+}
+
+#content {
+    margin-left:12em;
+    margin-bottom:4em;
+    margin-right:10px;
+}
+
+#navigation { 
+    background : #FFFFFF;
+    position: absolute;
+    /* 	float: left; */
+    left:0;
+    top: 148px;
+    width: 10em;
+    height: 100%;
+    /*	right: auto;
+	left: 0;*/
+    margin-bottom: 2ex;
+    margin-right: 1em;
+    margin-left: 0;
+    margin-top: 0;
+    padding-left: 10px;
+    padding-right: 1em;
+    padding-top: 10px;
+    padding-bottom: 1em;
+    z-index : 50;
+}
+#navsection {
+    background: #333C4B;
+    color: #FFFFFF;
+    display: block;
+    border-width: thin;
+    border-style: outset;
+    margin-bottom: 0.5ex;
+    padding:0.25ex;
+    padding-left:0.5ex;
+    font-weight: bold;
+}
+
+#globalstate {
+    bottom: 0;
+    position: fixed;
+    /*            height: 3.4em; */
+    right: auto;
+    left: 12em;        
+    padding-left:0.5ex;
+}
+#help {
+    position: fixed;
+    right: 0;
+    top: 116px;
+    border-style: ridge;
+    font-size: small;
+}
+
+table {
+	border-width:2px;
+	border-color: #5D718F;
+	border-style: solid;
+	rules: all;
+	frame: box;
+	align: char;
+	char: ".";
+	border-collapse: collapse;
+}
+
+tr:nth-child(even) {
+background: #FFF
+}
+tr:nth-child(odd) {
+background: #F8F8F8
+}
+
+td.bad {
+	background : #ff2020;
+}
+td.good {
+	background : #20ff20;
+}
+td.old {
+	background : #ffaa20;
+}
+td.inactive {
+	background : #dddddd;
+}
+td.partial {
+	background : #ffff00;
+}
+blink {
+    display: inline;
+    color: inherit;
+    animation: blink 1s ease infinite;
+    -webkit-animation: blink 1s ease infinite;
+}
+@keyframes blink { 50% { background: #BBAA00; } }
+@-webkit-keyframes blink { 50% { background: #BBAA00; } }
+
+.fadeout {
+    animation: fadeout 30s steps(30) forwards;
+    -webkit-animation: fadeout 30s steps(30) forwards;
+}
+@keyframes fadeout { 0% { background:#20FF20;}
+		     100% {background:#ffaa20; }}
+@-webkit-keyframes fadeout { 0% { background:#20FF20;}
+			     100% {background:#ffaa20; }}
