@@ -125,7 +125,7 @@ template <typename T> class SlowcontrolMeasurement: public SlowcontrolMeasuremen
 			indicesToSend.insert(lValues.size() - 1);
 			{
 				// scope for send queue locking
-				std::lock_guard<std::mutex> SendQueueLock(lSendQueueMutex);
+				std::lock_guard<decltype(lSendQueueMutex)> SendQueueLock(lSendQueueMutex);
 				for (auto index : indicesToSend) {
 					lSendQueue.push_back(lValues.at(index));
 				}

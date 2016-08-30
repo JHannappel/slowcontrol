@@ -17,6 +17,7 @@ $row = pg_fetch_assoc($result);
 if ($row == NULL) {
   die("id $id not found");
  }
+page_head($dbconn,"compound ${row['name']}");
 
 echo "<H1>Compound '${row['name']}'</H1>\n";
 echo "${row['description']}<br>\n";
@@ -48,12 +49,15 @@ echo "</table>\n";
 
 echo "<H2>Values</H2>";
 
-$result = pg_query($dbconn,"SELECT * from compound_uids INNER JOIN uid_list USING (uid) WHERE id = $id;"); 
+$result = pg_query($dbconn,"SELECT *, (SELECT value FROM uid_configs WHERE name='name' AND uid_configs.uid = compound_uids.uid) AS name FROM compound_uids INNER JOIN uid_list USING (uid) WHERE id = $id;"); 
 echo "<table>\n";
 while ($row = pg_fetch_assoc($result)) {
   echo "<tr>\n";
   echo "<td> <a href=\"valueconfig.php?uid=${row['uid']}\">${row['child_name']} </a></td>\n";
   echo "<td> ${row['description']} </td>\n";
+  echo "<td> ${row['name']} </td>\n";
+  $r2 = pg_query($dbconn,"SELECT * FROM ${row['uid_configs']} WHERE uid=${row['uid']} ORDER BY time desc limit 1;");
+  $v=pg_fetch_assoc($r2);
   $r2 = pg_query($dbconn,"SELECT * FROM ${row['data_table']} WHERE uid=${row['uid']} ORDER BY time desc limit 1;");
   $v=pg_fetch_assoc($r2);
   echo "<td> ${v['value']} </td>\n";

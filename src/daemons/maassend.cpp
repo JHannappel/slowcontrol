@@ -96,6 +96,7 @@ class freeMemory: public boundCheckerInterface<SlowcontrolMeasurementFloat, true
 class fsSize: public boundCheckerInterface<SlowcontrolMeasurementFloat, true, false>,
 	public defaultReaderInterface {
   protected:
+	configValue<std::string> lName;
 	std::string lMountPoint;
   public:
 	fsSize(int aHostCompound,
@@ -104,16 +105,17 @@ class fsSize: public boundCheckerInterface<SlowcontrolMeasurementFloat, true, fa
 		boundCheckerInterface(std::chrono::minutes(20),
 		                      std::chrono::seconds(10),
 		                      1, 10, 0),
+		lName("name", lConfigValues),
 		lMountPoint(aMountPoint) {
 		std::string description("free space on ");
 		description += slowcontrol::fGetHostName();
 		description += " ";
 		description += aDevice;
-		lDeadBand.fSetValue(10);
 		fInitializeUid(description);
-		fConfigure();
 		description = aMountPoint;
 		description += "free space";
+		lName.fSetValue(description);
+		fConfigure();
 		slowcontrol::fAddToCompound(aHostCompound, fGetUid(), description);
 		std::cerr << __func__ << " size is " << sizeof(*this) << std::endl;
 	};

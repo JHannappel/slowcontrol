@@ -2,6 +2,8 @@
 #define __configValue_h_
 #include <sstream>
 #include <atomic>
+#include <mutex>
+#include <thread>
 class configValueBase {
 	const std::string lName;
   public:
@@ -81,5 +83,42 @@ template <> class configValue<std::chrono::system_clock::duration>: public confi
 	}
 };
 
+template <> class configValue<std::string>: public configValueBase {
+  protected:
+	std::string lValue;
+	mutable std::mutex lMutex;
+  public:
+	configValue(const char *aName,
+	            std::map<std::string, configValueBase*>& aMap):
+		configValueBase(aName, aMap) {
+	};
+	configValue(const char *aName,
+	            std::map<std::string, configValueBase*>& aMap,
+	            const std::string& aValue):
+		configValueBase(aName, aMap), lValue(aValue) {
+	};
+	std::string	fGetValue() const {
+		std::lock_guard<decltype(lMutex)> lock(lMutex);
+		auto copy = lValue;
+		return copy;
+	}
+	operator std::string	() const {
+		std::lock_guard<decltype(lMutex)> lock(lMutex);
+		auto copy = lValue;
+		return copy;
+	}
+	void fSetValue(std::string aValue)  {
+		std::lock_guard<decltype(lMutex)> lock(lMutex);
+		lValue = aValue;
+	}
+	virtual void fSetFromString(const char *aString) {
+		std::lock_guard<decltype(lMutex)> lock(lMutex);
+		lValue = aString;
+	}
+	virtual void fAsString(std::string& aString) const {
+		std::lock_guard<decltype(lMutex)> lock(lMutex);
+		aString = lValue;
+	}
+};
 
 #endif
