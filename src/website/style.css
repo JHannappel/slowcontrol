@@ -61,38 +61,55 @@
 }
 
 table {
-	border-width:2px;
-	border-color: #5D718F;
-	border-style: solid;
-	rules: all;
-	frame: box;
-	align: char;
-	char: ".";
-	border-collapse: collapse;
+    border-width:2px;
+    border-color: #5D718F;
+    border-style: solid;
+    rules: all;
+    frame: box;
+    align: char;
+    char: ".";
+    border-collapse: collapse;
 }
 
 tr:nth-child(even) {
-background: #FFF
+    background: #FFF
 }
 tr:nth-child(odd) {
-background: #F8F8F8
+    background: #F8F8F8
 }
 
 td.bad {
-	background : #ff2020;
+    background : #ff2020;
 }
 td.good {
-	background : #20ff20;
+    background : #20ff20;
 }
 td.old {
-	background : #ffaa20;
+    background : #ffaa20;
 }
 td.inactive {
-	background : #dddddd;
+    background : #dddddd;
 }
 td.partial {
-	background : #ffff00;
+    background : #ffff00;
 }
+span.good {
+    color : black;
+    background : #20ff20;
+}
+span.bad {
+    color : white;
+    background : #ff2020;
+}
+span.bad a {
+    color : #FFFFFF;
+}
+
+span.old {
+    color : black;
+    background : #ffaa20;
+}
+
 blink {
     display: inline;
     color: inherit;
@@ -136,5 +153,5 @@ nav li {
     padding-left:0.5ex;
 }
 nav a {
-   color: #FFFFFF;
+    color: #FFFFFF;
 }

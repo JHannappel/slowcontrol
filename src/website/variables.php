@@ -50,10 +50,22 @@ function page_head($dbconn,$name,$refreshable=true) {
 	echo "</HEAD>\n";
 	echo "\n";
 	echo "<BODY>\n";
-	echo "<DIV id=\"globalstate\" class=\"fadeout\">\n";
-	$result = pg_query($dbconn,"SELECT count(*) as n FROM uid_states WHERE type > 1;");
+	echo "<DIV id=\"globalstate\" class=\"fadeout\"> Global status\n";
+	echo date("Y-M-d H:i:s");
+	$result = pg_query($dbconn,"SELECT(SELECT count(*) as bad_states FROM uid_states WHERE type > 1),(SELECT count(*) AS dead_daemons FROM daemon_heartbeat WHERE now()>next_beat+(next_beat-daemon_time));");
 	$row = pg_fetch_assoc($result);
-	echo "<a href=\"alarms.php\">${row['n']} alarms</a>\n";
+	if ($row['bad_states']>0) {
+		$class="bad";
+	} else {
+		$class="good";
+	}
+	echo "<span class=\"$class\"><a href=\"alarms.php\"> ${row['bad_states']} alarms</a></span>\n";
+	if ($row['dead_daemons']>0) {
+		$class="bad";
+	} else {
+		$class="good";
+	}
+	echo "<span class=\"$class\"><a href=\"daemons.php\"> ${row['dead_daemons']} dead daemons</a></span>\n";
 	echo "</DIV>\n";
 	echo "<DIV id=\"main\">\n";
 	echo "<NAV id=\"navigation\">\n";
