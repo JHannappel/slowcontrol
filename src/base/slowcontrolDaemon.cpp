@@ -34,10 +34,13 @@ slowcontrolDaemon::slowcontrolDaemon(const char *aName) {
 	                                   "description", description.c_str());
 	std::string query("DELETE FROM uid_daemon_connection WHERE daemonid = ");
 	query += std::to_string(lId);
-	query += ";INSERT INTO daemon_heartbeat(daemonid) VALUES (";
+	query += ";";
+	auto result = PQexec(slowcontrol::fGetDbconn(), query.c_str());
+	PQclear(result);
+	query = "INSERT INTO daemon_heartbeat(daemonid) VALUES (";
 	query += std::to_string(lId);
 	query += ");";
-	auto result = PQexec(slowcontrol::fGetDbconn(), query.c_str());
+	result = PQexec(slowcontrol::fGetDbconn(), query.c_str());
 	PQclear(result);
 	lHeartBeatFrequency = std::chrono::minutes(1);
 	lHeartBeatSkew = new heartBeatSkew(description);
