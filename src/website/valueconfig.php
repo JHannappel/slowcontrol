@@ -19,7 +19,7 @@ $result = pg_query($dbconn,"SELECT uid, data_table, description, (SELECT value F
 
 while ($row = pg_fetch_assoc($result)) {
 	$uid=$row['uid'];
-  echo "<H1>Uid ${row['uid']} '${row['description']}' '${row['name']}'</H1>\n";
+  echo "<H1 id=$uid>Uid ${row['uid']} '${row['description']}' '${row['name']}'</H1>\n";
   echo "resides in ${row['data_table']}<br>\n";
   $result2 = pg_query($dbconn,"SELECT *, (SELECT COUNT(*) FROM uid_config_history WHERE uid_config_history.uid=uid_configs.uid and uid_config_history.name=uid_configs.name) AS history_items FROM uid_configs WHERE uid=$uid ORDER BY name COLLATE \"C\";");
   echo "<table>\n";

@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 	header('HTTP/1.1 303 See Other');
       }
     }
-    header("Location: ${_SERVER['HTTP_REFERER']}");
+    header("Location: ${_SERVER['HTTP_REFERER']}#$uid");
   } else {
     http_redirect("valueconfig.php",array("uid"=>"$uid"),true,HTTP_METH_GET);
   }
