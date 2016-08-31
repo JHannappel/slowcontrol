@@ -112,17 +112,23 @@ blink {
 			     100% {background:#ffaa20; }}
 
 a.button {
-		display: inline;
-		border-width: thin;
-		border-style: groove;
+    display: inline;
+    border-width: thin;
+    border-style: groove;
 }
-a.navbutton {
-		background: #333C4B;
-		color: #FFFFFF;
-		display: block;
-		border-width: thin;
-		border-style: outset;
-		margin-bottom: 0.5ex;
-		padding:0.25ex;
-		padding-left:0.5ex;
+nav ul {
+    list-style-type: none;
+}
+nav li {
+    background: #333C4B;
+    color: #FFFFFF;
+    display: block;
+    border-width: thin;
+    border-style: outset;
+    margin-bottom: 0.5ex;
+    padding:0.25ex;
+    padding-left:0.5ex;
+}
+nav a {
+   color: #FFFFFF;
 }

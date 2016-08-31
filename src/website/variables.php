@@ -56,12 +56,14 @@ function page_head($dbconn,$name,$refreshable=true) {
 	echo "<a href=\"alarms.php\">${row['n']} alarms</a>\n";
 	echo "</DIV>\n";
 	echo "<DIV id=\"main\">\n";
-	echo "<DIV id=\"navigation\">\n";
-	echo "<a class=\"navbutton\" href=\"alarms.php\">Alarms</a>\n";
-	echo "<a class=\"navbutton\" href=\"compounds.php\">Compounds</a>\n";
-	echo "<a class=\"navbutton\" href=\"daemons.php\">Daemons</a>\n";
-	echo "<a class=\"navbutton\" href=\"valueconfig.php?unclaimed\">Unclaimed measurements</a>\n";
-	echo "</DIV>\n";
+	echo "<NAV id=\"navigation\">\n";
+	echo "<ul>\n";
+	echo "<li><a href=\"alarms.php\">Alarms</a>\n";
+	echo "<li><a href=\"compounds.php\">Compounds</a>\n";
+	echo "<li><a href=\"daemons.php\">Daemons</a>\n";
+	echo "<li><a href=\"valueconfig.php?unclaimed\">Unclaimed measurements</a>\n";
+	echo "</ul>\n";
+	echo "</NAV>\n";
 	echo "<DIV id=\"content\">\n";
 
 }	
