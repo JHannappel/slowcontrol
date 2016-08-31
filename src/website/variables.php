@@ -23,6 +23,18 @@ if (!function_exists("http_redirect")) {
 defined('HTTP_METH_GET') or define('HTTP_METH_GET','GET');
 
 
+function get_int_list($varname) {
+	if (isset($_GET[$varname])) {
+		foreach (explode(",",$_GET[$varname]) as $item) {
+			if (!is_numeric($item)) {
+				die("bad paramaeter value '$item'in '${_GET[$varname]}'");
+			}
+		};
+		return $_GET[$varname];
+	}
+	return "";
+}
+
 function page_head($dbconn,$name,$refreshable=true) {
 	if (!isset($_SESSION)) {
 		session_start();
@@ -44,6 +56,12 @@ function page_head($dbconn,$name,$refreshable=true) {
 	echo "<a href=\"alarms.php\">${row['n']} alarms</a>\n";
 	echo "</DIV>\n";
 	echo "<DIV id=\"main\">\n";
+	echo "<DIV id=\"navigation\">\n";
+	echo "<a class=\"navbutton\" href=\"alarms.php\">Alarms</a>\n";
+	echo "<a class=\"navbutton\" href=\"compounds.php\">Compounds</a>\n";
+	echo "<a class=\"navbutton\" href=\"daemons.php\">Daemons</a>\n";
+	echo "<a class=\"navbutton\" href=\"valueconfig.php?unclaimed\">Unclaimed measurements</a>\n";
+	echo "</DIV>\n";
 	echo "<DIV id=\"content\">\n";
 
 }	

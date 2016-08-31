@@ -9,7 +9,9 @@ if (!$dbconn) {
 page_head($dbconn,"valueconfig");
 
 if (isset($_GET['uid'])) {
-	$condition="WHERE uid in (${_GET['uid']})";
+	$condition="WHERE uid IN (".get_int_list('uid').")";
+ } else if (isset($_GET['unclaimed'])) {
+	$condition="WHERE uid NOT IN (SELECT uid FROM compound_uids)";
  } else {
 	$condition="";
  }

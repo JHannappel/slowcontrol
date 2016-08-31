@@ -110,3 +110,19 @@ blink {
 		     100% {background:#ffaa20; }}
 @-webkit-keyframes fadeout { 0% { background:#20FF20;}
 			     100% {background:#ffaa20; }}
+
+a.button {
+		display: inline;
+		border-width: thin;
+		border-style: groove;
+}
+a.navbutton {
+		background: #333C4B;
+		color: #FFFFFF;
+		display: block;
+		border-width: thin;
+		border-style: outset;
+		margin-bottom: 0.5ex;
+		padding:0.25ex;
+		padding-left:0.5ex;
+}
