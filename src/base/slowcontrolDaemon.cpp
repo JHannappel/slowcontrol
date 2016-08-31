@@ -41,6 +41,8 @@ slowcontrolDaemon::slowcontrolDaemon(const char *aName) {
 	PQclear(result);
 	lHeartBeatFrequency = std::chrono::minutes(1);
 	lHeartBeatSkew = new heartBeatSkew(description);
+	slowcontrol::fAddToCompound(slowcontrol::fGetCompoundId("generalSlowcontrol", "slowcontrol internal general stuff"),
+	                            lHeartBeatSkew->fGetUid(), "description");
 };
 
 void slowcontrolDaemon::fDaemonize() {
