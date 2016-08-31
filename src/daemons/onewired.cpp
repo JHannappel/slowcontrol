@@ -5,15 +5,15 @@
 #include <dirent.h>
 #include <string.h>
 #include <iostream>
-class owTemperature: public SlowcontrolMeasurementFloat,
+class owTemperature: public boundCheckerInterface<SlowcontrolMeasurementFloat>,
 	public defaultReaderInterface {
   protected:
 	std::string lPath;
   public:
 	owTemperature(const char *aPath):
-		SlowcontrolMeasurementFloat(std::chrono::minutes(20),
-		                            std::chrono::seconds(30),
-		                            0.5) {
+		boundCheckerInterface(std::chrono::minutes(20),
+		                      std::chrono::seconds(30),
+		                      0.5, -55, 125) {
 		std::string basePath = "/1w/";
 		basePath += aPath;
 		basePath += "/";
