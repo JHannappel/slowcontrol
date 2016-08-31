@@ -26,7 +26,7 @@
     margin-right: 1em;
     margin-left: 0;
     margin-top: 0;
-    padding-left: 10px;
+    padding-left: 0px;
     padding-right: 1em;
     padding-top: 10px;
     padding-bottom: 1em;
@@ -40,7 +40,7 @@
     border-style: outset;
     margin-bottom: 0.5ex;
     padding:0.25ex;
-    padding-left:0.5ex;
+    padding-left:0ex;
     font-weight: bold;
 }
 
@@ -117,7 +117,13 @@ a.button {
     border-style: groove;
 }
 nav ul {
+    background: #6664FB;
     list-style-type: none;
+    border-width: thin;
+    border-style: outset;
+    margin-bottom: 0.5ex;
+    padding:0.25ex;
+    padding-left:0.0ex;
 }
 nav li {
     background: #333C4B;

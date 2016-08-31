@@ -56,8 +56,6 @@ while ($row = pg_fetch_assoc($result)) {
   echo "<td> <a href=\"valueconfig.php?uid=${row['uid']}\">${row['child_name']} </a></td>\n";
   echo "<td> ${row['description']} </td>\n";
   echo "<td> ${row['name']} </td>\n";
-  $r2 = pg_query($dbconn,"SELECT * FROM ${row['uid_configs']} WHERE uid=${row['uid']} ORDER BY time desc limit 1;");
-  $v=pg_fetch_assoc($r2);
   $r2 = pg_query($dbconn,"SELECT * FROM ${row['data_table']} WHERE uid=${row['uid']} ORDER BY time desc limit 1;");
   $v=pg_fetch_assoc($r2);
   echo "<td> ${v['value']} </td>\n";
