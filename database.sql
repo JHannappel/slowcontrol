@@ -83,6 +83,48 @@ CREATE TABLE compound_uids (
 --
 --
 
+CREATE TABLE daemon_heartbeat (
+    daemonid integer,
+    daemon_time timestamp with time zone,
+    server_time timestamp with time zone DEFAULT now(),
+    next_beat timestamp with time zone
+);
+
+
+
+--
+--
+
+CREATE TABLE daemon_list (
+    daemonid integer NOT NULL,
+    description text NOT NULL,
+    name text,
+    host text
+);
+
+
+
+--
+--
+
+CREATE SEQUENCE daemon_list_daemonid_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+
+--
+--
+
+ALTER SEQUENCE daemon_list_daemonid_seq OWNED BY daemon_list.daemonid;
+
+
+--
+--
+
 CREATE TABLE measurements_float (
     uid integer NOT NULL,
     "time" timestamp with time zone NOT NULL,
@@ -150,6 +192,16 @@ CREATE TABLE uid_configs (
 --
 --
 
+CREATE TABLE uid_daemon_connection (
+    uid integer,
+    daemonid integer
+);
+
+
+
+--
+--
+
 CREATE TABLE uid_list (
     description text NOT NULL,
     uid integer NOT NULL,
@@ -210,6 +262,12 @@ ALTER TABLE ONLY compound_list ALTER COLUMN id SET DEFAULT nextval('compound_lis
 --
 --
 
+ALTER TABLE ONLY daemon_list ALTER COLUMN daemonid SET DEFAULT nextval('daemon_list_daemonid_seq'::regclass);
+
+
+--
+--
+
 ALTER TABLE ONLY state_types ALTER COLUMN type SET DEFAULT nextval('state_types_type_seq'::regclass);
 
 
@@ -250,6 +308,27 @@ ALTER TABLE ONLY compound_uids
 --
 --
 
+ALTER TABLE ONLY daemon_heartbeat
+    ADD CONSTRAINT daemon_heartbeat_daemonid_key UNIQUE (daemonid);
+
+
+--
+--
+
+ALTER TABLE ONLY daemon_list
+    ADD CONSTRAINT daemon_list_daemonid_key UNIQUE (daemonid);
+
+
+--
+--
+
+ALTER TABLE ONLY daemon_list
+    ADD CONSTRAINT daemon_list_pkey PRIMARY KEY (description);
+
+
+--
+--
+
 ALTER TABLE ONLY state_types
     ADD CONSTRAINT state_types_pkey PRIMARY KEY (typename);
 
@@ -271,6 +350,13 @@ ALTER TABLE ONLY uid_configs
 --
 --
 
+ALTER TABLE ONLY uid_daemon_connection
+    ADD CONSTRAINT uid_daemon_connection_uid_key UNIQUE (uid);
+
+
+--
+--
+
 ALTER TABLE ONLY uid_list
     ADD CONSTRAINT uid_list_pkey PRIMARY KEY (description);
 
@@ -287,6 +373,12 @@ ALTER TABLE ONLY uid_list
 
 ALTER TABLE ONLY uid_states
     ADD CONSTRAINT uid_states_pkey PRIMARY KEY (uid);
+
+
+--
+--
+
+CREATE INDEX uid_daemon_connection_daemonid_index ON uid_daemon_connection USING btree (daemonid);
 
 
 --
@@ -339,6 +431,27 @@ ALTER TABLE ONLY compound_uids
 
 ALTER TABLE ONLY compound_uids
     ADD CONSTRAINT compound_uids_uid_fkey FOREIGN KEY (uid) REFERENCES uid_list(uid);
+
+
+--
+--
+
+ALTER TABLE ONLY daemon_heartbeat
+    ADD CONSTRAINT daemon_heartbeat_daemonid_fkey FOREIGN KEY (daemonid) REFERENCES daemon_list(daemonid);
+
+
+--
+--
+
+ALTER TABLE ONLY uid_daemon_connection
+    ADD CONSTRAINT uid_daemon_connection_daemonid_fkey FOREIGN KEY (daemonid) REFERENCES daemon_list(daemonid);
+
+
+--
+--
+
+ALTER TABLE ONLY uid_daemon_connection
+    ADD CONSTRAINT uid_daemon_connection_uid_fkey FOREIGN KEY (uid) REFERENCES uid_list(uid);
 
 
 --

@@ -8,10 +8,11 @@
 #include <condition_variable>
 #include <slowcontrol.h>
 
+class heartBeatSkew;
 class SlowcontrolMeasurementBase;
 class defaultReaderInterface;
-
 class slowcontrolDaemon {
+	typedef int32_t daemonIdType;
   protected:
 	class defaultReadableMeasurement {
 	  public:
@@ -23,18 +24,22 @@ class slowcontrolDaemon {
 	};
 	std::map<slowcontrol::uidType, SlowcontrolMeasurementBase*> lMeasurements;
 	std::vector<defaultReadableMeasurement> lMeasurementsWithDefaultReader;
+	daemonIdType lId;
+	std::chrono::system_clock::duration lHeartBeatFrequency;
+	heartBeatSkew* lHeartBeatSkew;
 	static slowcontrolDaemon* gInstance;
 	static void fReaderThread();
 	static void fStorerThread();
 	static void fConfigChangeListener();
 	void fDaemonize();
+	std::chrono::system_clock::time_point fBeatHeart();
 	std::thread* lReaderThread;
 	std::thread* lStorerThread;
 	std::thread* lConfigChangeListenerThread;
 	std::mutex lStorerMutex;
 	std::condition_variable lStorerCondition;
   public:
-	slowcontrolDaemon();
+	slowcontrolDaemon(const char *aName);
 	void fRegisterMeasurement(SlowcontrolMeasurementBase* aMeasurement);
 	static slowcontrolDaemon* fGetInstance();
 	void fStartThreads();

@@ -8,13 +8,39 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+class heartBeatSkew: public boundCheckerInterface<SlowcontrolMeasurementFloat> {
+  public:
+	heartBeatSkew(const std::string& aName):
+		boundCheckerInterface(std::chrono::minutes(10), std::chrono::minutes(1),
+		                      0.01, -0.1, 0.1) {
+		std::string description(aName);
+		description += " heart beat skew";
+		fInitializeUid(description);
+		fConfigure();
+	};
+};
+
 slowcontrolDaemon* slowcontrolDaemon::gInstance = nullptr;
 Option<bool> gDontDaemonize('\0', "nodaemon", "switch of going to daemon mode", false);
-slowcontrolDaemon::slowcontrolDaemon() {
+slowcontrolDaemon::slowcontrolDaemon(const char *aName) {
 	gInstance = this;
 	if (!gDontDaemonize) {
 		fDaemonize();
 	}
+	std::string description(aName);
+	description += " on ";
+	description += slowcontrol::fGetHostName();
+	lId = slowcontrol::fSelectOrInsert("daemon_list", "daemonid",
+	                                   "description", description.c_str());
+	std::string query("DELETE FROM uid_daemon_connection WHERE daemonid = ");
+	query += std::to_string(lId);
+	query += ";INSERT INTO daemon_heartbeat(daemonid) VALUES (";
+	query += std::to_string(lId);
+	query += ");";
+	auto result = PQexec(slowcontrol::fGetDbconn(), query.c_str());
+	PQclear(result);
+	lHeartBeatFrequency = std::chrono::minutes(1);
+	lHeartBeatSkew = new heartBeatSkew(description);
 };
 
 void slowcontrolDaemon::fDaemonize() {
@@ -39,6 +65,13 @@ void slowcontrolDaemon::fDaemonize() {
 
 void slowcontrolDaemon::fRegisterMeasurement(SlowcontrolMeasurementBase* aMeasurement) {
 	lMeasurements.emplace(aMeasurement->fGetUid(), aMeasurement);
+	std::string query("INSERT INTO uid_daemon_connection (uid, daemonid) VALUES (");
+	query += std::to_string(aMeasurement->fGetUid());
+	query += ",";
+	query += std::to_string(lId);
+	query += ");";
+	auto result = PQexec(slowcontrol::fGetDbconn(), query.c_str());
+	PQclear(result);
 	auto reader = dynamic_cast<defaultReaderInterface*>(aMeasurement);
 	if (reader != nullptr) {
 		lMeasurementsWithDefaultReader.emplace_back(aMeasurement, reader);
@@ -47,6 +80,26 @@ void slowcontrolDaemon::fRegisterMeasurement(SlowcontrolMeasurementBase* aMeasur
 slowcontrolDaemon* slowcontrolDaemon::fGetInstance() {
 	return gInstance;
 }
+
+
+std::chrono::system_clock::time_point slowcontrolDaemon::fBeatHeart() {
+	std::string query("UPDATE daemon_heartbeat SET daemon_time=(SELECT TIMESTAMP WITH TIME ZONE 'epoch' + ");
+	auto now = std::chrono::system_clock::now();
+	query += std::to_string(std::chrono::duration<double, std::nano>(now.time_since_epoch()).count() / 1E9);
+	query += "* INTERVAL '1 second'), server_time=now(), next_beat=(SELECT TIMESTAMP WITH TIME ZONE 'epoch' + ";
+	auto nextTime = now + lHeartBeatFrequency;
+	query += std::to_string(std::chrono::duration<double, std::nano>(nextTime.time_since_epoch()).count() / 1E9);
+	query += "* INTERVAL '1 second') where daemonid=";
+	query += std::to_string(lId);
+	query += " RETURNING extract('epoch' from daemon_time - server_time);";
+	auto result = PQexec(slowcontrol::fGetDbconn(), query.c_str());
+	auto skew = std::stof(PQgetvalue(result, 0, 0));
+	lHeartBeatSkew->fStore(skew, now);
+	PQclear(result);
+	return nextTime;
+}
+
+
 void slowcontrolDaemon::fReaderThread() {
 	while (true) {
 		std::chrono::system_clock::duration maxReadoutInterval(0);
@@ -65,6 +118,7 @@ void slowcontrolDaemon::fReaderThread() {
 			then += maxReadoutInterval;
 
 		}
+		auto nextHeartBeatTime = fGetInstance()->fBeatHeart();
 		while (fGetInstance()->lMeasurementsWithDefaultReader.size()
 		        == scheduledMeasurements.size()) {
 			auto it = scheduledMeasurements.begin();
@@ -78,6 +132,9 @@ void slowcontrolDaemon::fReaderThread() {
 			scheduledMeasurements.emplace(justBeforeReadout
 			                              + measurement.lBase->fGetReadoutInterval(),
 			                              measurement);
+			if (justBeforeReadout > nextHeartBeatTime) {
+				nextHeartBeatTime = fGetInstance()->fBeatHeart();
+			}
 		}
 	}
 }

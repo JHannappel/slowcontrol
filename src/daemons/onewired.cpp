@@ -41,7 +41,7 @@ int main(int argc, const char *argv[]) {
 	OptionParser parser("slowcontrol program for reading one-wire devices vone owfs");
 	parser.fParse(argc, argv);
 
-	auto daemon = new slowcontrolDaemon;
+	auto daemon = new slowcontrolDaemon("onewired");
 	{
 		DIR *owdir = opendir("/1w");
 		for (;;) {

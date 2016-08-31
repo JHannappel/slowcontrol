@@ -286,7 +286,7 @@ static void populateFswatches(int aHostCompound) {
 int main(int argc, const char *argv[]) {
 	OptionParser parser("slowcontrol program for checking comuter health");
 	parser.fParse(argc, argv);
-	auto daemon = new slowcontrolDaemon;
+	auto daemon = new slowcontrolDaemon("maassend");
 	auto compound = slowcontrol::fGetCompoundId(slowcontrol::fGetHostName().c_str(), slowcontrol::fGetHostName().c_str());
 	std::vector<diskwatch*> diskwatches;
 	populateTemperature(compound);
