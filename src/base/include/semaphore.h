@@ -4,7 +4,7 @@
 class semaphore {
   public:
 
-	semaphore(int count_ = 0) : count{count_} {
+	semaphore(int count_ = 0) : count {count_} {
 	}
 
 	void notify() {

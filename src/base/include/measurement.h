@@ -239,7 +239,7 @@ template <> class SlowcontrolMeasurement<bool>: public SlowcontrolMeasurementBas
 		query += ", (SELECT TIMESTAMP WITH TIME ZONE 'epoch' + ";
 		query += std::to_string(std::chrono::duration<double, std::nano>(aValue.lTime.time_since_epoch()).count() / 1E9);
 		query += " * INTERVAL '1 second'),";
-		query += aValue.lValue ? "t" : "f";
+		query += aValue.lValue ? "'t'" : "'f'";
 		query += " );";
 		auto result = PQexec(slowcontrol::fGetDbconn(), query.c_str());
 		PQclear(result);
