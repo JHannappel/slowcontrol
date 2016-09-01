@@ -19,18 +19,12 @@ class presence: public SlowcontrolMeasurement<bool>,
 		fConfigure();
 	};
 	virtual void fReadCurrentValue() {
-		auto result = system(lCommand.c_str());
-		switch (result) {
-			case 0:
-				fStore(true);
-				break;
-			case 1:
-				fStore(false);
-				break;
-			default:
-				break;
+		if (system(lCommand.c_str()) == 0) {
+			fStore(true);
+		} else {
+			fStore(false);
 		}
-	}
+	};
 };
 
 
