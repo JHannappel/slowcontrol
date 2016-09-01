@@ -125,10 +125,54 @@ ALTER SEQUENCE daemon_list_daemonid_seq OWNED BY daemon_list.daemonid;
 --
 --
 
+CREATE TABLE measurements_bool (
+    uid integer NOT NULL,
+    "time" timestamp with time zone NOT NULL,
+    value boolean
+);
+
+
+
+--
+--
+
 CREATE TABLE measurements_float (
     uid integer NOT NULL,
     "time" timestamp with time zone NOT NULL,
     value real NOT NULL
+);
+
+
+
+--
+--
+
+CREATE TABLE measurements_int2 (
+    uid integer NOT NULL,
+    "time" timestamp with time zone NOT NULL,
+    value smallint
+);
+
+
+
+--
+--
+
+CREATE TABLE measurements_int4 (
+    uid integer NOT NULL,
+    "time" timestamp with time zone NOT NULL,
+    value integer
+);
+
+
+
+--
+--
+
+CREATE TABLE measurements_int8 (
+    uid integer NOT NULL,
+    "time" timestamp with time zone NOT NULL,
+    value bigint
 );
 
 
@@ -373,6 +417,36 @@ ALTER TABLE ONLY uid_list
 
 ALTER TABLE ONLY uid_states
     ADD CONSTRAINT uid_states_pkey PRIMARY KEY (uid);
+
+
+--
+--
+
+CREATE INDEX measurements_bool_uid_time_idx ON measurements_bool USING btree (uid, "time");
+
+
+--
+--
+
+CREATE INDEX measurements_float_uid_time_idx ON measurements_float USING btree (uid, "time");
+
+
+--
+--
+
+CREATE INDEX measurements_int2_uid_time_idx ON measurements_int2 USING btree (uid, "time");
+
+
+--
+--
+
+CREATE INDEX measurements_int4_uid_time_idx ON measurements_int4 USING btree (uid, "time");
+
+
+--
+--
+
+CREATE INDEX measurements_int8_uid_time_idx ON measurements_int8 USING btree (uid, "time");
 
 
 --

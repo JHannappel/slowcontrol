@@ -5,8 +5,8 @@
 #include <dirent.h>
 #include <string.h>
 #include <iostream>
-class owTemperature: public boundCheckerInterface<SlowcontrolMeasurementFloat>,
-	public defaultReaderInterface {
+class owTemperature: public boundCheckerInterface<SlowcontrolMeasurement<float>>,
+	        public defaultReaderInterface {
   protected:
 	std::string lPath;
   public:

@@ -7,9 +7,7 @@
 SlowcontrolMeasurementBase::SlowcontrolMeasurementBase(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
         decltype(lReadoutInterval.fGetValue()) aDefaultReadoutIterval):
 	lMaxDeltaT("MaxDeltaT", lConfigValues, aDefaultMaxDeltat),
-	lReadoutInterval("ReadoutInterval", lConfigValues, aDefaultReadoutIterval),
-	lMinValueIndex(0),
-	lMaxValueIndex(0) {
+	lReadoutInterval("ReadoutInterval", lConfigValues, aDefaultReadoutIterval) {
 	lState = measurement_state::fGetState("normal");
 };
 
@@ -91,23 +89,3 @@ measurement_state::stateType SlowcontrolMeasurementBase::fSetState(const std::st
 }
 
 
-SlowcontrolMeasurementFloat::SlowcontrolMeasurementFloat(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
-        decltype(lReadoutInterval.fGetValue()) aDefaultReadoutIterval,
-        decltype(lDeadBand.fGetValue()) aDefaultDeadBand) :
-	SlowcontrolMeasurement<float>(aDefaultMaxDeltat,
-	                              aDefaultReadoutIterval,
-	                              aDefaultDeadBand) {
-}
-void SlowcontrolMeasurementFloat::fSendValue(const timedValue& aValue) {
-	std::string query("INSERT INTO ");
-	query += fGetDefaultTableName();
-	query += " (uid, time, value) VALUES ( ";
-	query += std::to_string(fGetUid());
-	query += ", (SELECT TIMESTAMP WITH TIME ZONE 'epoch' + ";
-	query += std::to_string(std::chrono::duration<double, std::nano>(aValue.lTime.time_since_epoch()).count() / 1E9);
-	query += " * INTERVAL '1 second'),";
-	query += std::to_string(aValue.lValue);
-	query += " );";
-	auto result = PQexec(slowcontrol::fGetDbconn(), query.c_str());
-	PQclear(result);
-};

@@ -19,6 +19,7 @@
 class SlowcontrolMeasurementBase {
   public:
 	typedef int32_t uidType;
+	typedef std::chrono::system_clock::time_point timeType;
   protected:
 	std::map<std::string, configValueBase*> lConfigValues;
   public:
@@ -26,8 +27,6 @@ class SlowcontrolMeasurementBase {
 	configValue<std::chrono::system_clock::duration> lReadoutInterval;
   protected:
 	std::mutex lSendQueueMutex;
-	size_t lMinValueIndex;
-	size_t lMaxValueIndex;
 	uidType lUid;
 	measurement_state::stateType lState;
 	virtual const char *fGetDefaultTableName() const = 0;
@@ -57,7 +56,6 @@ class defaultReaderInterface {
 template <typename T> class SlowcontrolMeasurement: public SlowcontrolMeasurementBase {
   public:
 	typedef T valueType;
-	typedef std::chrono::system_clock::time_point timeType;
 	class timedValue {
 	  public:
 		timeType lTime;
@@ -67,12 +65,25 @@ template <typename T> class SlowcontrolMeasurement: public SlowcontrolMeasuremen
 			lTime(aTime), lValue(aValue) {};
 	};
   protected:
+	virtual const char *fGetDefaultTableName() const {
+		if (std::is_integral<T>::value && sizeof(T) <= 2) {
+			return "measurements_int2";
+		} else if (std::is_integral<T>::value && sizeof(T) <= 4) {
+			return "measurements_int4";
+		} else if (std::is_integral<T>::value && sizeof(T) <= 8) {
+			return "measurements_int8";
+		} else if (std::is_floating_point<T>::value && sizeof(T) == 4) {
+			return "measurements_float";
+		}
+	};
+
 	std::vector<timedValue> lValues;
+	size_t lMinValueIndex;
+	size_t lMaxValueIndex;
 	std::deque<timedValue> lSendQueue;
   public:
 	configValue<T> lDeadBand;
   protected:
-	virtual void fSendValue(const timedValue& aValue) = 0;
 	virtual void fCheckValue(timeType /*aTime*/,
 	                         T /*aValue*/) {};
 	virtual void fConfigure() {
@@ -86,7 +97,10 @@ template <typename T> class SlowcontrolMeasurement: public SlowcontrolMeasuremen
 	                       decltype(lReadoutInterval.fGetValue()) aDefaultReadoutInterval,
 	                       decltype(lDeadBand.fGetValue()) aDefaultDeadBand) :
 		SlowcontrolMeasurementBase(aDefaultMaxDeltat, aDefaultReadoutInterval),
-		lDeadBand("DeadBand", lConfigValues, aDefaultDeadBand) {};
+		lDeadBand("DeadBand", lConfigValues, aDefaultDeadBand) {
+		lMinValueIndex = 0;
+		lMinValueIndex = 0;
+	};
 	T fAbs(T aValue) {
 		if (aValue > 0) {
 			return aValue;
@@ -151,19 +165,85 @@ template <typename T> class SlowcontrolMeasurement: public SlowcontrolMeasuremen
 			fSendValue(value);
 		};
 	};
+	virtual void fSendValue(const timedValue& aValue) {
+		std::string query("INSERT INTO ");
+		query += fGetDefaultTableName();
+		query += " (uid, time, value) VALUES ( ";
+		query += std::to_string(fGetUid());
+		query += ", (SELECT TIMESTAMP WITH TIME ZONE 'epoch' + ";
+		query += std::to_string(std::chrono::duration<double, std::nano>(aValue.lTime.time_since_epoch()).count() / 1E9);
+		query += " * INTERVAL '1 second'),";
+		query += std::to_string(aValue.lValue);
+		query += " );";
+		auto result = PQexec(slowcontrol::fGetDbconn(), query.c_str());
+		PQclear(result);
+	};
 };
 
-
-class SlowcontrolMeasurementFloat: public SlowcontrolMeasurement<float> {
-  protected:
-	const char *fGetDefaultTableName() const {
-		return "measurements_float";
-	};
+template <> class SlowcontrolMeasurement<bool>: public SlowcontrolMeasurementBase {
   public:
-	SlowcontrolMeasurementFloat(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
-	                            decltype(lReadoutInterval.fGetValue()) aDefaultReadoutInterval,
-	                            decltype(lDeadBand.fGetValue()) aDefaultDeadBand);
-	virtual void fSendValue(const timedValue& aValue);
+	typedef bool valueType;
+	class timedValue {
+	  public:
+		timeType lTime;
+		bool lValue;
+		timedValue() {};
+		timedValue(decltype(lTime) aTime, decltype(lValue) aValue) :
+			lTime(aTime), lValue(aValue) {};
+	};
+  protected:
+	virtual const char *fGetDefaultTableName() const {
+		return "measurements_bool";
+	};
+	bool oldValue;
+	bool noValueYet;
+	std::deque<timedValue> lSendQueue;
+  public:
+	SlowcontrolMeasurement(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
+	                       decltype(lReadoutInterval.fGetValue()) aDefaultReadoutInterval):
+		SlowcontrolMeasurementBase(aDefaultMaxDeltat, aDefaultReadoutInterval) {
+		noValueYet = true;
+	};
+	virtual void fStore(bool aValue) {
+		fStore(aValue, std::chrono::system_clock::now());
+	};
+	virtual void fStore(bool aValue, timeType aTime) {
+		if (noValueYet || aValue != oldValue) {
+			{
+				std::lock_guard<decltype(lSendQueueMutex)> SendQueueLock(lSendQueueMutex);
+				lSendQueue.emplace_back(aTime, aValue);
+			}
+			noValueYet = false;
+			oldValue = aValue;
+			slowcontrolDaemon::fGetInstance()->fSignalToStorer();
+		}
+	};
+
+	virtual void fSendValues() {
+		while (! lSendQueue.empty()) { // empty() is thread safe by itself
+			timedValue value;
+			{
+				// scope for send queue locking
+				std::lock_guard<std::mutex> SendQueueLock(lSendQueueMutex);
+				value = lSendQueue.front();
+				lSendQueue.pop_front();
+			}
+			fSendValue(value);
+		};
+	};
+	virtual void fSendValue(const timedValue& aValue) {
+		std::string query("INSERT INTO ");
+		query += fGetDefaultTableName();
+		query += " (uid, time, value) VALUES ( ";
+		query += std::to_string(fGetUid());
+		query += ", (SELECT TIMESTAMP WITH TIME ZONE 'epoch' + ";
+		query += std::to_string(std::chrono::duration<double, std::nano>(aValue.lTime.time_since_epoch()).count() / 1E9);
+		query += " * INTERVAL '1 second'),";
+		query += aValue.lValue ? "t" : "f";
+		query += " );";
+		auto result = PQexec(slowcontrol::fGetDbconn(), query.c_str());
+		PQclear(result);
+	};
 };
 
 template <typename T> class dummyConfigValue {

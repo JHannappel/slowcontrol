@@ -8,7 +8,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
-class heartBeatSkew: public boundCheckerInterface<SlowcontrolMeasurementFloat> {
+class heartBeatSkew: public boundCheckerInterface<SlowcontrolMeasurement<float>> {
   public:
 	heartBeatSkew(const std::string& aName):
 		boundCheckerInterface(std::chrono::minutes(10), std::chrono::minutes(1),

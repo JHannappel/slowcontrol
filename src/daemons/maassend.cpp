@@ -10,7 +10,7 @@
 #include <limits>
 #include <sys/vfs.h>
 
-class cpuTemperature: public boundCheckerInterface<SlowcontrolMeasurementFloat, false, true>,
+class cpuTemperature: public boundCheckerInterface<SlowcontrolMeasurement<float>, false, true>,
 	public defaultReaderInterface
 
 {
@@ -39,7 +39,7 @@ class cpuTemperature: public boundCheckerInterface<SlowcontrolMeasurementFloat, 
 	};
 };
 
-class diskValue: public boundCheckerInterface<SlowcontrolMeasurementFloat> {
+class diskValue: public boundCheckerInterface<SlowcontrolMeasurement<float>> {
   public:
 	diskValue(const std::string& aSerial,
 	          int aId,
@@ -60,7 +60,7 @@ class diskValue: public boundCheckerInterface<SlowcontrolMeasurementFloat> {
 	};
 };
 
-class freeMemory: public boundCheckerInterface<SlowcontrolMeasurementFloat, true, false>,
+class freeMemory: public boundCheckerInterface<SlowcontrolMeasurement<float>, true, false>,
 	public defaultReaderInterface {
   public:
 	freeMemory(int aHostCompound):
@@ -93,7 +93,7 @@ class freeMemory: public boundCheckerInterface<SlowcontrolMeasurementFloat, true
 };
 
 
-class fsSize: public boundCheckerInterface<SlowcontrolMeasurementFloat, true, false>,
+class fsSize: public boundCheckerInterface<SlowcontrolMeasurement<float>, true, false>,
 	public defaultReaderInterface {
   protected:
 	configValue<std::string> lName;
@@ -133,7 +133,7 @@ class diskwatch {
 	std::string lFamily;
 	std::string lModel;
 	std::string lSerial;
-	std::map <int, SlowcontrolMeasurementFloat*>values;
+	std::map <int, diskValue*>values;
 	int id;
 	int lHostCompound;
   public:
