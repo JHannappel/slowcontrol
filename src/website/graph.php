@@ -181,7 +181,9 @@ if (is_resource($process)) {
     //} else {
     //$valexp="(" .$conversion[$i]. ")" .$manipulate;
     //}
-    
+    if ($data_table[$i] == "measurements_bool") {
+			$valexp = "cast(value as integer)";
+		}
     $query="SELECT $timeexpr, $valexp FROM ".$data_table[$i]." WHERE uid=$uid AND $timeinterval ORDER BY time";
     //        file_put_contents("/tmp/graphdebug.log",$query,FILE_APPEND);
     fwrite($pipes[0], "\"<  /bin/echo -e \\\"$query\\\" | psql \\\"$dbstring\\\"\" u 1:3 title \"".$label[$i]."$manipulate\"");
