@@ -294,11 +294,17 @@ int main(int argc, const char *argv[]) {
 	populateFswatches(compound);
 	new freeMemory(compound);
 	daemon->fStartThreads();
-	while (true) {
+	while (!daemon->fGetStopRequested()) {
 		for (auto dw : diskwatches) {
 			dw->read();
-			sleep(600);
+			std::cerr << "waiting..." << daemon->fGetStopRequested() << std::endl;
+			daemon->fWaitFor(std::chrono::seconds(600 / diskwatches.size()));
+			std::cerr << "done." << daemon->fGetStopRequested() << std::endl;
+			if (daemon->fGetStopRequested()) {
+				break;
+			}
 		}
 	}
+	std::cerr << "stopping main thread" << std::endl;
 	daemon->fWaitForThreads();
 }

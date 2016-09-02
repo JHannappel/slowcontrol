@@ -6,6 +6,7 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <atomic>
 #include <slowcontrol.h>
 
 class heartBeatSkew;
@@ -25,14 +26,19 @@ class slowcontrolDaemon {
 	std::map<slowcontrol::uidType, SlowcontrolMeasurementBase*> lMeasurements;
 	std::vector<defaultReadableMeasurement> lMeasurementsWithDefaultReader;
 	daemonIdType lId;
+	std::atomic<bool> lStopRequested;
+	std::mutex lWaitConditionMutex;
+	std::condition_variable lWaitCondition;
 	std::chrono::system_clock::duration lHeartBeatFrequency;
 	heartBeatSkew* lHeartBeatSkew;
 	static slowcontrolDaemon* gInstance;
+	static void fSignalCatcherThread();
 	static void fReaderThread();
 	static void fStorerThread();
 	static void fConfigChangeListener();
 	void fDaemonize();
-	std::chrono::system_clock::time_point fBeatHeart();
+	std::chrono::system_clock::time_point fBeatHeart(bool aLastTime = false);
+	std::thread* lSignalCatcherThread;
 	std::thread* lReaderThread;
 	std::thread* lStorerThread;
 	std::thread* lConfigChangeListenerThread;
@@ -45,6 +51,17 @@ class slowcontrolDaemon {
 	void fStartThreads();
 	void fWaitForThreads();
 	void fSignalToStorer();
+	bool fGetStopRequested() const {
+		return lStopRequested;
+	};
+	template <class Clock, class Duration> void fWaitUntil(const std::chrono::time_point<Clock, Duration>& aWhen) {
+		std::unique_lock<std::mutex> lock(lWaitConditionMutex);
+		lWaitCondition.wait_until(lock, aWhen);
+	};
+	template <class Duration> void fWaitFor(Duration aDuration) {
+		auto then = std::chrono::steady_clock::now() + aDuration;
+		fWaitUntil(then);
+	};
 };
 
 

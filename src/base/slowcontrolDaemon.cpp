@@ -7,6 +7,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <pthread.h>
+#include <signal.h>
 
 class heartBeatSkew: public boundCheckerInterface<SlowcontrolMeasurement<float>> {
   public:
@@ -22,11 +24,19 @@ class heartBeatSkew: public boundCheckerInterface<SlowcontrolMeasurement<float>>
 
 slowcontrolDaemon* slowcontrolDaemon::gInstance = nullptr;
 Option<bool> gDontDaemonize('\0', "nodaemon", "switch of going to daemon mode", false);
+
+Option<const char*> gPidFileName('\0', "pidFile", "name of pid file", nullptr);
+
 slowcontrolDaemon::slowcontrolDaemon(const char *aName) {
 	gInstance = this;
 	if (!gDontDaemonize) {
 		fDaemonize();
 	}
+	if (gPidFileName.fGetValue() != nullptr) {
+		std::ofstream pidfile(gPidFileName.fGetValue());
+		pidfile << getpid() << std::endl;
+	}
+
 	std::string description(aName);
 	description += " on ";
 	description += slowcontrol::fGetHostName();
@@ -46,6 +56,14 @@ slowcontrolDaemon::slowcontrolDaemon(const char *aName) {
 	lHeartBeatSkew = new heartBeatSkew(description);
 	slowcontrol::fAddToCompound(slowcontrol::fGetCompoundId("generalSlowcontrol", "slowcontrol internal general stuff"),
 	                            lHeartBeatSkew->fGetUid(), "description");
+	sigset_t sigmask;
+	sigemptyset(&sigmask);
+	sigaddset(&sigmask, SIGTERM);
+	sigaddset(&sigmask, SIGINT);
+	sigaddset(&sigmask, SIGUSR1);
+	sigaddset(&sigmask, SIGUSR2);
+	pthread_sigmask(SIG_BLOCK, &sigmask, nullptr);
+	lStopRequested = false;
 };
 
 void slowcontrolDaemon::fDaemonize() {
@@ -87,14 +105,20 @@ slowcontrolDaemon* slowcontrolDaemon::fGetInstance() {
 }
 
 
-std::chrono::system_clock::time_point slowcontrolDaemon::fBeatHeart() {
+std::chrono::system_clock::time_point slowcontrolDaemon::fBeatHeart(bool aLastTime) {
 	std::string query("UPDATE daemon_heartbeat SET daemon_time=(SELECT TIMESTAMP WITH TIME ZONE 'epoch' + ");
 	auto now = std::chrono::system_clock::now();
 	query += std::to_string(std::chrono::duration<double, std::nano>(now.time_since_epoch()).count() / 1E9);
-	query += "* INTERVAL '1 second'), server_time=now(), next_beat=(SELECT TIMESTAMP WITH TIME ZONE 'epoch' + ";
+	query += "* INTERVAL '1 second'), server_time=now(), next_beat=";
 	auto nextTime = now + lHeartBeatFrequency;
-	query += std::to_string(std::chrono::duration<double, std::nano>(nextTime.time_since_epoch()).count() / 1E9);
-	query += "* INTERVAL '1 second') where daemonid=";
+	if (aLastTime) {
+		query += "'infinity'";
+	} else {
+		query += "(SELECT TIMESTAMP WITH TIME ZONE 'epoch' + ";
+		query += std::to_string(std::chrono::duration<double, std::nano>(nextTime.time_since_epoch()).count() / 1E9);
+		query += "* INTERVAL '1 second')";
+	}
+	query += " where daemonid=";
 	query += std::to_string(lId);
 	query += " RETURNING extract('epoch' from daemon_time - server_time);";
 	auto result = PQexec(slowcontrol::fGetDbconn(), query.c_str());
@@ -104,9 +128,45 @@ std::chrono::system_clock::time_point slowcontrolDaemon::fBeatHeart() {
 	return nextTime;
 }
 
+void slowcontrolDaemon::fSignalCatcherThread() {
+	sigset_t sigmask;
+	sigemptyset(&sigmask);
+	sigaddset(&sigmask, SIGTERM);
+	sigaddset(&sigmask, SIGINT);
+	sigaddset(&sigmask, SIGUSR1);
+	sigaddset(&sigmask, SIGUSR2);
+	pthread_sigmask(SIG_UNBLOCK, &sigmask, nullptr);
+	struct sigaction action;
+	action.sa_handler = SIG_IGN;
+	sigaction(SIGTERM, &action, nullptr);
+	sigaction(SIGINT, &action, nullptr);
+	sigaction(SIGUSR1, &action, nullptr);
+	sigaction(SIGUSR2, &action, nullptr);
+	std::cerr << "unblocked signal " <<  std::endl;
+	while (true) {
+		int sig;
+		std::cerr << "wait for signal " <<  std::endl;
+		sigwait(&sigmask, &sig);
+		std::cerr << "caught signal " << sig << std::endl;
+		switch (sig) {
+			case SIGTERM:
+			case SIGINT:
+				fGetInstance()->lStopRequested = true;
+				fGetInstance()->lWaitCondition.notify_all();
+				std::cerr << "stopping signal thread" << std::endl;
+				return;
+			default     :
+				break;
+		}
+	}
+}
 
 void slowcontrolDaemon::fReaderThread() {
 	while (true) {
+		if (fGetInstance()->lMeasurementsWithDefaultReader.empty()) {
+			std::this_thread::sleep_for(std::chrono::seconds(1));
+			continue;
+		}
 		std::chrono::system_clock::duration maxReadoutInterval(0);
 		for (auto& measurement : fGetInstance()->lMeasurementsWithDefaultReader) {
 			if (maxReadoutInterval < measurement.lBase->fGetReadoutInterval()) {
@@ -126,6 +186,12 @@ void slowcontrolDaemon::fReaderThread() {
 		auto nextHeartBeatTime = fGetInstance()->fBeatHeart();
 		while (fGetInstance()->lMeasurementsWithDefaultReader.size()
 		        == scheduledMeasurements.size()) {
+			if (fGetInstance()->lStopRequested) {
+				fGetInstance()->fBeatHeart(true);
+				std::cerr << "stopping reader thread" << std::endl;
+				return;
+			}
+
 			auto it = scheduledMeasurements.begin();
 			std::this_thread::sleep_until(it->first);
 			auto measurement = it->second;
@@ -145,9 +211,14 @@ void slowcontrolDaemon::fReaderThread() {
 }
 void slowcontrolDaemon::fStorerThread() {
 	while (true) {
+		bool quitNow = fGetInstance()->lStopRequested;
 		for (auto p : fGetInstance()->lMeasurements) {
 			auto measurement = p.second;
 			measurement->fSendValues();
+		}
+		if (quitNow) {
+			std::cerr << "stopping storer thread" << std::endl;
+			return;
 		}
 		std::unique_lock<decltype(lStorerMutex)> lock(fGetInstance()->lStorerMutex);
 		fGetInstance()->lStorerCondition.wait(lock);
@@ -170,7 +241,12 @@ void slowcontrolDaemon::fConfigChangeListener() {
 		struct pollfd pfd;
 		pfd.fd = PQsocket(slowcontrol::fGetDbconn());
 		pfd.events = POLLIN | POLLPRI;
-		poll(&pfd, 1, -1);
+		if (poll(&pfd, 1, 100) == 0) {
+			if (fGetInstance()->lStopRequested) {
+				std::cerr << "stopping cfg change listener thread" << std::endl;
+				return;
+			}
+		}
 
 		bool gotNotificaton = false;
 
@@ -196,6 +272,7 @@ void slowcontrolDaemon::fConfigChangeListener() {
 }
 
 void slowcontrolDaemon::fStartThreads() {
+	lSignalCatcherThread = new std::thread(fSignalCatcherThread);
 	lReaderThread = new std::thread(fReaderThread);
 	lStorerThread = new std::thread(fStorerThread);
 	lConfigChangeListenerThread = new std::thread(fConfigChangeListener);
@@ -204,6 +281,7 @@ void slowcontrolDaemon::fWaitForThreads() {
 	lReaderThread->join();
 	lStorerThread->join();
 	lConfigChangeListenerThread->join();
+	lSignalCatcherThread->join();
 }
 
 

@@ -52,7 +52,7 @@ function page_head($dbconn,$name,$refreshable=true) {
 	echo "<BODY>\n";
 	echo "<DIV id=\"globalstate\" class=\"fadeout\"> Global status\n";
 	echo date("Y-M-d H:i:s");
-	$result = pg_query($dbconn,"SELECT(SELECT count(*) as bad_states FROM uid_states WHERE type > 1),(SELECT count(*) AS dead_daemons FROM daemon_heartbeat WHERE now()>next_beat+(next_beat-daemon_time));");
+	$result = pg_query($dbconn,"SELECT(SELECT count(*) as bad_states FROM uid_states WHERE type > 1),(SELECT count(*) AS dead_daemons FROM daemon_heartbeat WHERE CASE WHEN next_beat='infinity' THEN false ELSE now()>next_beat+(next_beat-daemon_time) END);");
 	$row = pg_fetch_assoc($result);
 	if ($row['bad_states']>0) {
 		$class="bad";

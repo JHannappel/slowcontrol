@@ -99,7 +99,7 @@ template <typename T> class SlowcontrolMeasurement: public SlowcontrolMeasuremen
 		SlowcontrolMeasurementBase(aDefaultMaxDeltat, aDefaultReadoutInterval),
 		lDeadBand("DeadBand", lConfigValues, aDefaultDeadBand) {
 		lMinValueIndex = 0;
-		lMinValueIndex = 0;
+		lMaxValueIndex = 0;
 	};
 	T fAbs(T aValue) {
 		if (aValue > 0) {
