@@ -195,27 +195,37 @@ template <> class SlowcontrolMeasurement<bool>: public SlowcontrolMeasurementBas
 	virtual const char *fGetDefaultTableName() const {
 		return "measurements_bool";
 	};
-	bool oldValue;
-	bool noValueYet;
+	bool lOldValue;
+	bool lNoValueYet;
+	bool lOldValueUnsent;
+	timeType lOldTime;
 	std::deque<timedValue> lSendQueue;
   public:
 	SlowcontrolMeasurement(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
 	                       decltype(lReadoutInterval.fGetValue()) aDefaultReadoutInterval):
 		SlowcontrolMeasurementBase(aDefaultMaxDeltat, aDefaultReadoutInterval) {
-		noValueYet = true;
+		lNoValueYet = true;
+		lOldValueUnsent = true;
 	};
 	virtual void fStore(bool aValue) {
 		fStore(aValue, std::chrono::system_clock::now());
 	};
 	virtual void fStore(bool aValue, timeType aTime) {
-		if (noValueYet || aValue != oldValue) {
+		if (lNoValueYet || aValue != lOldValue) {
 			{
 				std::lock_guard<decltype(lSendQueueMutex)> SendQueueLock(lSendQueueMutex);
+				if (lOldValueUnsent) {
+					lSendQueue.emplace_back(lOldTime, lOldValue);
+				}
 				lSendQueue.emplace_back(aTime, aValue);
 			}
-			noValueYet = false;
-			oldValue = aValue;
+			lNoValueYet = false;
+			lOldValue = aValue;
+			lOldValueUnsent = false;
 			slowcontrolDaemon::fGetInstance()->fSignalToStorer();
+		} else {
+			lOldTime = aTime;
+			lOldValueUnsent = true;
 		}
 	};
 
