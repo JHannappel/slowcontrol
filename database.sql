@@ -180,6 +180,38 @@ CREATE TABLE measurements_int8 (
 --
 --
 
+CREATE TABLE setvalue_requests (
+    uid integer,
+    request text NOT NULL,
+    response text,
+    request_time timestamp with time zone DEFAULT now(),
+    response_time timestamp with time zone,
+    id integer NOT NULL
+);
+
+
+
+--
+--
+
+CREATE SEQUENCE setvalue_requests_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+
+--
+--
+
+ALTER SEQUENCE setvalue_requests_id_seq OWNED BY setvalue_requests.id;
+
+
+--
+--
+
 CREATE TABLE state_types (
     typename text NOT NULL,
     explanation text,
@@ -312,6 +344,12 @@ ALTER TABLE ONLY daemon_list ALTER COLUMN daemonid SET DEFAULT nextval('daemon_l
 --
 --
 
+ALTER TABLE ONLY setvalue_requests ALTER COLUMN id SET DEFAULT nextval('setvalue_requests_id_seq'::regclass);
+
+
+--
+--
+
 ALTER TABLE ONLY state_types ALTER COLUMN type SET DEFAULT nextval('state_types_type_seq'::regclass);
 
 
@@ -368,6 +406,13 @@ ALTER TABLE ONLY daemon_list
 
 ALTER TABLE ONLY daemon_list
     ADD CONSTRAINT daemon_list_pkey PRIMARY KEY (description);
+
+
+--
+--
+
+ALTER TABLE ONLY setvalue_requests
+    ADD CONSTRAINT setvalue_requests_pkey PRIMARY KEY (id);
 
 
 --
@@ -452,7 +497,21 @@ CREATE INDEX measurements_int8_uid_time_idx ON measurements_int8 USING btree (ui
 --
 --
 
+CREATE INDEX setvalue_requests_uid_index ON setvalue_requests USING btree (uid);
+
+
+--
+--
+
 CREATE INDEX uid_daemon_connection_daemonid_index ON uid_daemon_connection USING btree (daemonid);
+
+
+--
+--
+
+CREATE RULE setvalue_resquest_notify AS
+    ON INSERT TO setvalue_requests DO
+ NOTIFY setvalue_request;
 
 
 --
@@ -512,6 +571,13 @@ ALTER TABLE ONLY compound_uids
 
 ALTER TABLE ONLY daemon_heartbeat
     ADD CONSTRAINT daemon_heartbeat_daemonid_fkey FOREIGN KEY (daemonid) REFERENCES daemon_list(daemonid);
+
+
+--
+--
+
+ALTER TABLE ONLY setvalue_requests
+    ADD CONSTRAINT setvalue_requests_uid_fkey FOREIGN KEY (uid) REFERENCES uid_list(uid);
 
 
 --

@@ -53,6 +53,12 @@ class defaultReaderInterface {
 	virtual void fReadCurrentValue() = 0;
 };
 
+
+class writeValueInterface {
+  public:
+	virtual const std::string fProcessRequest(const std::string& aRequest) = 0;
+};
+
 template <typename T> class SlowcontrolMeasurement: public SlowcontrolMeasurementBase {
   public:
 	typedef T valueType;

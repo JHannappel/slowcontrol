@@ -99,6 +99,11 @@ void slowcontrolDaemon::fRegisterMeasurement(SlowcontrolMeasurementBase* aMeasur
 	if (reader != nullptr) {
 		lMeasurementsWithDefaultReader.emplace_back(aMeasurement, reader);
 	}
+	auto writer = dynamic_cast<writeValueInterface*>(aMeasurement);
+	if (writer != nullptr) {
+		writeableMeasurement wM(aMeasurement, writer);
+		lWriteableMeasurements.emplace(aMeasurement->fGetUid(), wM);
+	}
 }
 slowcontrolDaemon* slowcontrolDaemon::fGetInstance() {
 	return gInstance;
@@ -228,9 +233,42 @@ void slowcontrolDaemon::fStorerThread() {
 void slowcontrolDaemon::fSignalToStorer() {
 	lStorerCondition.notify_all();
 }
+void slowcontrolDaemon::fProcessPendingRequests() {
+	std::string query("SELECT uid,request,id FROM setvalue_requests WHERE response_time IS NULL AND uid IN (SELECT uid FROM uid_daemon_connection WHERE daemonid = ");
+	query += std::to_string(lId);
+	query += ") ORDER BY request_time;";
+	auto result = PQexec(slowcontrol::fGetDbconn(), query.c_str());
+	for (int i = 0; i < PQntuples(result); i++) {
+		auto uid = std::stol(PQgetvalue(result, i, PQfnumber(result, "uid")));
+		std::string request(PQgetvalue(result, i, PQfnumber(result, "request")));
+		auto id = std::stol(PQgetvalue(result, i, PQfnumber(result, "id")));
+		std::string response;
+		auto it = lWriteableMeasurements.find(uid);
+		if (it == lWriteableMeasurements.end()) {
+			response = "is not a wrietable value";
+		} else {
+			response = it->second.lWriter->fProcessRequest(request);
+		}
+		query = "UPDATE setvalue_requests SET response_time=now(), response=";
+		slowcontrol::fAddEscapedStringToQuery(response, query);
+		query += "WHERE id = ";
+		query += std::to_string(id);
+		query += ";";
+		auto subResult = PQexec(slowcontrol::fGetDbconn(), query.c_str());
+		PQclear(subResult);
+	}
+	PQclear(result);
+}
 
 void slowcontrolDaemon::fConfigChangeListener() {
 	auto res = PQexec(slowcontrol::fGetDbconn(), "LISTEN uid_configs_update");
+	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+		std::cerr << "LISTEN command failed" <<  PQerrorMessage(slowcontrol::fGetDbconn()) << std::endl;
+		PQclear(res);
+		return;
+	}
+	PQclear(res);
+	res = PQexec(slowcontrol::fGetDbconn(), "LISTEN setvalue_request");
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
 		std::cerr << "LISTEN command failed" <<  PQerrorMessage(slowcontrol::fGetDbconn()) << std::endl;
 		PQclear(res);
@@ -257,7 +295,12 @@ void slowcontrolDaemon::fConfigChangeListener() {
 				if (notification == nullptr) {
 					break;
 				}
-				gotNotificaton = true;
+				std::cout << "got notification '" << notification->relname << "'" << std::endl;
+				if (strcmp(notification->relname, "uid_configs_update") == 0) {
+					gotNotificaton = true;
+				} else if (strcmp(notification->relname, "setvalue_request") == 0) {
+					fGetInstance()->fProcessPendingRequests();
+				}
 				PQfreemem(notification);
 			}
 		}

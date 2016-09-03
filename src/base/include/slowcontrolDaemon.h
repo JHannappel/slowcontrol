@@ -12,6 +12,7 @@
 class heartBeatSkew;
 class SlowcontrolMeasurementBase;
 class defaultReaderInterface;
+class writeValueInterface;
 class slowcontrolDaemon {
 	typedef int32_t daemonIdType;
   protected:
@@ -23,8 +24,17 @@ class slowcontrolDaemon {
 		                           decltype(lReader) aReader) :
 			lBase(aBase), lReader(aReader) {};
 	};
+	class writeableMeasurement {
+	  public:
+		SlowcontrolMeasurementBase* lBase;
+		writeValueInterface* lWriter;
+		writeableMeasurement(decltype(lBase) aBase,
+		                     decltype(lWriter) aWriter) :
+			lBase(aBase), lWriter(aWriter) {};
+	};
 	std::map<slowcontrol::uidType, SlowcontrolMeasurementBase*> lMeasurements;
 	std::vector<defaultReadableMeasurement> lMeasurementsWithDefaultReader;
+	std::map<slowcontrol::uidType, writeableMeasurement> lWriteableMeasurements;
 	daemonIdType lId;
 	std::atomic<bool> lStopRequested;
 	std::mutex lWaitConditionMutex;
@@ -54,6 +64,7 @@ class slowcontrolDaemon {
 	bool fGetStopRequested() const {
 		return lStopRequested;
 	};
+	void fProcessPendingRequests();
 	template <class Clock, class Duration> void fWaitUntil(const std::chrono::time_point<Clock, Duration>& aWhen) {
 		std::unique_lock<std::mutex> lock(lWaitConditionMutex);
 		lWaitCondition.wait_until(lock, aWhen);
