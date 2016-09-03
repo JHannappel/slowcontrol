@@ -6,14 +6,16 @@
 #include <string.h>
 #include <iostream>
 class owTemperature: public boundCheckerInterface<SlowcontrolMeasurement<float>>,
-	        public defaultReaderInterface {
+	        public defaultReaderInterface,
+	        public unitInterface {
   protected:
 	std::string lPath;
   public:
 	owTemperature(const char *aPath):
 		boundCheckerInterface(std::chrono::minutes(20),
 		                      std::chrono::seconds(30),
-		                      0.5, -55, 125) {
+		                      0.5, -55, 125),
+		unitInterface(lConfigValues, "deg C") {
 		std::string basePath = "/1w/";
 		basePath += aPath;
 		basePath += "/";

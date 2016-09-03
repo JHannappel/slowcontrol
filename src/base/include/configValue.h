@@ -7,8 +7,9 @@
 class configValueBase {
 	const std::string lName;
   public:
+	typedef std::map<std::string, configValueBase*> mapType;
 	configValueBase(const char* aName,
-	                std::map<std::string, configValueBase*>& aMap):
+	                mapType& aMap):
 		lName(aName) {
 		aMap.emplace(aName, this);
 	};
@@ -23,10 +24,10 @@ template <typename T> class configValue: public configValueBase {
 	std::atomic<T> lValue;
   public:
 	configValue(const char *aName,
-	            std::map<std::string, configValueBase*>& aMap):
+	            mapType& aMap):
 		configValueBase(aName, aMap) {};
 	configValue(const char *aName,
-	            std::map<std::string, configValueBase*>& aMap,
+	            mapType& aMap,
 	            const T& aValue):
 		configValueBase(aName, aMap), lValue(aValue) {};
 	T fGetValue() const {
@@ -55,11 +56,11 @@ template <> class configValue<std::chrono::system_clock::duration>: public confi
 	std::atomic<std::chrono::system_clock::duration> lValue;
   public:
 	configValue(const char *aName,
-	            std::map<std::string, configValueBase*>& aMap):
+	            mapType& aMap):
 		configValueBase(aName, aMap) {
 	};
 	configValue(const char *aName,
-	            std::map<std::string, configValueBase*>& aMap,
+	            mapType& aMap,
 	            const std::chrono::system_clock::duration& aValue):
 		configValueBase(aName, aMap), lValue(aValue) {
 	};
@@ -89,11 +90,11 @@ template <> class configValue<std::string>: public configValueBase {
 	mutable std::mutex lMutex;
   public:
 	configValue(const char *aName,
-	            std::map<std::string, configValueBase*>& aMap):
+	            mapType& aMap):
 		configValueBase(aName, aMap) {
 	};
 	configValue(const char *aName,
-	            std::map<std::string, configValueBase*>& aMap,
+	            mapType& aMap,
 	            const std::string& aValue):
 		configValueBase(aName, aMap), lValue(aValue) {
 	};

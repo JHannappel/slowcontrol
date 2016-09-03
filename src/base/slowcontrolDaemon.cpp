@@ -10,11 +10,13 @@
 #include <pthread.h>
 #include <signal.h>
 
-class heartBeatSkew: public boundCheckerInterface<SlowcontrolMeasurement<float>> {
+class heartBeatSkew: public boundCheckerInterface<SlowcontrolMeasurement<float>>,
+	        public unitInterface {
   public:
 	heartBeatSkew(const std::string& aName):
 		boundCheckerInterface(std::chrono::minutes(10), std::chrono::minutes(1),
-		                      0.01, -0.1, 0.1) {
+		                      0.01, -0.1, 0.1),
+		unitInterface(lConfigValues, "s") {
 		std::string description(aName);
 		description += " heart beat skew";
 		fInitializeUid(description);
@@ -167,8 +169,18 @@ void slowcontrolDaemon::fSignalCatcherThread() {
 }
 
 void slowcontrolDaemon::fReaderThread() {
+	auto nextHeartBeatTime = fGetInstance()->fBeatHeart();
 	while (true) {
 		if (fGetInstance()->lMeasurementsWithDefaultReader.empty()) {
+			if (fGetInstance()->lStopRequested) {
+				fGetInstance()->fBeatHeart(true);
+				std::cerr << "stopping reader thread" << std::endl;
+				return;
+			}
+			if (std::chrono::system_clock::now() > nextHeartBeatTime) {
+				nextHeartBeatTime = fGetInstance()->fBeatHeart();
+			}
+
 			std::this_thread::sleep_for(std::chrono::seconds(1));
 			continue;
 		}
@@ -188,7 +200,6 @@ void slowcontrolDaemon::fReaderThread() {
 			then += maxReadoutInterval;
 
 		}
-		auto nextHeartBeatTime = fGetInstance()->fBeatHeart();
 		while (fGetInstance()->lMeasurementsWithDefaultReader.size()
 		        == scheduledMeasurements.size()) {
 			if (fGetInstance()->lStopRequested) {

@@ -21,7 +21,7 @@ class SlowcontrolMeasurementBase {
 	typedef int32_t uidType;
 	typedef std::chrono::system_clock::time_point timeType;
   protected:
-	std::map<std::string, configValueBase*> lConfigValues;
+	configValueBase::mapType lConfigValues;
   public:
 	configValue<std::chrono::system_clock::duration> lMaxDeltaT;
 	configValue<std::chrono::system_clock::duration> lReadoutInterval;
@@ -58,6 +58,16 @@ class writeValueInterface {
   public:
 	virtual const std::string fProcessRequest(const std::string& aRequest) = 0;
 };
+
+class unitInterface {
+  protected:
+	configValue<std::string> lUnit;
+  public:
+	unitInterface(configValueBase::mapType& aMap, const char *aUnit):
+		lUnit("unit", aMap, aUnit) {
+	}
+};
+
 
 template <typename T> class SlowcontrolMeasurement: public SlowcontrolMeasurementBase {
   public:
@@ -265,7 +275,7 @@ template <> class SlowcontrolMeasurement<bool>: public SlowcontrolMeasurementBas
 template <typename T> class dummyConfigValue {
   public:
 	dummyConfigValue(const char */*aName*/,
-	                 std::map<std::string, configValueBase*>& /*aMap*/,
+	                 configValueBase::mapType& /*aMap*/,
 	                 const T& /*aValue*/ = 0) {};
 	T fGetValue() const {
 		return 0;

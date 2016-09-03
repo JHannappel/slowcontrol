@@ -33,6 +33,7 @@ while ($row = pg_fetch_assoc($result)) {
   echo "<th> history </th>\n";
   echo "</tr>\n";
   echo "<tbody>\n";
+	$unit = "";
   while ($row2 = pg_fetch_assoc($result2)) {
     echo "<tr>\n";
     echo "<form action=\"configure_value.php?uid=$uid&name=${row2['name']}\" method=\"post\">";
@@ -48,6 +49,9 @@ while ($row = pg_fetch_assoc($result)) {
     }
     echo "</form>\n";
     echo "</tr>\n";
+		if ($row2['name']=="unit") {
+			$unit = $row2['value'];
+		}
   }
   echo "<tr>\n";	
   echo "<form action=\"configure_value.php?uid=$uid\" method=\"post\">";
@@ -73,7 +77,7 @@ while ($row = pg_fetch_assoc($result)) {
 	echo "<h3>Current value</h3>\n";
 	$result2 = pg_query($dbconn,"SELECT * FROM ${row['data_table']} WHERE uid=${row['uid']} ORDER BY time desc limit 1;");
   $row2=pg_fetch_assoc($result2);
-  echo "${row2['value']} measured at ${row2['time']}</br>";
+  echo "${row2['value']} $unit measured at ${row2['time']}</br>";
 	echo "<a href=\"graph.php?uid=${row['uid']}\">graph</a>\n";
 	echo "<a href=\"graph.php?uid=${row['uid']}&starttime='today'\">graph since today</a>\n";
 	echo "<a href=\"graph.php?uid=${row['uid']}&starttime='yesterday'\">graph since yesterday</a>\n";
@@ -87,6 +91,20 @@ while ($row = pg_fetch_assoc($result)) {
 		echo "<td>${row2['reason']}</td>\n";
 		echo "<td>${row2['valid_from']}</td>\n";
 		echo "<td>${row2['valid_to']}</td>\n";
+		echo "</tr>\n";
+	}
+	echo "</table>\n";
+
+	$result2 = pg_query($dbconn,"SELECT *, CASE WHEN response_time IS NOT NULL THEN extract('epoch' from response_time - request_time) ELSE 0 END AS delay FROM setvalue_requests WHERE uid = $uid ORDER BY request_time DESC limit 5;");
+	echo "<table>\n";
+	while ($row2=pg_fetch_assoc($result2)) {
+		echo "<tr>\n";
+		echo "<td>${row2['request']}</td>\n";
+		echo "<td>${row2['response']}</td>\n";
+		echo "<td>${row2['comment']}</td>\n";
+		echo "<td>${row2['request_time']}</td>\n";
+		echo "<td>${row2['response_time']}</td>\n";
+		echo "<td>${row2['delay']}</td>\n";
 		echo "</tr>\n";
 	}
 	echo "</table>\n";
