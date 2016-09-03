@@ -186,7 +186,8 @@ CREATE TABLE setvalue_requests (
     response text,
     request_time timestamp with time zone DEFAULT now(),
     response_time timestamp with time zone,
-    id integer NOT NULL
+    id integer NOT NULL,
+    comment text
 );
 
 
