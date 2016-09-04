@@ -53,7 +53,7 @@ slowcontrolDaemon::slowcontrolDaemon(const char *aName) {
 	query += ");";
 	result = PQexec(slowcontrol::fGetDbconn(), query.c_str());
 	PQclear(result);
-	lHeartBeatFrequency = std::chrono::minutes(1);
+	lHeartBeatPeriod = std::chrono::minutes(1);
 	lHeartBeatSkew = new heartBeatSkew(description);
 	slowcontrol::fAddToCompound(slowcontrol::fGetCompoundId("generalSlowcontrol", "slowcontrol internal general stuff"),
 	                            lHeartBeatSkew->fGetUid(), "description");
@@ -116,7 +116,7 @@ std::chrono::system_clock::time_point slowcontrolDaemon::fBeatHeart(bool aLastTi
 	auto now = std::chrono::system_clock::now();
 	query += std::to_string(std::chrono::duration<double, std::nano>(now.time_since_epoch()).count() / 1E9);
 	query += "* INTERVAL '1 second'), server_time=now(), next_beat=";
-	auto nextTime = now + lHeartBeatFrequency;
+	auto nextTime = now + lHeartBeatPeriod;
 	if (aLastTime) {
 		query += "'infinity'";
 	} else {
@@ -198,6 +198,12 @@ void slowcontrolDaemon::fReaderThread() {
 			}
 		}
 		maxReadoutInterval /= fGetInstance()->lMeasurementsWithDefaultReader.size();
+
+		if (fGetInstance()->lHeartBeatPeriod < maxReadoutInterval) {
+			fGetInstance()->lHeartBeatPeriod = maxReadoutInterval;
+		}
+
+
 		std::multimap<std::chrono::steady_clock::time_point, defaultReadableMeasurement> scheduledMeasurements;
 		auto then = std::chrono::steady_clock::now();
 		for (auto& measurement : fGetInstance()->lMeasurementsWithDefaultReader) {

@@ -39,7 +39,7 @@ class slowcontrolDaemon {
 	std::atomic<bool> lStopRequested;
 	std::mutex lWaitConditionMutex;
 	std::condition_variable lWaitCondition;
-	std::chrono::system_clock::duration lHeartBeatFrequency;
+	std::chrono::system_clock::duration lHeartBeatPeriod;
 	heartBeatSkew* lHeartBeatSkew;
 	static slowcontrolDaemon* gInstance;
 	static void fSignalCatcherThread();
