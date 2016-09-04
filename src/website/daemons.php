@@ -23,6 +23,7 @@ while ($row = pg_fetch_assoc($result)) {
 	echo "<td class=\"$class\">${row['name']}</td>\n";
 	echo "<td class=\"$class\">${row['host']}</td>\n";
 	echo "<td class=\"$class\">${row['daemon_time']}</td>\n";
+	echo "<td class=\"$class\">${row['next_beat']}</td>\n";
 	echo "<td><a href=\"valueconfig.php?uid=${row['uids']}\">values</a></td>\n";
 	echo "</tr>\n";
  }

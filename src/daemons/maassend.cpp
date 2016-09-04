@@ -11,16 +11,13 @@
 #include <sys/vfs.h>
 
 class cpuTemperature: public boundCheckerInterface<SlowcontrolMeasurement<float>, false, true>,
-	public defaultReaderInterface
-
-{
+	public defaultReaderInterface {
   protected:
 	std::string lPath;
   public:
 	cpuTemperature(const char *aPath):
-		boundCheckerInterface(std::chrono::minutes(5),
-		                      std::chrono::seconds(30),
-		                      2, 10, 90),
+		boundCheckerInterface(2, 10, 90),
+		defaultReaderInterface(lConfigValues, std::chrono::seconds(30)),
 		lPath(aPath) {
 		std::string name;
 		name = slowcontrol::fGetHostName();
@@ -45,9 +42,7 @@ class diskValue: public boundCheckerInterface<SlowcontrolMeasurement<float>> {
 	          int aId,
 	          const char *aName,
 	          int aDiskCompound) :
-		boundCheckerInterface(std::chrono::minutes(60),
-		                      std::chrono::minutes(10),
-		                      1, std::numeric_limits<valueType>::lowest(), std::numeric_limits<valueType>::max()) {
+		boundCheckerInterface(1, std::numeric_limits<valueType>::lowest(), std::numeric_limits<valueType>::max()) {
 		std::string description("disk");
 		description += aSerial;
 		description += "_";
@@ -64,9 +59,8 @@ class freeMemory: public boundCheckerInterface<SlowcontrolMeasurement<float>, tr
 	public defaultReaderInterface {
   public:
 	freeMemory(int aHostCompound):
-		boundCheckerInterface(std::chrono::minutes(30),
-		                      std::chrono::seconds(10),
-		                      1000, 2000, 0) {
+		boundCheckerInterface(1000, 2000, 0),
+		defaultReaderInterface(lConfigValues, std::chrono::seconds(10)) {
 		std::string description;
 		description = slowcontrol::fGetHostName();
 		description += ":free_memory";
@@ -102,9 +96,8 @@ class fsSize: public boundCheckerInterface<SlowcontrolMeasurement<float>, true, 
 	fsSize(int aHostCompound,
 	       const std::string& aDevice,
 	       const std::string& aMountPoint):
-		boundCheckerInterface(std::chrono::minutes(20),
-		                      std::chrono::seconds(10),
-		                      1, 10, 0),
+		boundCheckerInterface(1, 10, 0),
+		defaultReaderInterface(lConfigValues, std::chrono::seconds(10)),
 		lName("name", lConfigValues),
 		lMountPoint(aMountPoint) {
 		std::string description("free space on ");

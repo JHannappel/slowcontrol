@@ -4,10 +4,7 @@
 #include "states.h"
 #include <string.h>
 
-SlowcontrolMeasurementBase::SlowcontrolMeasurementBase(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
-        decltype(lReadoutInterval.fGetValue()) aDefaultReadoutIterval):
-	lMaxDeltaT("MaxDeltaT", lConfigValues, aDefaultMaxDeltat),
-	lReadoutInterval("ReadoutInterval", lConfigValues, aDefaultReadoutIterval) {
+SlowcontrolMeasurementBase::SlowcontrolMeasurementBase() {
 	lState = measurement_state::fGetState("normal");
 };
 

@@ -7,8 +7,7 @@ class testvalue: public boundCheckerInterface<SlowcontrolMeasurement<short>>,
 	        public writeValueInterface {
   public:
 	testvalue(const char *aName):
-		boundCheckerInterface(std::chrono::minutes(20),
-		                      std::chrono::seconds(30), 0, 0, 100) {
+		boundCheckerInterface(0, 0, 100) {
 		fInitializeUid(aName);
 		fConfigure();
 	}

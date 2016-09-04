@@ -14,8 +14,7 @@ class heartBeatSkew: public boundCheckerInterface<SlowcontrolMeasurement<float>>
 	        public unitInterface {
   public:
 	heartBeatSkew(const std::string& aName):
-		boundCheckerInterface(std::chrono::minutes(10), std::chrono::minutes(1),
-		                      0.01, -0.1, 0.1),
+		boundCheckerInterface(0.01, -0.1, 0.1),
 		unitInterface(lConfigValues, "s") {
 		std::string description(aName);
 		description += " heart beat skew";
@@ -186,8 +185,8 @@ void slowcontrolDaemon::fReaderThread() {
 		}
 		std::chrono::system_clock::duration maxReadoutInterval(0);
 		for (auto& measurement : fGetInstance()->lMeasurementsWithDefaultReader) {
-			if (maxReadoutInterval < measurement.lBase->fGetReadoutInterval()) {
-				maxReadoutInterval = measurement.lBase->fGetReadoutInterval();
+			if (maxReadoutInterval < measurement.lReader->fGetReadoutInterval()) {
+				maxReadoutInterval = measurement.lReader->fGetReadoutInterval();
 			}
 		}
 		maxReadoutInterval /= fGetInstance()->lMeasurementsWithDefaultReader.size();
@@ -217,7 +216,7 @@ void slowcontrolDaemon::fReaderThread() {
 
 			scheduledMeasurements.erase(it);
 			scheduledMeasurements.emplace(justBeforeReadout
-			                              + measurement.lBase->fGetReadoutInterval(),
+			                              + measurement.lReader->fGetReadoutInterval(),
 			                              measurement);
 			if (justBeforeReadout > nextHeartBeatTime) {
 				nextHeartBeatTime = fGetInstance()->fBeatHeart();

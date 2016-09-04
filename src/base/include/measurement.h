@@ -20,11 +20,10 @@ class SlowcontrolMeasurementBase {
   public:
 	typedef int32_t uidType;
 	typedef std::chrono::system_clock::time_point timeType;
+	typedef std::chrono::system_clock::duration durationType;
   protected:
 	configValueBase::mapType lConfigValues;
   public:
-	configValue<std::chrono::system_clock::duration> lMaxDeltaT;
-	configValue<std::chrono::system_clock::duration> lReadoutInterval;
   protected:
 	std::mutex lSendQueueMutex;
 	uidType lUid;
@@ -34,11 +33,7 @@ class SlowcontrolMeasurementBase {
 	                 const char *comment);
 	virtual void fInitializeUid(const std::string& aDescription);
   public:
-	SlowcontrolMeasurementBase(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
-	                           decltype(lReadoutInterval.fGetValue()) aDefaultReadoutInterval);
-	virtual decltype(lReadoutInterval.fGetValue()) fGetReadoutInterval() const {
-		return lReadoutInterval.fGetValue();
-	}
+	SlowcontrolMeasurementBase();
 	virtual void fSendValues() = 0;
 	uidType fGetUid() const {
 		return lUid;
@@ -49,7 +44,13 @@ class SlowcontrolMeasurementBase {
 };
 
 class defaultReaderInterface {
+	configValue<SlowcontrolMeasurementBase::durationType> lReadoutInterval;
   public:
+	defaultReaderInterface(configValueBase::mapType& aMap,
+	                       decltype(lReadoutInterval.fGetValue()) aDefaultReadoutInterval): lReadoutInterval("readoutInterval", aMap, aDefaultReadoutInterval) {};
+	virtual decltype(lReadoutInterval.fGetValue()) fGetReadoutInterval() const {
+		return lReadoutInterval.fGetValue();
+	}
 	virtual void fReadCurrentValue() = 0;
 };
 
@@ -109,10 +110,8 @@ template <typename T> class SlowcontrolMeasurement: public SlowcontrolMeasuremen
 		}
 	};
   public:
-	SlowcontrolMeasurement(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
-	                       decltype(lReadoutInterval.fGetValue()) aDefaultReadoutInterval,
-	                       decltype(lDeadBand.fGetValue()) aDefaultDeadBand) :
-		SlowcontrolMeasurementBase(aDefaultMaxDeltat, aDefaultReadoutInterval),
+	SlowcontrolMeasurement(decltype(lDeadBand.fGetValue()) aDefaultDeadBand) :
+		SlowcontrolMeasurementBase(),
 		lDeadBand("DeadBand", lConfigValues, aDefaultDeadBand) {
 		lMinValueIndex = 0;
 		lMaxValueIndex = 0;
@@ -143,7 +142,6 @@ template <typename T> class SlowcontrolMeasurement: public SlowcontrolMeasuremen
 			lMaxValueIndex = lValues.size() - 1;
 		}
 		if (fAbs(aValue - lValues.front().lValue) > lDeadBand ||
-		        lValues.back().lTime - lValues.front().lTime > lMaxDeltaT.fGetValue() ||
 		        lValues.size() == 1) {
 			std::set<size_t> indicesToSend;
 			if (lMinValueIndex > 0) {
@@ -217,9 +215,8 @@ template <> class SlowcontrolMeasurement<bool>: public SlowcontrolMeasurementBas
 	timeType lOldTime;
 	std::deque<timedValue> lSendQueue;
   public:
-	SlowcontrolMeasurement(decltype(lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
-	                       decltype(lReadoutInterval.fGetValue()) aDefaultReadoutInterval):
-		SlowcontrolMeasurementBase(aDefaultMaxDeltat, aDefaultReadoutInterval) {
+	SlowcontrolMeasurement():
+		SlowcontrolMeasurementBase() {
 		lNoValueYet = true;
 		lOldValueUnsent = true;
 	};
@@ -292,12 +289,10 @@ template <typename baseClass, bool checkLowBound = true, bool checkHighBound = t
 	measurement_state::stateType lLowValueType = 0;
 	measurement_state::stateType lHighValueType = 0;
   public:
-	boundCheckerInterface(decltype(baseClass::lMaxDeltaT.fGetValue()) aDefaultMaxDeltat,
-	                      decltype(baseClass::lReadoutInterval.fGetValue()) aDefaultReadoutInterval,
-	                      decltype(baseClass::lDeadBand.fGetValue()) aDefaultDeadBand,
+	boundCheckerInterface(decltype(baseClass::lDeadBand.fGetValue()) aDefaultDeadBand,
 	                      decltype(lLowerBound.fGetValue()) aLowerBound,
 	                      decltype(lUpperBound.fGetValue()) aUpperBound) :
-		baseClass(aDefaultMaxDeltat, aDefaultReadoutInterval, aDefaultDeadBand),
+		baseClass(aDefaultDeadBand),
 		lLowerBound("lowerBound", this->lConfigValues, aLowerBound),
 		lUpperBound("upperBound", this->lConfigValues, aUpperBound) {
 	};
