@@ -14,20 +14,12 @@ if (isset($_GET["uid"])) {
  }
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-  if (isset($_GET["name"])) {
-    $query="UPDATE uid_configs SET ";
-    $query.="value=".pg_escape_literal($_POST['value']);
-    $query.=",comment=".pg_escape_literal($_POST['comment']);
-    $query.=",last_change=now()";
-    $query.="WHERE uid=$uid AND name=".pg_escape_literal($_GET['name']).";";
-  } else {
-    $query="INSERT INTO uid_configs (uid,name,value,comment) VALUES (";
-    $query.="$uid";
-    $query.=",".pg_escape_literal($_POST['name']);
-    $query.=",".pg_escape_literal($_POST['value']);
-    $query.=",".pg_escape_literal($_POST['comment']);
-    $query.=");";
-  }
+	$query="INSERT INTO setvalue_requests (uid,request,comment) VALUES (";
+	$query.="$uid,";
+	$query.=pg_escape_literal($_POST['request']);
+	$query.=",";
+	$query.=pg_escape_literal($_POST['comment']);
+	$query.=");";
   pg_query($dbconn,$query);
   if (isset($_SERVER['HTTP_REFERER'])) {
     if ($_SERVER['SERVER_PROTOCOL'] == 'HTTP/1.1') {

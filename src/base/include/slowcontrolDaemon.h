@@ -54,6 +54,7 @@ class slowcontrolDaemon {
 	std::thread* lConfigChangeListenerThread;
 	std::mutex lStorerMutex;
 	std::condition_variable lStorerCondition;
+	void fFlushAllValues();
   public:
 	slowcontrolDaemon(const char *aName);
 	void fRegisterMeasurement(SlowcontrolMeasurementBase* aMeasurement);

@@ -159,11 +159,19 @@ void slowcontrolDaemon::fSignalCatcherThread() {
 			case SIGINT:
 				fGetInstance()->lStopRequested = true;
 				fGetInstance()->lWaitCondition.notify_all();
+				fGetInstance()->fFlushAllValues();
 				std::cerr << "stopping signal thread" << std::endl;
 				return;
 			default     :
 				break;
 		}
+	}
+}
+
+void slowcontrolDaemon::fFlushAllValues() {
+	for (auto& it : lMeasurements) {
+		auto measurement = it.second;
+		measurement->fFlush();
 	}
 }
 
@@ -180,7 +188,7 @@ void slowcontrolDaemon::fReaderThread() {
 				nextHeartBeatTime = fGetInstance()->fBeatHeart();
 			}
 
-			std::this_thread::sleep_for(std::chrono::seconds(1));
+			fGetInstance()->fWaitFor(std::chrono::seconds(1));
 			continue;
 		}
 		std::chrono::system_clock::duration maxReadoutInterval(0);
@@ -190,8 +198,8 @@ void slowcontrolDaemon::fReaderThread() {
 			}
 		}
 		maxReadoutInterval /= fGetInstance()->lMeasurementsWithDefaultReader.size();
-		std::multimap<std::chrono::system_clock::time_point, defaultReadableMeasurement> scheduledMeasurements;
-		auto then = std::chrono::system_clock::now();
+		std::multimap<std::chrono::steady_clock::time_point, defaultReadableMeasurement> scheduledMeasurements;
+		auto then = std::chrono::steady_clock::now();
 		for (auto& measurement : fGetInstance()->lMeasurementsWithDefaultReader) {
 			std::cout << "scheduled uid " << measurement.lBase->fGetUid() << " for " <<
 			          std::chrono::duration_cast<std::chrono::seconds>(then.time_since_epoch()).count() << "\n";
@@ -211,14 +219,14 @@ void slowcontrolDaemon::fReaderThread() {
 			std::this_thread::sleep_until(it->first);
 			auto measurement = it->second;
 
-			auto justBeforeReadout = std::chrono::system_clock::now();
+			auto justBeforeReadout = std::chrono::steady_clock::now();
 			measurement.lReader->fReadCurrentValue();
 
 			scheduledMeasurements.erase(it);
 			scheduledMeasurements.emplace(justBeforeReadout
 			                              + measurement.lReader->fGetReadoutInterval(),
 			                              measurement);
-			if (justBeforeReadout > nextHeartBeatTime) {
+			if (std::chrono::system_clock::now() > nextHeartBeatTime) {
 				nextHeartBeatTime = fGetInstance()->fBeatHeart();
 			}
 		}
@@ -255,7 +263,7 @@ void slowcontrolDaemon::fProcessPendingRequests() {
 		std::string response;
 		auto it = lWriteableMeasurements.find(uid);
 		if (it == lWriteableMeasurements.end()) {
-			response = "is not a wrietable value";
+			response = "is not a writeable value";
 		} else {
 			response = it->second.lWriter->fProcessRequest(request);
 		}

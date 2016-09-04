@@ -19,7 +19,13 @@ void SlowcontrolMeasurementBase::fInitializeUid(const std::string& aDescription)
 			fSaveOption(*(it.second), "initial default");
 		}
 	}
-
+	if (dynamic_cast<writeValueInterface*>(this) != nullptr) {
+		std::string query("UPDATE uid_list SET is_write_value='true' WHERE uid=");
+		query += std::to_string(fGetUid());
+		query += ";";
+		auto result = PQexec(slowcontrol::fGetDbconn(), query.c_str());
+		PQclear(result);
+	}
 	slowcontrolDaemon::fGetInstance()->fRegisterMeasurement(this);
 };
 

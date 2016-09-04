@@ -13,7 +13,7 @@ class testvalue: public boundCheckerInterface<SlowcontrolMeasurement<short>>,
 	}
 	virtual const std::string fProcessRequest(const std::string& aRequest) {
 		short value;
-		if (sscanf(aRequest.c_str(), "set %d", &value) == 1) {
+		if (fParseForSet(aRequest, value)) {
 			std::cerr << "set value to " << value << std::endl;
 			fStore(value);
 			return "done.";

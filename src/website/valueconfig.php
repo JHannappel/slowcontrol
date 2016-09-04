@@ -15,7 +15,7 @@ if (isset($_GET['uid'])) {
  } else {
 	$condition="";
  }
-$result = pg_query($dbconn,"SELECT uid, data_table, description, (SELECT value FROM uid_configs WHERE uid_configs.uid=uid_list.uid AND name='name') AS name FROM uid_list $condition;");
+$result = pg_query($dbconn,"SELECT uid, data_table, description, is_write_value, (SELECT value FROM uid_configs WHERE uid_configs.uid=uid_list.uid AND name='name') AS name FROM uid_list $condition;");
 
 while ($row = pg_fetch_assoc($result)) {
 	$uid=$row['uid'];
@@ -94,6 +94,14 @@ while ($row = pg_fetch_assoc($result)) {
 		echo "</tr>\n";
 	}
 	echo "</table>\n";
+
+	if ($row['is_write_value'] == "t") {
+		echo "<form action=\"set_value.php?uid=$uid\" method=\"post\">";
+		echo " request: <input type=\"text\" name=\"request\" value=\"\">\n";
+		echo " comment: <input type=\"text\" name=\"comment\" value=\"\">\n";
+		echo "<input type=\"submit\" value=\"Set\" >\n";     
+		echo "</form>\n";
+	}
 
 	$result2 = pg_query($dbconn,"SELECT *, CASE WHEN response_time IS NOT NULL THEN extract('epoch' from response_time - request_time) ELSE 0 END AS delay FROM setvalue_requests WHERE uid = $uid ORDER BY request_time DESC limit 5;");
 	echo "<table>\n";

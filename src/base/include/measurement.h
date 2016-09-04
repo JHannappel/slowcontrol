@@ -34,6 +34,7 @@ class SlowcontrolMeasurementBase {
 	virtual void fInitializeUid(const std::string& aDescription);
   public:
 	SlowcontrolMeasurementBase();
+	virtual void fFlush(bool aFlushSingleValue = false) = 0;
 	virtual void fSendValues() = 0;
 	uidType fGetUid() const {
 		return lUid;
@@ -57,6 +58,16 @@ class defaultReaderInterface {
 
 class writeValueInterface {
   public:
+	template <typename T> bool fParseForSet(const std::string& aRequest, T& aValue) {
+		std::istringstream buf(aRequest);
+		std::string command;
+		buf >> command;
+		if (command.compare("set") == 0) {
+			buf >> aValue;
+			return !buf.fail();
+		}
+		return false;
+	};
 	virtual const std::string fProcessRequest(const std::string& aRequest) = 0;
 };
 
@@ -123,26 +134,9 @@ template <typename T> class SlowcontrolMeasurement: public SlowcontrolMeasuremen
 			return -aValue;
 		}
 	};
-	virtual void fStore(const T& aValue) {
-		fStore(aValue, std::chrono::system_clock::now());
-	};
-	virtual void fStore(const T& aValue, timeType aTime) {
-		if ((lValues.size() > 2)
-		        && lValues.at(lValues.size() - 1).lValue == aValue
-		        && lValues.at(lValues.size() - 2).lValue == aValue) { // no change
-			lValues.at(lValues.size() - 1).lTime = aTime;
-		} else {
-			fCheckValue(aTime, aValue);
-			lValues.emplace_back(aTime, aValue);
-		}
-		if (aValue < lValues.at(lMinValueIndex).lValue) {
-			lMinValueIndex = lValues.size() - 1;
-		}
-		if (aValue > lValues.at(lMaxValueIndex).lValue) {
-			lMaxValueIndex = lValues.size() - 1;
-		}
-		if (fAbs(aValue - lValues.front().lValue) > lDeadBand ||
-		        lValues.size() == 1) {
+
+	virtual void fFlush(bool aFlushSingleValue) {
+		if (!lValues.empty() && (aFlushSingleValue || lValues.size() > 1)) {
 			std::set<size_t> indicesToSend;
 			if (lMinValueIndex > 0) {
 				indicesToSend.insert(lMinValueIndex);
@@ -164,6 +158,30 @@ template <typename T> class SlowcontrolMeasurement: public SlowcontrolMeasuremen
 			lValues.push_back(lastValue);
 			lMinValueIndex = 0;
 			lMaxValueIndex = 0;
+		}
+	};
+
+	virtual void fStore(const T& aValue) {
+		fStore(aValue, std::chrono::system_clock::now());
+	};
+	virtual void fStore(const T& aValue, timeType aTime) {
+		if ((lValues.size() > 2)
+		        && lValues.at(lValues.size() - 1).lValue == aValue
+		        && lValues.at(lValues.size() - 2).lValue == aValue) { // no change
+			lValues.at(lValues.size() - 1).lTime = aTime;
+		} else {
+			fCheckValue(aTime, aValue);
+			lValues.emplace_back(aTime, aValue);
+		}
+		if (aValue < lValues.at(lMinValueIndex).lValue) {
+			lMinValueIndex = lValues.size() - 1;
+		}
+		if (aValue > lValues.at(lMaxValueIndex).lValue) {
+			lMaxValueIndex = lValues.size() - 1;
+		}
+		if (fAbs(aValue - lValues.front().lValue) >= lDeadBand ||
+		        lValues.size() == 1) {
+			fFlush(lValues.size() == 1);
 		}
 	};
 
@@ -219,6 +237,14 @@ template <> class SlowcontrolMeasurement<bool>: public SlowcontrolMeasurementBas
 		SlowcontrolMeasurementBase() {
 		lNoValueYet = true;
 		lOldValueUnsent = true;
+	};
+
+	virtual void fFlush(bool /*aFlushSingleValue*/) {
+		if (lOldValueUnsent && ! lNoValueYet) {
+			std::lock_guard<decltype(lSendQueueMutex)> SendQueueLock(lSendQueueMutex);
+			lSendQueue.emplace_back(lOldTime, lOldValue);
+			lOldValueUnsent = false;
+		}
 	};
 	virtual void fStore(bool aValue) {
 		fStore(aValue, std::chrono::system_clock::now());

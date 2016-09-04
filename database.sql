@@ -282,7 +282,8 @@ CREATE TABLE uid_daemon_connection (
 CREATE TABLE uid_list (
     description text NOT NULL,
     uid integer NOT NULL,
-    data_table text
+    data_table text,
+    is_write_value boolean DEFAULT false
 );
 
 
