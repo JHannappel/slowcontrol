@@ -23,12 +23,15 @@ namespace slowcontrol {
 		                           const char *aKeyColumn, const char *aKeyValue,
 		                           const char *aExtraColum = nullptr, const char *aExtraValue = nullptr,
 		                           bool *aInsertWasDone = nullptr);
-		static void fAddToCompound(int aCompound, int aUid, const char* aName);
+		static void fAddToCompound(int aCompound, uidType aUid, const char* aName);
 		static void fAddSubCompound(int aParent, int aChild, const char* aName);
-		static void fAddToCompound(int aCompound, int aUid, const std::string& aName);
+		static void fAddToCompound(int aCompound, uidType aUid, const std::string& aName);
 		static void fAddSubCompound(int aParent, int aChild, const std::string& aName);
 		static void fAddEscapedStringToQuery(const char *aString, std::string& aQuery);
 		static void fAddEscapedStringToQuery(const std::string& aString, std::string& aQuery);
+		static bool fRequestValueSetting(uidType aUid, const std::string& aRequest,
+																		 const std::string& aComment,
+																		 std::string& aResponse);
 	};
 
 } // end of namespace slowcontrol

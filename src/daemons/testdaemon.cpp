@@ -13,14 +13,16 @@ class testvalue: public slowcontrol::boundCheckerInterface<slowcontrol::measurem
 		fInitializeUid(aName);
 		fConfigure();
 	}
-	virtual const std::string fProcessRequest(const std::string& aRequest) {
+	virtual bool fProcessRequest(const std::string& aRequest, std::string& aResponse) {
 		short value;
 		if (fParseForSet(aRequest, value)) {
 			std::cerr << "set value to " << value << std::endl;
 			fStore(value);
-			return "done.";
+			aResponse= "done.";
+			return true;
 		}
-		return "bad request.";
+		aResponse="bad request.";
+		return false;
 	}
 };
 

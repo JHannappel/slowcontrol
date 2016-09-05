@@ -1,0 +1,2 @@
+add_executable(requestValueSetting requestValueSetting.cpp)
+target_link_libraries(requestValueSetting slowcontrol_static ${OptionParser_LIBRARIES})

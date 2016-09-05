@@ -70,7 +70,7 @@ namespace slowcontrol {
 			}
 			return false;
 		};
-		virtual const std::string fProcessRequest(const std::string& aRequest) = 0;
+		virtual bool fProcessRequest(const std::string& aRequest, std::string& aResponse) = 0;
 	};
 
 	class unitInterface {

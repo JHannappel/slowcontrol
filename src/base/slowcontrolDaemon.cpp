@@ -269,14 +269,20 @@ namespace slowcontrol {
 			std::string request(PQgetvalue(result, i, PQfnumber(result, "request")));
 			auto id = std::stol(PQgetvalue(result, i, PQfnumber(result, "id")));
 			std::string response;
+			bool outcome = false;
 			auto it = lWriteableMeasurements.find(uid);
 			if (it == lWriteableMeasurements.end()) {
 				response = "is not a writeable value";
 			} else {
-				response = it->second.lWriter->fProcessRequest(request);
+				outcome = it->second.lWriter->fProcessRequest(request,response);
 			}
 			query = "UPDATE setvalue_requests SET response_time=now(), response=";
 			base::fAddEscapedStringToQuery(response, query);
+			if (outcome == true) {
+				query+=",result='true' ";
+			} else {
+				query+=",result='false' ";
+			}
 			query += "WHERE id = ";
 			query += std::to_string(id);
 			query += ";";
