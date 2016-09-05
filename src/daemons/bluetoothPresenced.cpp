@@ -3,13 +3,13 @@
 #include <stdlib.h>
 
 #include <Options.h>
-class presence: public SlowcontrolMeasurement<bool>,
-	public defaultReaderInterface {
+class presence: public slowcontrol::measurement<bool>,
+	public slowcontrol::defaultReaderInterface {
   protected:
 	std::string lCommand;
   public:
 	presence(const std::string& aAddress):
-		SlowcontrolMeasurement(),
+		measurement(),
 		defaultReaderInterface(lConfigValues, std::chrono::minutes(10)) {
 		lCommand = "l2ping -c 1 ";
 		lCommand += aAddress;
@@ -35,7 +35,7 @@ int main(int argc, const char *argv[]) {
 	OptionParser parser("slowcontrol program for detecting presence of bluetooth devices");
 	parser.fParse(argc, argv);
 
-	auto daemon = new slowcontrolDaemon("bluetoothPresenced");
+	auto daemon = new slowcontrol::daemon("bluetoothPresenced");
 
 	for (auto& addr : btAdresses) {
 		new presence(addr.second);

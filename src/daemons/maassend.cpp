@@ -9,8 +9,8 @@
 #include <iostream>
 #include <limits>
 #include <sys/vfs.h>
-
-class cpuTemperature: public boundCheckerInterface<SlowcontrolMeasurement<float>, false, true>,
+using namespace slowcontrol;
+class cpuTemperature: public boundCheckerInterface<measurement<float>, false, true>,
 	public defaultReaderInterface {
   protected:
 	std::string lPath;
@@ -20,7 +20,7 @@ class cpuTemperature: public boundCheckerInterface<SlowcontrolMeasurement<float>
 		defaultReaderInterface(lConfigValues, std::chrono::seconds(30)),
 		lPath(aPath) {
 		std::string name;
-		name = slowcontrol::fGetHostName();
+		name = slowcontrol::base::fGetHostName();
 		name += ":";
 		name += aPath;
 		lDeadBand.fSetValue(1);
@@ -36,7 +36,7 @@ class cpuTemperature: public boundCheckerInterface<SlowcontrolMeasurement<float>
 	};
 };
 
-class diskValue: public boundCheckerInterface<SlowcontrolMeasurement<float>> {
+class diskValue: public boundCheckerInterface<measurement<float>> {
   public:
 	diskValue(const std::string& aSerial,
 	          int aId,
@@ -51,22 +51,22 @@ class diskValue: public boundCheckerInterface<SlowcontrolMeasurement<float>> {
 		description += aName;
 		fInitializeUid(description);
 		fConfigure();
-		slowcontrol::fAddToCompound(aDiskCompound, fGetUid(), aName);
+		slowcontrol::base::fAddToCompound(aDiskCompound, fGetUid(), aName);
 	};
 };
 
-class freeMemory: public boundCheckerInterface<SlowcontrolMeasurement<float>, true, false>,
+class freeMemory: public boundCheckerInterface<measurement<float>, true, false>,
 	public defaultReaderInterface {
   public:
 	freeMemory(int aHostCompound):
 		boundCheckerInterface(1000, 2000, 0),
 		defaultReaderInterface(lConfigValues, std::chrono::seconds(10)) {
 		std::string description;
-		description = slowcontrol::fGetHostName();
+		description = slowcontrol::base::fGetHostName();
 		description += ":free_memory";
 		fInitializeUid(description);
 		fConfigure();
-		slowcontrol::fAddToCompound(aHostCompound, fGetUid(), "freeMemory");
+		slowcontrol::base::fAddToCompound(aHostCompound, fGetUid(), "freeMemory");
 		std::cerr << __func__ << " size is " << sizeof(*this) << std::endl;
 	}
 	virtual void fReadCurrentValue() {
@@ -87,7 +87,7 @@ class freeMemory: public boundCheckerInterface<SlowcontrolMeasurement<float>, tr
 };
 
 
-class fsSize: public boundCheckerInterface<SlowcontrolMeasurement<float>, true, false>,
+class fsSize: public boundCheckerInterface<measurement<float>, true, false>,
 	public defaultReaderInterface {
   protected:
 	configValue<std::string> lName;
@@ -101,7 +101,7 @@ class fsSize: public boundCheckerInterface<SlowcontrolMeasurement<float>, true, 
 		lName("name", lConfigValues),
 		lMountPoint(aMountPoint) {
 		std::string description("free space on ");
-		description += slowcontrol::fGetHostName();
+		description += slowcontrol::base::fGetHostName();
 		description += " ";
 		description += aDevice;
 		fInitializeUid(description);
@@ -109,7 +109,7 @@ class fsSize: public boundCheckerInterface<SlowcontrolMeasurement<float>, true, 
 		description += "free space";
 		lName.fSetValue(description);
 		fConfigure();
-		slowcontrol::fAddToCompound(aHostCompound, fGetUid(), description);
+		slowcontrol::base::fAddToCompound(aHostCompound, fGetUid(), description);
 		std::cerr << __func__ << " size is " << sizeof(*this) << std::endl;
 	};
 	virtual void fReadCurrentValue() {
@@ -201,8 +201,8 @@ void diskwatch::read() {
 		compoundName += lModel;
 		compoundName += "_";
 		compoundName += lSerial;
-		id = slowcontrol::fGetCompoundId(compoundName.c_str(), compoundName.c_str());
-		slowcontrol::fAddSubCompound(lHostCompound, id, "disk");
+		id = slowcontrol::base::fGetCompoundId(compoundName.c_str(), compoundName.c_str());
+		slowcontrol::base::fAddSubCompound(lHostCompound, id, "disk");
 	}
 }
 
@@ -224,7 +224,7 @@ static void populateTemperature(int aCompound) {
 			*newLine = '\0';
 		}
 		auto t = new cpuTemperature(dirpath);
-		slowcontrol::fAddToCompound(aCompound, t->fGetUid(), "temperature");
+		slowcontrol::base::fAddToCompound(aCompound, t->fGetUid(), "temperature");
 	}
 	pclose(findPipe);
 }
@@ -279,25 +279,25 @@ static void populateFswatches(int aHostCompound) {
 int main(int argc, const char *argv[]) {
 	OptionParser parser("slowcontrol program for checking comuter health");
 	parser.fParse(argc, argv);
-	auto daemon = new slowcontrolDaemon("maassend");
-	auto compound = slowcontrol::fGetCompoundId(slowcontrol::fGetHostName().c_str(), slowcontrol::fGetHostName().c_str());
+	auto maassend = new slowcontrol::daemon("maassend");
+	auto compound = base::fGetCompoundId(base::fGetHostName().c_str(), base::fGetHostName().c_str());
 	std::vector<diskwatch*> diskwatches;
 	populateTemperature(compound);
 	populateDiskwatches(compound, diskwatches);
 	populateFswatches(compound);
 	new freeMemory(compound);
-	daemon->fStartThreads();
-	while (!daemon->fGetStopRequested()) {
+	maassend->fStartThreads();
+	while (!maassend->fGetStopRequested()) {
 		for (auto dw : diskwatches) {
 			dw->read();
-			std::cerr << "waiting..." << daemon->fGetStopRequested() << std::endl;
-			daemon->fWaitFor(std::chrono::seconds(600 / diskwatches.size()));
-			std::cerr << "done." << daemon->fGetStopRequested() << std::endl;
-			if (daemon->fGetStopRequested()) {
+			std::cerr << "waiting..." << maassend->fGetStopRequested() << std::endl;
+			maassend->fWaitFor(std::chrono::seconds(600 / diskwatches.size()));
+			std::cerr << "done." << maassend->fGetStopRequested() << std::endl;
+			if (maassend->fGetStopRequested()) {
 				break;
 			}
 		}
 	}
 	std::cerr << "stopping main thread" << std::endl;
-	daemon->fWaitForThreads();
+	maassend->fWaitForThreads();
 }

@@ -5,9 +5,9 @@
 #include <dirent.h>
 #include <string.h>
 #include <iostream>
-class owTemperature: public boundCheckerInterface<SlowcontrolMeasurement<float>>,
-	        public defaultReaderInterface,
-	        public unitInterface {
+class owTemperature: public slowcontrol::boundCheckerInterface<slowcontrol::measurement<float>>,
+	        public slowcontrol::defaultReaderInterface,
+	        public slowcontrol::unitInterface {
   protected:
 	std::string lPath;
   public:
@@ -42,7 +42,7 @@ int main(int argc, const char *argv[]) {
 	OptionParser parser("slowcontrol program for reading one-wire devices via owfs");
 	parser.fParse(argc, argv);
 
-	auto daemon = new slowcontrolDaemon("onewired");
+	auto daemon = new slowcontrol::daemon("onewired");
 	{
 		DIR *owdir = opendir("/1w");
 		for (;;) {

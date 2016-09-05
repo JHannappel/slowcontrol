@@ -3,8 +3,10 @@
 #include <fstream>
 #include <Options.h>
 #include <stdio.h>
-class testvalue: public boundCheckerInterface<SlowcontrolMeasurement<short>>,
-	        public writeValueInterface {
+
+
+class testvalue: public slowcontrol::boundCheckerInterface<slowcontrol::measurement<short>>,
+	        public slowcontrol::writeValueInterface {
   public:
 	testvalue(const char *aName):
 		boundCheckerInterface(0, 0, 100) {
@@ -27,7 +29,7 @@ int main(int argc, const char *argv[]) {
 	OptionParser parser("slowcontrol program for test purposes");
 	parser.fParse(argc, argv);
 
-	auto daemon = new slowcontrolDaemon("testd");
+	auto daemon = new slowcontrol::daemon("testd");
 
 	testvalue test_read("test");
 	daemon->fStartThreads();

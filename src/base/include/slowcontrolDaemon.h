@@ -9,72 +9,75 @@
 #include <atomic>
 #include <slowcontrol.h>
 
-class heartBeatSkew;
-class SlowcontrolMeasurementBase;
-class defaultReaderInterface;
-class writeValueInterface;
-class slowcontrolDaemon {
-	typedef int32_t daemonIdType;
-  protected:
-	class defaultReadableMeasurement {
-	  public:
-		SlowcontrolMeasurementBase* lBase;
-		defaultReaderInterface* lReader;
-		defaultReadableMeasurement(decltype(lBase) aBase,
-		                           decltype(lReader) aReader) :
-			lBase(aBase), lReader(aReader) {};
-	};
-	class writeableMeasurement {
-	  public:
-		SlowcontrolMeasurementBase* lBase;
-		writeValueInterface* lWriter;
-		writeableMeasurement(decltype(lBase) aBase,
-		                     decltype(lWriter) aWriter) :
-			lBase(aBase), lWriter(aWriter) {};
-	};
-	std::map<slowcontrol::uidType, SlowcontrolMeasurementBase*> lMeasurements;
-	std::vector<defaultReadableMeasurement> lMeasurementsWithDefaultReader;
-	std::map<slowcontrol::uidType, writeableMeasurement> lWriteableMeasurements;
-	daemonIdType lId;
-	std::atomic<bool> lStopRequested;
-	std::mutex lWaitConditionMutex;
-	std::condition_variable lWaitCondition;
-	std::chrono::system_clock::duration lHeartBeatPeriod;
-	heartBeatSkew* lHeartBeatSkew;
-	static slowcontrolDaemon* gInstance;
-	static void fSignalCatcherThread();
-	static void fReaderThread();
-	static void fStorerThread();
-	static void fConfigChangeListener();
-	void fDaemonize();
-	std::chrono::system_clock::time_point fBeatHeart(bool aLastTime = false);
-	std::thread* lSignalCatcherThread;
-	std::thread* lReaderThread;
-	std::thread* lStorerThread;
-	std::thread* lConfigChangeListenerThread;
-	std::mutex lStorerMutex;
-	std::condition_variable lStorerCondition;
-	void fFlushAllValues();
-  public:
-	slowcontrolDaemon(const char *aName);
-	void fRegisterMeasurement(SlowcontrolMeasurementBase* aMeasurement);
-	static slowcontrolDaemon* fGetInstance();
-	void fStartThreads();
-	void fWaitForThreads();
-	void fSignalToStorer();
-	bool fGetStopRequested() const {
-		return lStopRequested;
-	};
-	void fProcessPendingRequests();
-	template <class Clock, class Duration> void fWaitUntil(const std::chrono::time_point<Clock, Duration>& aWhen) {
-		std::unique_lock<std::mutex> lock(lWaitConditionMutex);
-		lWaitCondition.wait_until(lock, aWhen);
-	};
-	template <class Duration> void fWaitFor(Duration aDuration) {
-		auto then = std::chrono::steady_clock::now() + aDuration;
-		fWaitUntil(then);
-	};
-};
+namespace slowcontrol {
 
+	class heartBeatSkew;
+	class measurementBase;
+	class defaultReaderInterface;
+	class writeValueInterface;
+	class daemon {
+		typedef int32_t daemonIdType;
+	  protected:
+		class defaultReadableMeasurement {
+		  public:
+			measurementBase* lBase;
+			defaultReaderInterface* lReader;
+			defaultReadableMeasurement(decltype(lBase) aBase,
+			                           decltype(lReader) aReader) :
+				lBase(aBase), lReader(aReader) {};
+		};
+		class writeableMeasurement {
+		  public:
+			measurementBase* lBase;
+			writeValueInterface* lWriter;
+			writeableMeasurement(decltype(lBase) aBase,
+			                     decltype(lWriter) aWriter) :
+				lBase(aBase), lWriter(aWriter) {};
+		};
+		std::map<base::uidType, measurementBase*> lMeasurements;
+		std::vector<defaultReadableMeasurement> lMeasurementsWithDefaultReader;
+		std::map<base::uidType, writeableMeasurement> lWriteableMeasurements;
+		daemonIdType lId;
+		std::atomic<bool> lStopRequested;
+		std::mutex lWaitConditionMutex;
+		std::condition_variable lWaitCondition;
+		std::chrono::system_clock::duration lHeartBeatPeriod;
+		heartBeatSkew* lHeartBeatSkew;
+		static daemon* gInstance;
+		static void fSignalCatcherThread();
+		static void fReaderThread();
+		static void fStorerThread();
+		static void fConfigChangeListener();
+		void fDaemonize();
+		std::chrono::system_clock::time_point fBeatHeart(bool aLastTime = false);
+		std::thread* lSignalCatcherThread;
+		std::thread* lReaderThread;
+		std::thread* lStorerThread;
+		std::thread* lConfigChangeListenerThread;
+		std::mutex lStorerMutex;
+		std::condition_variable lStorerCondition;
+		void fFlushAllValues();
+	  public:
+		daemon(const char *aName);
+		void fRegisterMeasurement(measurementBase* aMeasurement);
+		static daemon* fGetInstance();
+		void fStartThreads();
+		void fWaitForThreads();
+		void fSignalToStorer();
+		bool fGetStopRequested() const {
+			return lStopRequested;
+		};
+		void fProcessPendingRequests();
+		template <class Clock, class Duration> void fWaitUntil(const std::chrono::time_point<Clock, Duration>& aWhen) {
+			std::unique_lock<std::mutex> lock(lWaitConditionMutex);
+			lWaitCondition.wait_until(lock, aWhen);
+		};
+		template <class Duration> void fWaitFor(Duration aDuration) {
+			auto then = std::chrono::steady_clock::now() + aDuration;
+			fWaitUntil(then);
+		};
+	};
+
+} // end of namespace slowcontrol
 
 #endif
