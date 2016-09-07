@@ -21,7 +21,7 @@ namespace slowcontrol {
 				fSaveOption(*(it.second), "initial default");
 			}
 		}
-		if (dynamic_cast<writeValueInterface*>(this) != nullptr) {
+		if (dynamic_cast<writeValue*>(this) != nullptr) {
 			std::string query("UPDATE uid_list SET is_write_value='true' WHERE uid=");
 			query += std::to_string(fGetUid());
 			query += ";";

@@ -14,7 +14,7 @@ namespace slowcontrol {
 	class heartBeatSkew;
 	class measurementBase;
 	class defaultReaderInterface;
-	class writeValueInterface;
+	class writeValue;
 	class daemon {
 		typedef int32_t daemonIdType;
 	  protected:
@@ -29,7 +29,7 @@ namespace slowcontrol {
 		class writeableMeasurement {
 		  public:
 			measurementBase* lBase;
-			writeValueInterface* lWriter;
+			writeValue* lWriter;
 			writeableMeasurement(decltype(lBase) aBase,
 			                     decltype(lWriter) aWriter) :
 				lBase(aBase), lWriter(aWriter) {};
@@ -37,6 +37,10 @@ namespace slowcontrol {
 		std::map<base::uidType, measurementBase*> lMeasurements;
 		std::vector<defaultReadableMeasurement> lMeasurementsWithDefaultReader;
 		std::map<base::uidType, writeableMeasurement> lWriteableMeasurements;
+
+		std::mutex lScheduledWriteRequestMutex;
+		std::condition_variable lScheduledWriteRequestWaitCondition;
+
 		daemonIdType lId;
 		std::atomic<bool> lStopRequested;
 		std::mutex lWaitConditionMutex;
@@ -46,12 +50,14 @@ namespace slowcontrol {
 		static daemon* gInstance;
 		static void fSignalCatcherThread();
 		static void fReaderThread();
+		static void fScheduledWriterThread();
 		static void fStorerThread();
 		static void fConfigChangeListener();
 		void fDaemonize();
 		std::chrono::system_clock::time_point fBeatHeart(bool aLastTime = false);
 		std::thread* lSignalCatcherThread;
 		std::thread* lReaderThread;
+		std::thread* lScheduledWriterThread;
 		std::thread* lStorerThread;
 		std::thread* lConfigChangeListenerThread;
 		std::mutex lStorerMutex;

@@ -30,8 +30,8 @@ namespace slowcontrol {
 		static void fAddEscapedStringToQuery(const char *aString, std::string& aQuery);
 		static void fAddEscapedStringToQuery(const std::string& aString, std::string& aQuery);
 		static bool fRequestValueSetting(uidType aUid, const std::string& aRequest,
-																		 const std::string& aComment,
-																		 std::string& aResponse);
+		                                 const std::string& aComment,
+		                                 std::string& aResponse);
 	};
 
 } // end of namespace slowcontrol

@@ -58,10 +58,65 @@ namespace slowcontrol {
 	};
 
 
-	class writeValueInterface {
+	class writeValue {
 	  public:
-		template <typename T> bool fParseForSet(const std::string& aRequest, T& aValue) {
-			std::istringstream buf(aRequest);
+		class request {
+		  public:
+			typedef std::chrono::system_clock::time_point timeType;
+			typedef int idType;
+		  protected:
+			timeType lWhen;
+			idType lRequestId;
+			writeValue* lWriteValue;
+		  public:
+			timeType fGetWhen() const {
+				return lWhen;
+			};
+			idType fGetRequestId() const {
+				return lRequestId;
+			};
+			writeValue* fGetWriteValue() const {
+				return lWriteValue;
+			};
+			request(writeValue* aWriteValue,
+			        timeType aWhen,
+			        idType aRequestId): lWhen(aWhen),
+				lRequestId(aRequestId),
+				lWriteValue(aWriteValue) {};
+			virtual ~request() {};
+			virtual bool fProcess(std::string& aResponse) {
+				return fGetWriteValue()->fProcessRequest(this, aResponse);
+			};
+		};
+		virtual request* fParseForRequest(const std::string& aRequestText,
+		                                  request::timeType aWhen,
+		                                  request::idType aRequestId) = 0;
+		virtual bool fProcessRequest(const request* aRequest, std::string& aResponse) = 0;
+	};
+
+	template <typename T> class writeValueWithType: public writeValue {
+	  public:
+		class requestWithType: public request {
+		  public:
+			T lGoalValue;
+			requestWithType(writeValue* aWriteValue,
+			                timeType aWhen,
+			                idType aRequestId,
+			                decltype(lGoalValue) aGoalValue):
+				request(aWriteValue, aWhen, aRequestId), lGoalValue(aGoalValue) {};
+			virtual ~requestWithType() {};
+		};
+		virtual request* fParseForRequest(const std::string& aRequestText,
+		                                  request::timeType aWhen,
+		                                  request::idType aRequestId) {
+			T value;
+			if (fParseForSet(aRequestText, value)) {
+				return new requestWithType(this, aWhen, aRequestId, value);
+			}
+			return nullptr;
+		};
+		virtual bool fParseForSet(const std::string& aRequestText, T& aValue) {
+			std::istringstream buf(aRequestText);
 			std::string command;
 			buf >> command;
 			if (command.compare("set") == 0) {
@@ -70,9 +125,8 @@ namespace slowcontrol {
 			}
 			return false;
 		};
-		virtual bool fProcessRequest(const std::string& aRequest, std::string& aResponse) = 0;
 	};
-
+	typedef writeValue::request requestType;
 	class unitInterface {
 	  protected:
 		configValue<std::string> lUnit;

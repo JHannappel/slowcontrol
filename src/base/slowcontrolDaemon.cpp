@@ -11,6 +11,7 @@
 #include <signal.h>
 
 namespace slowcontrol {
+	static std::map<std::chrono::system_clock::time_point, writeValue::request*> gScheduledWriteRequests;
 
 	class heartBeatSkew: public boundCheckerInterface<measurement<float>>,
 		        public unitInterface {
@@ -102,7 +103,7 @@ namespace slowcontrol {
 		if (reader != nullptr) {
 			lMeasurementsWithDefaultReader.emplace_back(aMeasurement, reader);
 		}
-		auto writer = dynamic_cast<writeValueInterface*>(aMeasurement);
+		auto writer = dynamic_cast<writeValue*>(aMeasurement);
 		if (writer != nullptr) {
 			writeableMeasurement wM(aMeasurement, writer);
 			lWriteableMeasurements.emplace(aMeasurement->fGetUid(), wM);
@@ -259,8 +260,52 @@ namespace slowcontrol {
 	void daemon::fSignalToStorer() {
 		lStorerCondition.notify_all();
 	}
+
+	void daemon::fScheduledWriterThread() {
+		while (true) {
+			if (fGetInstance()->lStopRequested) {
+				std::cerr << "stopping scheduled writer thread" << std::endl;
+				return;
+			}
+			writeValue::request* req;
+			{
+				std::unique_lock < decltype(fGetInstance()->lScheduledWriteRequestMutex) > lock(fGetInstance()->lScheduledWriteRequestMutex);
+				auto it = gScheduledWriteRequests.begin();
+				if (it != gScheduledWriteRequests.end()) {
+					auto waitResult = fGetInstance()->lScheduledWriteRequestWaitCondition.wait_until(lock, it->first);
+					if (waitResult == std::cv_status::no_timeout) {
+						continue; // probably a new value added
+					}
+				} else {
+					fGetInstance()->lScheduledWriteRequestWaitCondition.wait_for(lock, std::chrono::seconds(1));
+					continue; // probably a new value added
+				}
+				if (it->first > std::chrono::system_clock::now()) {
+					continue; // it's not yet late enough
+				}
+				req = it->second;
+				gScheduledWriteRequests.erase(it);
+			}
+			std::string response;
+			auto outcome = req->fProcess(response);
+			std::string query("UPDATE setvalue_requests SET response_time=now(), response=");
+			base::fAddEscapedStringToQuery(response, query);
+			query += ",result=";
+			if (outcome) {
+				query += "'true'";
+			} else {
+				query += "'false'";
+			}
+			query += " WHERE id=";
+			query += std::to_string(req->fGetRequestId());
+			auto result = PQexec(base::fGetDbconn(), query.c_str());
+			PQclear(result);
+			delete req;
+		}
+	}
+
 	void daemon::fProcessPendingRequests() {
-		std::string query("SELECT uid,request,id FROM setvalue_requests WHERE response_time IS NULL AND uid IN (SELECT uid FROM uid_daemon_connection WHERE daemonid = ");
+		std::string query("SELECT uid,request,id,EXTRACT('EPOCH' FROM request_time) AS request_time FROM setvalue_requests WHERE response_time IS NULL AND uid IN (SELECT uid FROM uid_daemon_connection WHERE daemonid = ");
 		query += std::to_string(lId);
 		query += ") ORDER BY request_time;";
 		auto result = PQexec(base::fGetDbconn(), query.c_str());
@@ -268,20 +313,36 @@ namespace slowcontrol {
 			auto uid = std::stol(PQgetvalue(result, i, PQfnumber(result, "uid")));
 			std::string request(PQgetvalue(result, i, PQfnumber(result, "request")));
 			auto id = std::stol(PQgetvalue(result, i, PQfnumber(result, "id")));
-			std::string response;
-			bool outcome = false;
+			std::chrono::system_clock::time_point request_time(std::chrono::nanoseconds(static_cast<long long>(std::stod(PQgetvalue(result, i, PQfnumber(result, "request_time"))) * 1e9)));
+
+			query = "UPDATE setvalue_requests SET response_time=now(), response=";
 			auto it = lWriteableMeasurements.find(uid);
 			if (it == lWriteableMeasurements.end()) {
-				response = "is not a writeable value";
+				query += "'is not a writeable value', result='false'";
 			} else {
-				outcome = it->second.lWriter->fProcessRequest(request,response);
-			}
-			query = "UPDATE setvalue_requests SET response_time=now(), response=";
-			base::fAddEscapedStringToQuery(response, query);
-			if (outcome == true) {
-				query+=",result='true' ";
-			} else {
-				query+=",result='false' ";
+				std::string response;
+				auto req = it->second.lWriter->fParseForRequest(request, request_time, id);
+				if (req == nullptr) {
+					query += "'malformed request', result='false'";
+				}
+				if (request_time - std::chrono::system_clock::now() >
+				        std::chrono::milliseconds(1)) { // do it delayed
+					query += "'scheduled'";
+					{
+						std::lock_guard<decltype(lScheduledWriteRequestMutex)> lock(lScheduledWriteRequestMutex);
+						gScheduledWriteRequests.emplace(request_time, req);
+					}
+					lScheduledWriteRequestWaitCondition.notify_all();
+				} else {
+					auto outcome = req->fProcess(response);
+					delete req;
+					base::fAddEscapedStringToQuery(response, query);
+					if (outcome == true) {
+						query += ",result='true' ";
+					} else {
+						query += ",result='false' ";
+					}
+				}
 			}
 			query += "WHERE id = ";
 			query += std::to_string(id);
@@ -351,12 +412,14 @@ namespace slowcontrol {
 		lReaderThread = new std::thread(fReaderThread);
 		lStorerThread = new std::thread(fStorerThread);
 		lConfigChangeListenerThread = new std::thread(fConfigChangeListener);
+		lScheduledWriterThread = new std::thread(fScheduledWriterThread);
 	}
 	void daemon::fWaitForThreads() {
 		lReaderThread->join();
 		lStorerThread->join();
 		lConfigChangeListenerThread->join();
 		lSignalCatcherThread->join();
+		lScheduledWriterThread->join();
 	}
 
 } // end of namespace slowcontrol

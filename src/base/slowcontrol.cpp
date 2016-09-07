@@ -156,62 +156,62 @@ namespace slowcontrol {
 	}
 
 	bool base::fRequestValueSetting(uidType aUid, const std::string& aRequest,
-																	const std::string& aComment,
-																	std::string& aResponse) {
+	                                const std::string& aComment,
+	                                std::string& aResponse) {
 		std::string query("INSERT INTO setvalue_requests (uid,request,comment) VALUES (");
-		query+=std::to_string(aUid);
-		query+=",";
-		fAddEscapedStringToQuery(aRequest,query);
-		query+=",";
-		fAddEscapedStringToQuery(aComment,query);
-		query+=") RETURNING id;";
-	auto result = PQexec(fGetDbconn(),query.c_str());
-	auto id = std::stol(PQgetvalue(result, 0, 0));
-	PQclear(result);
-	result = PQexec(fGetDbconn(),"LISTEN setvalue_update;");
-	if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-		std::cerr << "LISTEN command failed" <<  PQerrorMessage(base::fGetDbconn()) << std::endl;
+		query += std::to_string(aUid);
+		query += ",";
+		fAddEscapedStringToQuery(aRequest, query);
+		query += ",";
+		fAddEscapedStringToQuery(aComment, query);
+		query += ") RETURNING id;";
+		auto result = PQexec(fGetDbconn(), query.c_str());
+		auto id = std::stol(PQgetvalue(result, 0, 0));
 		PQclear(result);
-		return false;
-	}
-	PQclear(result);
-	while (true) {
-		struct pollfd pfd;
-		pfd.fd = PQsocket(base::fGetDbconn());
-		pfd.events = POLLIN | POLLPRI;
-		poll(&pfd, 1, -1);
-		if (pfd.revents & (POLLIN | POLLPRI)) {
-			PQconsumeInput(base::fGetDbconn());
-			while (true) {
-				auto notification = PQnotifies(base::fGetDbconn());
-				if (notification == nullptr) {
-					break;
-				}
-				std::cout << "got notification '" << notification->relname << "'" << std::endl;
-				if (strcmp(notification->relname, "setvalue_update") == 0) {
-					PQfreemem(notification);					
-					query = "SELECT * FROM setvalue_requests WHERE id=";
-					query+=std::to_string(id);
-					query+= ";";
-					result = PQexec(fGetDbconn(),query.c_str());
-					if (PQgetisnull(result,0,PQfnumber(result, "result")) != 0) {
-						PQclear(result);
-						std::cout << "no result yet" << std::endl;
-						break; // spuriuos notification or not yet ready
+		result = PQexec(fGetDbconn(), "LISTEN setvalue_update;");
+		if (PQresultStatus(result) != PGRES_COMMAND_OK) {
+			std::cerr << "LISTEN command failed" <<  PQerrorMessage(base::fGetDbconn()) << std::endl;
+			PQclear(result);
+			return false;
+		}
+		PQclear(result);
+		while (true) {
+			struct pollfd pfd;
+			pfd.fd = PQsocket(base::fGetDbconn());
+			pfd.events = POLLIN | POLLPRI;
+			poll(&pfd, 1, -1);
+			if (pfd.revents & (POLLIN | POLLPRI)) {
+				PQconsumeInput(base::fGetDbconn());
+				while (true) {
+					auto notification = PQnotifies(base::fGetDbconn());
+					if (notification == nullptr) {
+						break;
 					}
-					aResponse = PQgetvalue(result,0,PQfnumber(result,"response"));
-					auto outcome=strcmp(PQgetvalue(result,0,PQfnumber(result,"result")),"t")==0;
-					std::cout << "result is '" << PQgetvalue(result,0,PQfnumber(result,"response")) << "'" << std::endl;
-					PQclear(result);
-					std::cout << "result is now '" << aResponse << "'" << std::endl;
-					return(outcome);
-				} else {
-					PQfreemem(notification);					
+					std::cout << "got notification '" << notification->relname << "'" << std::endl;
+					if (strcmp(notification->relname, "setvalue_update") == 0) {
+						PQfreemem(notification);
+						query = "SELECT * FROM setvalue_requests WHERE id=";
+						query += std::to_string(id);
+						query += ";";
+						result = PQexec(fGetDbconn(), query.c_str());
+						if (PQgetisnull(result, 0, PQfnumber(result, "result")) != 0) {
+							PQclear(result);
+							std::cout << "no result yet" << std::endl;
+							break; // spuriuos notification or not yet ready
+						}
+						aResponse = PQgetvalue(result, 0, PQfnumber(result, "response"));
+						auto outcome = strcmp(PQgetvalue(result, 0, PQfnumber(result, "result")), "t") == 0;
+						std::cout << "result is '" << PQgetvalue(result, 0, PQfnumber(result, "response")) << "'" << std::endl;
+						PQclear(result);
+						std::cout << "result is now '" << aResponse << "'" << std::endl;
+						return (outcome);
+					} else {
+						PQfreemem(notification);
+					}
 				}
 			}
+
 		}
-		
 	}
-}
 
 } // end of namespace slowcontrol

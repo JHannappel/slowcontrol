@@ -6,24 +6,23 @@
 
 
 class testvalue: public slowcontrol::boundCheckerInterface<slowcontrol::measurement<short>>,
-	        public slowcontrol::writeValueInterface {
+	        public slowcontrol::writeValueWithType<short> {
   public:
 	testvalue(const char *aName):
 		boundCheckerInterface(0, 0, 100) {
 		fInitializeUid(aName);
 		fConfigure();
 	}
-	virtual bool fProcessRequest(const std::string& aRequest, std::string& aResponse) {
-		short value;
-		if (fParseForSet(aRequest, value)) {
-			std::cerr << "set value to " << value << std::endl;
-			fStore(value);
-			aResponse= "done.";
+	virtual bool fProcessRequest(const writeValue::request* aRequest, std::string& aResponse) {
+		auto req = dynamic_cast<const requestWithType*>(aRequest);
+		if (req != nullptr) {
+			fStore(req->lGoalValue);
+			aResponse = "done.";
 			return true;
 		}
-		aResponse="bad request.";
+		aResponse = "can't cast request";
 		return false;
-	}
+	};
 };
 
 
