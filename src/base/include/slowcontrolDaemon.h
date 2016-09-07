@@ -63,6 +63,7 @@ namespace slowcontrol {
 		std::mutex lStorerMutex;
 		std::condition_variable lStorerCondition;
 		void fFlushAllValues();
+		void fClearOldPendingRequests();
 	  public:
 		daemon(const char *aName);
 		void fRegisterMeasurement(measurementBase* aMeasurement);

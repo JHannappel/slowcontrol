@@ -304,6 +304,15 @@ namespace slowcontrol {
 		}
 	}
 
+	void daemon::fClearOldPendingRequests() {
+		// mark all unprocessed requests for this daemon as missed and failed
+		std::string query("UPDATE setvalue_requests SET response='missed', result='false',response_time=now() WHERE response_time IS NULL AND request_time < now() AND uid IN (SELECT uid FROM uid_daemon_connection WHERE daemonid = ");
+		query += std::to_string(lId);
+		query += ");";
+		auto result = PQexec(base::fGetDbconn(), query.c_str());
+		PQclear(result);
+	}
+
 	void daemon::fProcessPendingRequests() {
 		std::string query("SELECT uid,request,id,EXTRACT('EPOCH' FROM request_time) AS request_time FROM setvalue_requests WHERE response_time IS NULL AND uid IN (SELECT uid FROM uid_daemon_connection WHERE daemonid = ");
 		query += std::to_string(lId);
@@ -411,6 +420,8 @@ namespace slowcontrol {
 		lSignalCatcherThread = new std::thread(fSignalCatcherThread);
 		lReaderThread = new std::thread(fReaderThread);
 		lStorerThread = new std::thread(fStorerThread);
+		fClearOldPendingRequests();
+		fProcessPendingRequests();
 		lConfigChangeListenerThread = new std::thread(fConfigChangeListener);
 		lScheduledWriterThread = new std::thread(fScheduledWriterThread);
 	}
