@@ -91,7 +91,7 @@ namespace slowcontrol {
 	}
 
 	void daemon::fRegisterMeasurement(measurementBase* aMeasurement) {
-		lMeasurements.emplace(aMeasurement->fGetUid(), aMeasurement);
+		lMeasurements.emplace_back(aMeasurement);
 		std::string query("INSERT INTO uid_daemon_connection (uid, daemonid) VALUES (");
 		query += std::to_string(aMeasurement->fGetUid());
 		query += ",";
@@ -172,8 +172,7 @@ namespace slowcontrol {
 	}
 
 	void daemon::fFlushAllValues() {
-		for (auto& it : lMeasurements) {
-			auto measurement = it.second;
+		for (auto measurement : lMeasurements) {
 			measurement->fFlush();
 		}
 	}
@@ -244,8 +243,7 @@ namespace slowcontrol {
 	void daemon::fStorerThread() {
 		while (true) {
 			bool quitNow = fGetInstance()->lStopRequested;
-			for (auto p : fGetInstance()->lMeasurements) {
-				auto measurement = p.second;
+			for (auto measurement : fGetInstance()->lMeasurements) {
 				measurement->fSendValues();
 			}
 			if (quitNow) {
@@ -407,8 +405,7 @@ namespace slowcontrol {
 				}
 			}
 			if (gotNotificaton) {
-				for (auto p : fGetInstance()->lMeasurements) {
-					auto measurement = p.second;
+				for (auto measurement : fGetInstance()->lMeasurements) {
 					measurement->fConfigure();
 				}
 			}

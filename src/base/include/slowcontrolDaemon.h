@@ -34,7 +34,7 @@ namespace slowcontrol {
 			                     decltype(lWriter) aWriter) :
 				lBase(aBase), lWriter(aWriter) {};
 		};
-		std::map<base::uidType, measurementBase*> lMeasurements;
+		std::vector<measurementBase*> lMeasurements;
 		std::vector<defaultReadableMeasurement> lMeasurementsWithDefaultReader;
 		std::map<base::uidType, writeableMeasurement> lWriteableMeasurements;
 
