@@ -29,10 +29,12 @@ $timeexpr="EXTRACT('epoch' from ($timeinnerexpr))";
 if (isset($_GET["width"])) {$width=$_GET["width"];} else {$width=640;}
 if (isset($_GET["height"])) {$height=$_GET["height"];} else {$height=$width/4*3;}
 
-if (isset($_GET["uid"])) {
-	$uids=explode(",",$_GET["uid"]);
-} else {
-	$uids=array();
+$uids=get_int_list("uid");
+$values=array();
+$i=0;
+foreach (explode(",",$uids) as $uid) {
+	$values[$uid]=array("arrayindex" => $i);
+	$i++;
 }
 if (isset($_GET["label"])) {$labels=explode(",",$_GET["label"]);} else {$label[]=NULL;}
 
@@ -58,6 +60,10 @@ $timeinterval=" time >= $starttime ";
 if ($endtime) {
 	 $timeinterval.="AND time <= $endtime ";
 }
+$timeinterval2=" request_time >= $starttime ";
+if ($endtime) {
+	 $timeinterval2.="AND request_time <= $endtime ";
+}
 
 $dbconn = pg_connect($dbstring);
 if (!$dbconn) {
@@ -65,23 +71,55 @@ if (!$dbconn) {
 };
 
 
-$i=0;
+
 $minimum=1E37;
 $maximum=-1E37;
 $unit="";
-foreach ($uids as $uid) {
-	$result = pg_query($dbconn,"SELECT data_table, description FROM uid_list WHERE uid=$uid;");
-	$row = pg_fetch_assoc($result);
-	$data_table[$i]=$row['data_table'];
-	$result = pg_query($dbconn,"SELECT value FROM uid_configs WHERE uid=$uid AND name='name';");
-	$row2 = pg_fetch_assoc($result);
-	if ($row2) {
-	  $label[$i]=str_replace('_',' ',$row2['value']);// gnuplot does not lik underscores
-	} else {
-	  $label[$i]=str_replace('_',' ',$row['description']);// gnuplot does not lik underscores
+
+
+$result = pg_query($dbconn,"SELECT uid,data_table,description,is_write_value FROM uid_list WHERE uid in ($uids) ORDER BY uid;");
+while ($row = pg_fetch_assoc($result)) {
+	$uid=$row['uid'];
+	$item=$values[$uid];
+	$item['data_table']=$row['data_table'];
+	$item['description']=$row['description'];
+	$item['is_write_value']=$row['is_write_value'];
+	$result2 = pg_query($dbconn,"SELECT name, value FROM uid_configs WHERE uid=$uid;");
+	while ($row2 = pg_fetch_assoc($result2)) {
+		$item[$row2['name']] = $row2['value'];
 	}
-	$i++;
-}
+	if (!isset($item['label'])) {
+		if (isset($item['name'])) {
+			$name=$item['name'];
+		} else {
+			$name=$item['description'];
+		}
+		$item['label']=str_replace('_',' ',$name);// gnuplot does not like underscores
+	}
+	$i = $item['arrayindex'];
+	$manipulate="";
+	if (isset($scales[$i])) {
+		if ($scales[$i] != 1) {
+			$manipulate.=" * ".$scales[$i];
+		}
+	}
+	if (isset($offsets[$i])) {
+		if ($offsets[$i] != 0) {
+			$manipulate.=" + ".$offsets[$i];
+		}
+	}
+	if ($item['data_table']=='measurements_bool') {
+		$value_expression='cast(value as integer)';
+	} else {
+		$value_expression='value';
+	}
+	$value_expression.=$manipulate;
+	$item['value_expression']=$value_expression;
+	$item['manipulation']=$manipulate;
+	$values[$uid]=$item;
+ }
+
+
 if (strpos($starttime,"now")===FALSE) {
 	$starttime="timestamp ".$starttime;
 }
@@ -159,38 +197,24 @@ if (is_resource($process)) {
     $key=$_GET['key'];
     fwrite($pipes[0], "set key ${key}\n");
   }
+	foreach ($values as $uid => $value) {
+		if ($value['is_write_value']=='t') {
+			$result = pg_query($dbconn,"SELECT comment, EXTRACT('epoch' from request_time - (request_time AT TIME ZONE 'UTC' - request_time AT TIME ZONE 'Europe/Berlin')) as request_time, (SELECT ${value['value_expression']} FROM ${value['data_table']} WHERE uid=$uid AND time > setvalue_requests.request_time ORDER BY TIME DESC LIMIT 1) AS value FROM setvalue_requests WHERE uid=$uid;");
+			while ($row=pg_fetch_assoc($result)) {
+				fwrite($pipes[0],"set label \"${row['comment']}\" at ${row['request_time']},${row['value']} rotate point points 1\n");
+			}
+		}
+	}
 		
   fwrite($pipes[0], "plot ");
   $need_comma=0;
-  $i=0;
-  foreach ($uids as $uid) {
+  foreach ($values as $uid => $value) {
     if ($need_comma) {fwrite($pipes[0],",");}
-    $manipulate="";
-    if (isset($scales[$i])) {
-      if ($scales[$i]!=1) {
-	$manipulate .= " * ".$scales[$i];
-      }
-    }
-    if (isset($offsets[$i])) {
-      if ($offsets[$i]!=0) {
-	$manipulate .= " + ".$offsets[$i];
-      }
-    }
-    //    if ($conversion[$i]=='') {
-    $valexp="value ".$manipulate;
-    //} else {
-    //$valexp="(" .$conversion[$i]. ")" .$manipulate;
-    //}
-    if ($data_table[$i] == "measurements_bool") {
-			$valexp = "cast(value as integer)";
-		}
-    $query="SELECT $timeexpr, $valexp FROM ".$data_table[$i]." WHERE uid=$uid AND $timeinterval ORDER BY time";
+    $query="SELECT $timeexpr, ${value['value_expression']} FROM ${value['data_table']} WHERE uid=$uid AND $timeinterval ORDER BY time";
     //        file_put_contents("/tmp/graphdebug.log",$query,FILE_APPEND);
-    fwrite($pipes[0], "\"<  /bin/echo -e \\\"$query\\\" | psql \\\"$dbstring\\\"\" u 1:3 title \"".$label[$i]."$manipulate\"");
+    fwrite($pipes[0], "\"<  /bin/echo -e \\\"$query\\\" | psql \\\"$dbstring\\\"\" u 1:3 title \"${value['label']}${value['manipulation']}\"");
     $need_comma=1;
-    $i++;
   }
-  
   fwrite($pipes[0], "\n");
   
   fclose($pipes[0]);
