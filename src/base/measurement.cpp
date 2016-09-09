@@ -50,7 +50,7 @@ namespace slowcontrol {
 	}
 
 	void measurementBase::fConfigure() {
-		std::string query("SELECT name,value FROM uid_configs WHERE uid=");
+		std::string query("SELECT name,value,comment FROM uid_configs WHERE uid=");
 		query += std::to_string(fGetUid());
 		query += ";";
 		std::set<std::string> optionsInDb;
@@ -60,7 +60,24 @@ namespace slowcontrol {
 			auto it = lConfigValues.find(name);
 			if (it != lConfigValues.end()) {
 				auto cfgVal = it->second;
-				cfgVal->fSetFromString(PQgetvalue(result, i, PQfnumber(result, "value")));
+				std::string valueRaw;
+				auto valueInDb = PQgetvalue(result, i, PQfnumber(result, "value"));
+				cfgVal->fAsString(valueRaw);
+				std::string comment(PQgetvalue(result, i, PQfnumber(result, "comment")));
+				if (comment.rfind("default") == comment.size() - 7
+				        && valueRaw.compare(valueInDb) != 0) {
+					query = "UPDATE uid_configs SET value=";
+					base::fAddEscapedStringToQuery(valueRaw, query);
+					query += ", comment='changed default' WHERE uid=";
+					query += std::to_string(fGetUid());
+					query += " AND name=";
+					base::fAddEscapedStringToQuery(name, query);
+					query += ";";
+					auto result2 =  PQexec(base::fGetDbconn(), query.c_str());
+					PQclear(result2);
+				} else {
+					cfgVal->fSetFromString(valueInDb);
+				}
 				optionsInDb.emplace(name);
 			} else {
 				std::cerr << "unknown cfg option '" << name << "' with value '" << PQgetvalue(result, i, PQfnumber(result, "value")) << "' encountered for uid " << fGetUid() << std::endl;

@@ -91,7 +91,10 @@ namespace slowcontrol {
 	}
 
 	void daemon::fRegisterMeasurement(measurementBase* aMeasurement) {
-		lMeasurements.emplace_back(aMeasurement);
+		{
+			std::lock_guard<decltype(lMeasurementListMutex)> lock(lMeasurementListMutex);
+			lMeasurements.emplace_back(aMeasurement);
+		}
 		std::string query("INSERT INTO uid_daemon_connection (uid, daemonid) VALUES (");
 		query += std::to_string(aMeasurement->fGetUid());
 		query += ",";
@@ -99,6 +102,8 @@ namespace slowcontrol {
 		query += ");";
 		auto result = PQexec(base::fGetDbconn(), query.c_str());
 		PQclear(result);
+
+		std::lock_guard<decltype(lMeasurementListMutex)> lock(lMeasurementListMutex);
 		auto reader = dynamic_cast<defaultReaderInterface*>(aMeasurement);
 		if (reader != nullptr) {
 			lMeasurementsWithDefaultReader.emplace_back(aMeasurement, reader);
@@ -194,13 +199,15 @@ namespace slowcontrol {
 				continue;
 			}
 			std::chrono::system_clock::duration maxReadoutInterval(0);
-			for (auto& measurement : fGetInstance()->lMeasurementsWithDefaultReader) {
-				if (maxReadoutInterval < measurement.lReader->fGetReadoutInterval()) {
-					maxReadoutInterval = measurement.lReader->fGetReadoutInterval();
+			{
+				std::lock_guard < decltype(fGetInstance()->lMeasurementListMutex) > lock(fGetInstance()->lMeasurementListMutex);
+				for (auto& measurement : fGetInstance()->lMeasurementsWithDefaultReader) {
+					if (maxReadoutInterval < measurement.lReader->fGetReadoutInterval()) {
+						maxReadoutInterval = measurement.lReader->fGetReadoutInterval();
+					}
 				}
+				maxReadoutInterval /= fGetInstance()->lMeasurementsWithDefaultReader.size();
 			}
-			maxReadoutInterval /= fGetInstance()->lMeasurementsWithDefaultReader.size();
-
 			if (fGetInstance()->lHeartBeatPeriod < maxReadoutInterval) {
 				fGetInstance()->lHeartBeatPeriod = maxReadoutInterval;
 			}
@@ -208,12 +215,14 @@ namespace slowcontrol {
 
 			std::multimap<std::chrono::steady_clock::time_point, defaultReadableMeasurement> scheduledMeasurements;
 			auto then = std::chrono::steady_clock::now();
-			for (auto& measurement : fGetInstance()->lMeasurementsWithDefaultReader) {
-				std::cout << "scheduled uid " << measurement.lBase->fGetUid() << " for " <<
-				          std::chrono::duration_cast<std::chrono::seconds>(then.time_since_epoch()).count() << "\n";
-				scheduledMeasurements.emplace(then, measurement);
-				then += maxReadoutInterval;
-
+			{
+				std::lock_guard < decltype(fGetInstance()->lMeasurementListMutex) > lock(fGetInstance()->lMeasurementListMutex);
+				for (auto& measurement : fGetInstance()->lMeasurementsWithDefaultReader) {
+					std::cout << "scheduled uid " << measurement.lBase->fGetUid() << " for " <<
+					          std::chrono::duration_cast<std::chrono::seconds>(then.time_since_epoch()).count() << "\n";
+					scheduledMeasurements.emplace(then, measurement);
+					then += maxReadoutInterval;
+				}
 			}
 			while (fGetInstance()->lMeasurementsWithDefaultReader.size()
 			        == scheduledMeasurements.size()) {
@@ -243,7 +252,16 @@ namespace slowcontrol {
 	void daemon::fStorerThread() {
 		while (true) {
 			bool quitNow = fGetInstance()->lStopRequested;
-			for (auto measurement : fGetInstance()->lMeasurements) {
+			std::vector<measurementBase*> measurements;
+			{
+				std::lock_guard < decltype(fGetInstance()->lMeasurementListMutex) > lock(fGetInstance()->lMeasurementListMutex);
+				for (auto measurement : fGetInstance()->lMeasurements) {
+					if (measurement->fValuesToSend()) {
+						measurements.emplace_back(measurement);
+					}
+				}
+			}
+			for (auto measurement : measurements) {
 				measurement->fSendValues();
 			}
 			if (quitNow) {
@@ -405,7 +423,12 @@ namespace slowcontrol {
 				}
 			}
 			if (gotNotificaton) {
-				for (auto measurement : fGetInstance()->lMeasurements) {
+				decltype(fGetInstance()->lMeasurements) measurements;
+				{
+					std::lock_guard < decltype(fGetInstance()->lMeasurementListMutex) > lock(fGetInstance()->lMeasurementListMutex);
+					measurements = fGetInstance()->lMeasurements;
+				}
+				for (auto measurement : measurements) {
 					measurement->fConfigure();
 				}
 			}

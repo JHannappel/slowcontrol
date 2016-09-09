@@ -38,6 +38,7 @@ namespace slowcontrol {
 		measurementBase();
 		virtual void fFlush(bool aFlushSingleValue = false) = 0;
 		virtual void fSendValues() = 0;
+		virtual bool fValuesToSend() = 0;
 		uidType fGetUid() const {
 			return lUid;
 		};
@@ -241,6 +242,10 @@ namespace slowcontrol {
 			}
 		};
 
+		virtual bool fValuesToSend() {
+			return ! lSendQueue.empty();
+		};
+
 		virtual void fSendValues() {
 			while (! lSendQueue.empty()) { // empty() is thread safe by itself
 				timedValue value;
@@ -324,6 +329,9 @@ namespace slowcontrol {
 			}
 		};
 
+		virtual bool fValuesToSend() {
+			return ! lSendQueue.empty();
+		};
 		virtual void fSendValues() {
 			while (! lSendQueue.empty()) { // empty() is thread safe by itself
 				timedValue value;

@@ -96,7 +96,7 @@ class fsSize: public boundCheckerInterface<measurement<float>, true, false>,
 	fsSize(int aHostCompound,
 	       const std::string& aDevice,
 	       const std::string& aMountPoint):
-		boundCheckerInterface(1, 10, 0),
+		boundCheckerInterface(0.001, 10, 0),
 		defaultReaderInterface(lConfigValues, std::chrono::seconds(10)),
 		lName("name", lConfigValues),
 		lMountPoint(aMountPoint) {
@@ -106,7 +106,7 @@ class fsSize: public boundCheckerInterface<measurement<float>, true, false>,
 		description += aDevice;
 		fInitializeUid(description);
 		description = aMountPoint;
-		description += "free space";
+		description += " free space";
 		lName.fSetValue(description);
 		fConfigure();
 		slowcontrol::base::fAddToCompound(aHostCompound, fGetUid(), description);
