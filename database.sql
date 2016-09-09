@@ -187,7 +187,8 @@ CREATE TABLE setvalue_requests (
     request_time timestamp with time zone DEFAULT now(),
     response_time timestamp with time zone,
     id integer NOT NULL,
-    comment text
+    comment text,
+    result boolean
 );
 
 
@@ -514,6 +515,14 @@ CREATE INDEX uid_daemon_connection_daemonid_index ON uid_daemon_connection USING
 CREATE RULE setvalue_resquest_notify AS
     ON INSERT TO setvalue_requests DO
  NOTIFY setvalue_request;
+
+
+--
+--
+
+CREATE RULE setvalue_update_notify AS
+    ON UPDATE TO setvalue_requests DO
+ NOTIFY setvalue_update;
 
 
 --
