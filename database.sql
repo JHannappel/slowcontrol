@@ -512,6 +512,14 @@ CREATE INDEX uid_daemon_connection_daemonid_index ON uid_daemon_connection USING
 --
 --
 
+CREATE RULE daemon_list_to_heartbeart AS
+    ON INSERT TO daemon_list DO  INSERT INTO daemon_heartbeat (daemonid)
+  VALUES (new.daemonid);
+
+
+--
+--
+
 CREATE RULE setvalue_resquest_notify AS
     ON INSERT TO setvalue_requests DO
  NOTIFY setvalue_request;
@@ -575,13 +583,6 @@ ALTER TABLE ONLY compound_uids
 
 ALTER TABLE ONLY compound_uids
     ADD CONSTRAINT compound_uids_uid_fkey FOREIGN KEY (uid) REFERENCES uid_list(uid);
-
-
---
---
-
-ALTER TABLE ONLY daemon_heartbeat
-    ADD CONSTRAINT daemon_heartbeat_daemonid_fkey FOREIGN KEY (daemonid) REFERENCES daemon_list(daemonid);
 
 
 --

@@ -53,7 +53,13 @@ class diskValue: public boundCheckerInterface<measurement<float>> {
 		description += aName;
 		fInitializeUid(description);
 		fConfigure();
-		slowcontrol::base::fAddToCompound(aDiskCompound, fGetUid(), aName);
+		description = "smartvalue ";
+		description += std::to_string(aId);
+		auto svCompound = base::fGetCompoundId(description.c_str(), aName);
+		auto svsCompound = base::fGetCompoundId("smartvalues", "all smartvalues");
+		base::fAddSubCompound(svsCompound, svCompound, aName);
+		base::fAddToCompound(svCompound, fGetUid(), aSerial);
+		base::fAddToCompound(aDiskCompound, fGetUid(), aName);
 	};
 };
 
