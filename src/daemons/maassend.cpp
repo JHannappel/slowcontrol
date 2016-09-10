@@ -19,6 +19,7 @@ class cpuTemperature: public boundCheckerInterface<measurement<float>, false, tr
 		boundCheckerInterface(2, 10, 90),
 		defaultReaderInterface(lConfigValues, std::chrono::seconds(30)),
 		lPath(aPath) {
+		lClassName.fSetFromString(__func__);
 		std::string name;
 		name = slowcontrol::base::fGetHostName();
 		name += ":";
@@ -43,6 +44,7 @@ class diskValue: public boundCheckerInterface<measurement<float>> {
 	          const char *aName,
 	          int aDiskCompound) :
 		boundCheckerInterface(1, std::numeric_limits<valueType>::lowest(), std::numeric_limits<valueType>::max()) {
+		lClassName.fSetFromString(__func__);
 		std::string description("disk");
 		description += aSerial;
 		description += "_";
@@ -61,6 +63,7 @@ class freeMemory: public boundCheckerInterface<measurement<float>, true, false>,
 	freeMemory(int aHostCompound):
 		boundCheckerInterface(1000, 2000, 0),
 		defaultReaderInterface(lConfigValues, std::chrono::seconds(10)) {
+		lClassName.fSetFromString(__func__);
 		std::string description;
 		description = slowcontrol::base::fGetHostName();
 		description += ":free_memory";
@@ -100,6 +103,7 @@ class fsSize: public boundCheckerInterface<measurement<float>, true, false>,
 		defaultReaderInterface(lConfigValues, std::chrono::seconds(10)),
 		lName("name", lConfigValues),
 		lMountPoint(aMountPoint) {
+		lClassName.fSetFromString(__func__);
 		std::string description("free space on ");
 		description += slowcontrol::base::fGetHostName();
 		description += " ";

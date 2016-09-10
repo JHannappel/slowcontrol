@@ -20,6 +20,7 @@ class owTemperature: public slowcontrol::boundCheckerInterface<slowcontrol::meas
 		boundCheckerInterface(0.5, -55, 125),
 		defaultReaderInterface(lConfigValues, std::chrono::seconds(30)),
 		unitInterface(lConfigValues, "deg C") {
+		lClassName.fSetFromString(__func__);
 		std::string basePath = "/1w/";
 		basePath += aPath;
 		basePath += "/";

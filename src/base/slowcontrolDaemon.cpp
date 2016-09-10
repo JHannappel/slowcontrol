@@ -19,6 +19,7 @@ namespace slowcontrol {
 		heartBeatSkew(const std::string& aName):
 			boundCheckerInterface(0.01, -0.1, 0.1),
 			unitInterface(lConfigValues, "s") {
+			lClassName.fSetFromString(__func__);
 			std::string description(aName);
 			description += " heart beat skew";
 			fInitializeUid(description);

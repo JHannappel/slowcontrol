@@ -30,6 +30,7 @@ namespace slowcontrol {
 		std::mutex lSendQueueMutex;
 		uidType lUid;
 		measurement_state::stateType lState;
+		configValue<std::string> lClassName;
 		virtual const char *fGetDefaultTableName() const = 0;
 		void fSaveOption(const configValueBase& aCfgValue,
 		                 const char *comment);

@@ -6,7 +6,8 @@
 
 namespace slowcontrol {
 
-	measurementBase::measurementBase() {
+	measurementBase::measurementBase():
+		lClassName("className", lConfigValues) {
 		lState = measurement_state::fGetState("normal");
 	};
 

@@ -11,6 +11,7 @@ class presence: public slowcontrol::measurement<bool>,
 	presence(const std::string& aAddress):
 		measurement(),
 		defaultReaderInterface(lConfigValues, std::chrono::minutes(10)) {
+		lClassName.fSetFromString(__func__);
 		lCommand = "l2ping -c 1 ";
 		lCommand += aAddress;
 		std::string description(aAddress);

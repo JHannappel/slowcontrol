@@ -10,6 +10,7 @@ class testvalue: public slowcontrol::boundCheckerInterface<slowcontrol::measurem
   public:
 	testvalue(const char *aName):
 		boundCheckerInterface(0, 0, 100) {
+		lClassName.fSetFromString(__func__);
 		fInitializeUid(aName);
 		fConfigure();
 	}
