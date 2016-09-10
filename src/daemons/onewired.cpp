@@ -32,7 +32,7 @@ class owTemperature: public slowcontrol::boundCheckerInterface<slowcontrol::meas
 	virtual void fReadCurrentValue() {
 		std::ifstream thermometer(lPath.c_str());
 		if (thermometer.fail() && lState != lBadFileType) {
-			lBadFileType = fSetState("unreadable","can't open file" + lPath);
+			lBadFileType = fSetState("unreadable", "can't open file" + lPath);
 		} else {
 			float temperature;
 			thermometer >> temperature;
@@ -50,8 +50,7 @@ class owTemperature: public slowcontrol::boundCheckerInterface<slowcontrol::meas
 	};
 };
 
-static void populateThermometers() 
-{
+static void populateThermometers() {
 	static std::set<std::string> knownThermometers;
 
 	DIR *owdir = opendir("/1w");
@@ -61,7 +60,7 @@ static void populateThermometers()
 			break;
 		}
 		if (strncmp("10.", de->d_name, 3) == 0
-				|| strncmp("28.", de->d_name, 3) == 0) {
+		        || strncmp("28.", de->d_name, 3) == 0) {
 			std::string thermometer(de->d_name);
 			auto found = knownThermometers.insert(thermometer);
 			if (found.second == true) { // if we inserted we do not now this one yet
