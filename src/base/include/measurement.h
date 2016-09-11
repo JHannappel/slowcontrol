@@ -66,9 +66,9 @@ namespace slowcontrol {
 	};
 
 
-	class writeValue {
+	class writeValue { ///< interface for mrewsurements that can be set, i.e. write values
 	  public:
-		class request {
+		class request { ///< class to represent one write request, needs specialisation to do something
 		  public:
 			typedef std::chrono::system_clock::time_point timeType;
 			typedef int idType;
@@ -102,7 +102,7 @@ namespace slowcontrol {
 		virtual bool fProcessRequest(const request* aRequest, std::string& aResponse) = 0;
 	};
 
-	template <typename T> class writeValueWithType: public writeValue {
+	template <typename T> class writeValueWithType: public writeValue { ///< templated specialisation for real use
 	  public:
 		class requestWithType: public request {
 		  public:
@@ -158,6 +158,7 @@ namespace slowcontrol {
 		};
 	  protected:
 		virtual const char *fGetDefaultTableName() const {
+			// optimisation should squash this to s single return for each template instance
 			if (std::is_integral<T>::value && sizeof(T) <= 2) {
 				return "measurements_int2";
 			} else if (std::is_integral<T>::value && sizeof(T) <= 4) {
