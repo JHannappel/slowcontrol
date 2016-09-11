@@ -3,6 +3,33 @@
 #include <string.h>
 #include <poll.h>
 #include <Options.h>
+
+/*! \mainpage
+	A slowcontrol system for general use, eg. in home automation.
+	Written in C++ 11, it uses a postgres server as database backend.
+
+	This is work in progress, so even basic parts may change at any time.
+	The project servers not only the purpose
+	of creating an useful slowcontrol
+	but also as programming exercise and playground for concepts.
+
+	It is in a way a re-write of the slowcontrol system that is used by
+	the BGO-OD experiment and uses similar basic structures.
+	The experience from there shows that the system is scaleable over
+	a wide range:
+	At a typical home setup a raspberry pi 3 with an USB hard disk
+  as database and web server is ample for a few hundred measurements,
+  (as shown ny my onwn installation).
+	AT BGO-OD the database server is larger and serves more than 15000
+  measurements without performance problems.
+
+	The main trick is that the measurements are done by a multitude of
+  independent daemons each of which tackles a reasonable task, usually
+  conected to one piece of hardware.
+	Only after spasification data are sent to the database, keeping the load
+  low.
+ */
+
 namespace slowcontrol {
 	std::map<std::thread::id, PGconn *> base::gConnections;
 	std::string base::gHostname;

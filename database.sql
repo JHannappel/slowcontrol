@@ -88,7 +88,8 @@ CREATE TABLE daemon_heartbeat (
     daemon_time timestamp with time zone,
     server_time timestamp with time zone DEFAULT now(),
     next_beat timestamp with time zone
-);
+)
+WITH (fillfactor='10');
 
 
 
@@ -189,7 +190,8 @@ CREATE TABLE setvalue_requests (
     id integer NOT NULL,
     comment text,
     result boolean
-);
+)
+WITH (fillfactor='30');
 
 
 
