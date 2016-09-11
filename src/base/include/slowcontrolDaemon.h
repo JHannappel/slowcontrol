@@ -51,11 +51,11 @@ namespace slowcontrol {
 		std::chrono::system_clock::duration lHeartBeatPeriod;
 		heartBeatSkew* lHeartBeatSkew;
 		static daemon* gInstance;
-		static void fSignalCatcherThread();
-		static void fReaderThread();
-		static void fScheduledWriterThread();
-		static void fStorerThread();
-		static void fConfigChangeListener();
+		void fSignalCatcherThread();
+		void fReaderThread();
+		void fScheduledWriterThread();
+		void fStorerThread();
+		void fConfigChangeListener();
 		void fDaemonize();
 		std::chrono::system_clock::time_point fBeatHeart(bool aLastTime = false);
 		std::thread* lSignalCatcherThread;

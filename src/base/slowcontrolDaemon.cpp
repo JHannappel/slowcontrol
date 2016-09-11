@@ -168,9 +168,9 @@ namespace slowcontrol {
 			switch (sig) {
 				case SIGTERM:
 				case SIGINT:
-					fGetInstance()->lStopRequested = true;
-					fGetInstance()->lWaitCondition.notify_all();
-					fGetInstance()->fFlushAllValues();
+					lStopRequested = true;
+					lWaitCondition.notify_all();
+					fFlushAllValues();
 					std::cerr << "stopping signal thread" << std::endl;
 					return;
 				default     :
@@ -186,41 +186,41 @@ namespace slowcontrol {
 	}
 
 	void daemon::fReaderThread() {
-		auto nextHeartBeatTime = fGetInstance()->fBeatHeart();
+		auto nextHeartBeatTime = fBeatHeart();
 		while (true) {
-			if (fGetInstance()->lMeasurementsWithDefaultReader.empty()) {
-				if (fGetInstance()->lStopRequested) {
-					fGetInstance()->fBeatHeart(true);
+			if (lMeasurementsWithDefaultReader.empty()) {
+				if (lStopRequested) {
+					fBeatHeart(true);
 					std::cerr << "stopping reader thread" << std::endl;
 					return;
 				}
 				if (std::chrono::system_clock::now() > nextHeartBeatTime) {
-					nextHeartBeatTime = fGetInstance()->fBeatHeart();
+					nextHeartBeatTime = fBeatHeart();
 				}
 
-				fGetInstance()->fWaitFor(std::chrono::seconds(1));
+				fWaitFor(std::chrono::seconds(1));
 				continue;
 			}
 			std::chrono::system_clock::duration maxReadoutInterval(0);
 			{
-				std::lock_guard < decltype(fGetInstance()->lMeasurementsWithReaderMutex) > lock(fGetInstance()->lMeasurementsWithReaderMutex);
-				for (auto& measurement : fGetInstance()->lMeasurementsWithDefaultReader) {
+				std::lock_guard < decltype(lMeasurementsWithReaderMutex) > lock(lMeasurementsWithReaderMutex);
+				for (auto& measurement : lMeasurementsWithDefaultReader) {
 					if (maxReadoutInterval < measurement.lReader->fGetReadoutInterval()) {
 						maxReadoutInterval = measurement.lReader->fGetReadoutInterval();
 					}
 				}
-				maxReadoutInterval /= fGetInstance()->lMeasurementsWithDefaultReader.size();
+				maxReadoutInterval /= lMeasurementsWithDefaultReader.size();
 			}
-			if (fGetInstance()->lHeartBeatPeriod < maxReadoutInterval) {
-				fGetInstance()->lHeartBeatPeriod = maxReadoutInterval;
+			if (lHeartBeatPeriod < maxReadoutInterval) {
+				lHeartBeatPeriod = maxReadoutInterval;
 			}
 
 
 			std::multimap<std::chrono::steady_clock::time_point, defaultReadableMeasurement> scheduledMeasurements;
 			auto then = std::chrono::steady_clock::now();
 			{
-				std::lock_guard < decltype(fGetInstance()->lMeasurementsWithReaderMutex) > lock(fGetInstance()->lMeasurementsWithReaderMutex);
-				for (auto& measurement : fGetInstance()->lMeasurementsWithDefaultReader) {
+				std::lock_guard < decltype(lMeasurementsWithReaderMutex) > lock(lMeasurementsWithReaderMutex);
+				for (auto& measurement : lMeasurementsWithDefaultReader) {
 					std::cout << "scheduled uid " << measurement.lBase->fGetUid() << " for " <<
 					          std::chrono::duration_cast<std::chrono::seconds>(then.time_since_epoch()).count() << "\n";
 					scheduledMeasurements.emplace(then, measurement);
@@ -228,10 +228,10 @@ namespace slowcontrol {
 				}
 			}
 			// here no lock on the mutex is needed fur just acessing size()
-			while (fGetInstance()->lMeasurementsWithDefaultReader.size()
+			while (lMeasurementsWithDefaultReader.size()
 			        == scheduledMeasurements.size()) {
-				if (fGetInstance()->lStopRequested) {
-					fGetInstance()->fBeatHeart(true);
+				if (lStopRequested) {
+					fBeatHeart(true);
 					std::cerr << "stopping reader thread" << std::endl;
 					return;
 				}
@@ -248,18 +248,18 @@ namespace slowcontrol {
 				                              + measurement.lReader->fGetReadoutInterval(),
 				                              measurement);
 				if (std::chrono::system_clock::now() > nextHeartBeatTime) {
-					nextHeartBeatTime = fGetInstance()->fBeatHeart();
+					nextHeartBeatTime = fBeatHeart();
 				}
 			}
 		}
 	}
 	void daemon::fStorerThread() {
 		while (true) {
-			bool quitNow = fGetInstance()->lStopRequested;
+			bool quitNow = lStopRequested;
 			std::vector<measurementBase*> measurements;
 			{
-				std::lock_guard < decltype(fGetInstance()->lMeasurementsMutex) > lock(fGetInstance()->lMeasurementsMutex);
-				for (auto measurement : fGetInstance()->lMeasurements) {
+				std::lock_guard < decltype(lMeasurementsMutex) > lock(lMeasurementsMutex);
+				for (auto measurement : lMeasurements) {
 					if (measurement->fValuesToSend()) {
 						measurements.emplace_back(measurement);
 					}
@@ -272,8 +272,8 @@ namespace slowcontrol {
 				std::cerr << "stopping storer thread" << std::endl;
 				return;
 			}
-			std::unique_lock<decltype(lStorerMutex)> lock(fGetInstance()->lStorerMutex);
-			fGetInstance()->lStorerCondition.wait(lock);
+			std::unique_lock<decltype(lStorerMutex)> lock(lStorerMutex);
+			lStorerCondition.wait(lock);
 		}
 	}
 
@@ -283,21 +283,21 @@ namespace slowcontrol {
 
 	void daemon::fScheduledWriterThread() {
 		while (true) {
-			if (fGetInstance()->lStopRequested) {
+			if (lStopRequested) {
 				std::cerr << "stopping scheduled writer thread" << std::endl;
 				return;
 			}
 			writeValue::request* req;
 			{
-				std::unique_lock < decltype(fGetInstance()->lScheduledWriteRequestMutex) > lock(fGetInstance()->lScheduledWriteRequestMutex);
+				std::unique_lock < decltype(lScheduledWriteRequestMutex) > lock(lScheduledWriteRequestMutex);
 				auto it = gScheduledWriteRequests.begin();
 				if (it != gScheduledWriteRequests.end()) {
-					auto waitResult = fGetInstance()->lScheduledWriteRequestWaitCondition.wait_until(lock, it->first);
+					auto waitResult = lScheduledWriteRequestWaitCondition.wait_until(lock, it->first);
 					if (waitResult == std::cv_status::no_timeout) {
 						continue; // probably a new value added
 					}
 				} else {
-					fGetInstance()->lScheduledWriteRequestWaitCondition.wait_for(lock, std::chrono::seconds(1));
+					lScheduledWriteRequestWaitCondition.wait_for(lock, std::chrono::seconds(1));
 					continue; // probably a new value added
 				}
 				if (it->first > std::chrono::system_clock::now()) {
@@ -402,7 +402,7 @@ namespace slowcontrol {
 			pfd.fd = PQsocket(base::fGetDbconn());
 			pfd.events = POLLIN | POLLPRI;
 			if (poll(&pfd, 1, 100) == 0) {
-				if (fGetInstance()->lStopRequested) {
+				if (lStopRequested) {
 					std::cerr << "stopping cfg change listener thread" << std::endl;
 					return;
 				}
@@ -421,17 +421,17 @@ namespace slowcontrol {
 					if (strcmp(notification->relname, "uid_configs_update") == 0) {
 						gotNotificaton = true;
 					} else if (strcmp(notification->relname, "setvalue_request") == 0) {
-						fGetInstance()->fProcessPendingRequests();
+						fProcessPendingRequests();
 					}
 					PQfreemem(notification);
 				}
 			}
 			if (gotNotificaton) {
-				decltype(fGetInstance()->lMeasurements) measurements;
+				decltype(lMeasurements) measurements;
 				{
 					// copy vector of measurements to decrease time spent in the lock
-					std::lock_guard < decltype(fGetInstance()->lMeasurementsMutex) > lock(fGetInstance()->lMeasurementsMutex);
-					measurements = fGetInstance()->lMeasurements;
+					std::lock_guard < decltype(lMeasurementsMutex) > lock(lMeasurementsMutex);
+					measurements = lMeasurements;
 				}
 				for (auto measurement : measurements) {
 					measurement->fConfigure();
@@ -442,13 +442,13 @@ namespace slowcontrol {
 	}
 
 	void daemon::fStartThreads() {
-		lSignalCatcherThread = new std::thread(fSignalCatcherThread);
-		lReaderThread = new std::thread(fReaderThread);
-		lStorerThread = new std::thread(fStorerThread);
+		lSignalCatcherThread = new std::thread(&daemon::fSignalCatcherThread, this);
+		lReaderThread = new std::thread(&daemon::fReaderThread, this);
+		lStorerThread = new std::thread(&daemon::fStorerThread, this);
 		fClearOldPendingRequests();
 		fProcessPendingRequests();
-		lConfigChangeListenerThread = new std::thread(fConfigChangeListener);
-		lScheduledWriterThread = new std::thread(fScheduledWriterThread);
+		lConfigChangeListenerThread = new std::thread(&daemon::fConfigChangeListener, this);
+		lScheduledWriterThread = new std::thread(&daemon::fScheduledWriterThread, this);
 	}
 	void daemon::fWaitForThreads() {
 		lReaderThread->join();
