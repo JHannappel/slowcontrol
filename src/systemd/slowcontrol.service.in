@@ -1,13 +1,13 @@
 [Unit]
-Description=Slowcontrol start
+Description=Slowcontrol ${DAEMON} start
 After=network.target nss-lookup.target time-sync.target
 
 [Service]
 Type=forking
 PrivateTmp=false
-PIDFile=/var/run/maassend.pid
+PIDFile=/var/run/${DAEMON}.pid
 Environment="HOME=/root"
-ExecStart=/root/maassend --pidFile /var/run/maassend.pid
+ExecStart=${CMAKE_INSTALL_PREFIX}/bin/${DAEMON} --pidFile /var/run/${DAEMON}.pid
 KillMode=mixed
 
 [Install]
