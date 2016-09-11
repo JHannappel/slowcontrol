@@ -35,9 +35,11 @@ namespace slowcontrol {
 				lBase(aBase), lWriter(aWriter) {};
 		};
 		std::vector<measurementBase*> lMeasurements;
+		std::mutex lMeasurementsMutex;
 		std::vector<defaultReadableMeasurement> lMeasurementsWithDefaultReader;
+		std::mutex lMeasurementsWithReaderMutex;
 		std::map<base::uidType, writeableMeasurement> lWriteableMeasurements;
-		std::mutex lMeasurementListMutex;
+		std::mutex lMeasurementsWriteableMutex;
 
 		std::mutex lScheduledWriteRequestMutex;
 		std::condition_variable lScheduledWriteRequestWaitCondition;

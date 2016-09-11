@@ -93,7 +93,7 @@ namespace slowcontrol {
 
 	void daemon::fRegisterMeasurement(measurementBase* aMeasurement) {
 		{
-			std::lock_guard<decltype(lMeasurementListMutex)> lock(lMeasurementListMutex);
+			std::lock_guard<decltype(lMeasurementsMutex)> lock(lMeasurementsMutex);
 			lMeasurements.emplace_back(aMeasurement);
 		}
 		std::string query("INSERT INTO uid_daemon_connection (uid, daemonid) VALUES (");
@@ -104,14 +104,16 @@ namespace slowcontrol {
 		auto result = PQexec(base::fGetDbconn(), query.c_str());
 		PQclear(result);
 
-		std::lock_guard<decltype(lMeasurementListMutex)> lock(lMeasurementListMutex);
 		auto reader = dynamic_cast<defaultReaderInterface*>(aMeasurement);
 		if (reader != nullptr) {
+			std::lock_guard<decltype(lMeasurementsWithReaderMutex)> lock(lMeasurementsWithReaderMutex);
 			lMeasurementsWithDefaultReader.emplace_back(aMeasurement, reader);
 		}
 		auto writer = dynamic_cast<writeValue*>(aMeasurement);
 		if (writer != nullptr) {
 			writeableMeasurement wM(aMeasurement, writer);
+			std::lock_guard<decltype(lMeasurementsWriteableMutex)> lock(lMeasurementsWriteableMutex);
+
 			lWriteableMeasurements.emplace(aMeasurement->fGetUid(), wM);
 		}
 	}
@@ -201,7 +203,7 @@ namespace slowcontrol {
 			}
 			std::chrono::system_clock::duration maxReadoutInterval(0);
 			{
-				std::lock_guard < decltype(fGetInstance()->lMeasurementListMutex) > lock(fGetInstance()->lMeasurementListMutex);
+				std::lock_guard < decltype(fGetInstance()->lMeasurementsWithReaderMutex) > lock(fGetInstance()->lMeasurementsWithReaderMutex);
 				for (auto& measurement : fGetInstance()->lMeasurementsWithDefaultReader) {
 					if (maxReadoutInterval < measurement.lReader->fGetReadoutInterval()) {
 						maxReadoutInterval = measurement.lReader->fGetReadoutInterval();
@@ -217,7 +219,7 @@ namespace slowcontrol {
 			std::multimap<std::chrono::steady_clock::time_point, defaultReadableMeasurement> scheduledMeasurements;
 			auto then = std::chrono::steady_clock::now();
 			{
-				std::lock_guard < decltype(fGetInstance()->lMeasurementListMutex) > lock(fGetInstance()->lMeasurementListMutex);
+				std::lock_guard < decltype(fGetInstance()->lMeasurementsWithReaderMutex) > lock(fGetInstance()->lMeasurementsWithReaderMutex);
 				for (auto& measurement : fGetInstance()->lMeasurementsWithDefaultReader) {
 					std::cout << "scheduled uid " << measurement.lBase->fGetUid() << " for " <<
 					          std::chrono::duration_cast<std::chrono::seconds>(then.time_since_epoch()).count() << "\n";
@@ -225,6 +227,7 @@ namespace slowcontrol {
 					then += maxReadoutInterval;
 				}
 			}
+			// here no lock on the mutex is needed fur just acessing size()
 			while (fGetInstance()->lMeasurementsWithDefaultReader.size()
 			        == scheduledMeasurements.size()) {
 				if (fGetInstance()->lStopRequested) {
@@ -255,7 +258,7 @@ namespace slowcontrol {
 			bool quitNow = fGetInstance()->lStopRequested;
 			std::vector<measurementBase*> measurements;
 			{
-				std::lock_guard < decltype(fGetInstance()->lMeasurementListMutex) > lock(fGetInstance()->lMeasurementListMutex);
+				std::lock_guard < decltype(fGetInstance()->lMeasurementsMutex) > lock(fGetInstance()->lMeasurementsMutex);
 				for (auto measurement : fGetInstance()->lMeasurements) {
 					if (measurement->fValuesToSend()) {
 						measurements.emplace_back(measurement);
@@ -426,7 +429,8 @@ namespace slowcontrol {
 			if (gotNotificaton) {
 				decltype(fGetInstance()->lMeasurements) measurements;
 				{
-					std::lock_guard < decltype(fGetInstance()->lMeasurementListMutex) > lock(fGetInstance()->lMeasurementListMutex);
+					// copy vector of measurements to decrease time spent in the lock
+					std::lock_guard < decltype(fGetInstance()->lMeasurementsMutex) > lock(fGetInstance()->lMeasurementsMutex);
 					measurements = fGetInstance()->lMeasurements;
 				}
 				for (auto measurement : measurements) {
