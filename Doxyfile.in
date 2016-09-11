@@ -12,3 +12,6 @@ RECURSIVE              = YES
 USE_MDFILE_AS_MAINPAGE = @doxy_main_page@
 SOURCE_BROWSER         = YES
 INLINE_SOURCES         = YES
+EXTRACT_ALL	       = YES
+CALLER_GRAPH           = YES
+CALL_GRAPH             = YES

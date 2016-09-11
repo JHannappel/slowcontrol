@@ -14,41 +14,47 @@
 
 #include "configValue.h"
 #include "slowcontrolDaemon.h"
+#include "slowcontrol.h"
 #include "states.h"
 
 namespace slowcontrol {
 
+	/// base class for measurements
+
+	/// it provides an interface for the basics tasks that all measurements must know.
+	/// Most of the fuctions are pure virtual and must be defined in the classes inheriting
+	/// from this one.
+
 	class measurementBase {
 	  public:
-		typedef int32_t uidType;
-		typedef std::chrono::system_clock::time_point timeType;
-		typedef std::chrono::system_clock::duration durationType;
+		typedef std::chrono::system_clock::time_point timeType; ///< type for the time points at wich measurements occur
+		typedef std::chrono::system_clock::duration durationType; ///< type for durations matching the timeType
 	  protected:
-		configValueBase::mapType lConfigValues;
-	  public:
+		configValueBase::mapType lConfigValues; ///< map of config values, needed also as parameter for the config value constructors
 	  protected:
-		std::mutex lSendQueueMutex;
-		uidType lUid;
-		measurement_state::stateType lState;
-		configValue<std::string> lClassName;
-		virtual const char *fGetDefaultTableName() const = 0;
+		std::mutex lSendQueueMutex; ///< mutex for protecting the value send queue, used in measurement
+		base::uidType lUid;               ///< the uid of this measurement
+		measurement_state::stateType lState;  ///< the state of this measurement, \sa measurement_state
+		configValue<std::string> lClassName;  ///< shall hold the class name, must be set in the most derived contstructor, for exsmples \sa owTemperature diskValue
+
+		virtual const char *fGetDefaultTableName() const = 0;  ///< returns the name of the table in the database
 		void fSaveOption(const configValueBase& aCfgValue,
-		                 const char *comment);
-		virtual void fInitializeUid(const std::string& aDescription);
+		                 const char *comment); ///< saves an option's current value in the database
+		virtual void fInitializeUid(const std::string& aDescription); ///< sets and registers uid in database, does post-constructor initialisation
 	  public:
 		measurementBase();
-		virtual void fFlush(bool aFlushSingleValue = false) = 0;
-		virtual void fSendValues() = 0;
-		virtual bool fValuesToSend() = 0;
-		uidType fGetUid() const {
+		virtual void fFlush(bool aFlushSingleValue = false) = 0; ///< write current value into database
+		virtual void fSendValues() = 0; ///< send values in send queue to database
+		virtual bool fValuesToSend() = 0; ///< check if there are values to send
+		decltype(lUid) fGetUid() const {  ///< get the UID
 			return lUid;
 		};
-		virtual void fConfigure();
+		virtual void fConfigure(); ///< (re-)read the config values from the database
 		virtual measurement_state::stateType fSetState(const std::string& aStateName,
-		        const std::string& aReason);
+		        const std::string& aReason); ///< set state by name
 	};
 
-	class defaultReaderInterface {
+	class defaultReaderInterface { ///< interface for measurements that can read themselves.
 		configValue<measurementBase::durationType> lReadoutInterval;
 	  public:
 		defaultReaderInterface(configValueBase::mapType& aMap,

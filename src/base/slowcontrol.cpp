@@ -125,7 +125,7 @@ namespace slowcontrol {
 	}
 
 
-	void base::fAddToCompound(int aCompound, int aUid, const char* aName) {
+	void base::fAddToCompound(int aCompound, uidType aUid, const char* aName) {
 		std::string query("SELECT * FROM compound_uids WHERE id=");
 		query += std::to_string(aCompound);
 		query += " AND uid= ";
@@ -165,7 +165,7 @@ namespace slowcontrol {
 		}
 		PQclear(result);
 	}
-	void base::fAddToCompound(int aCompound, int aUid, const std::string& aName) {
+	void base::fAddToCompound(int aCompound, uidType aUid, const std::string& aName) {
 		fAddToCompound(aCompound, aUid, aName.c_str());
 	}
 	void base::fAddSubCompound(int aParent, int aChild, const std::string& aName) {
