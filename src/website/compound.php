@@ -63,4 +63,7 @@ while ($row = pg_fetch_assoc($result)) {
   echo "</tr>\n";
  }
 echo "</table>\n";
+
+page_foot();
+
 ?>

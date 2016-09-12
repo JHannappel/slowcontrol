@@ -17,7 +17,7 @@
     position: absolute;
     /* 	float: left; */
     left:0;
-    top: 148px;
+    top: 0px;
     width: 10em;
     height: 100%;
     /*	right: auto;
@@ -49,7 +49,8 @@
     position: fixed;
     /*            height: 3.4em; */
     right: auto;
-    left: 12em;        
+    left: 0em;
+    width: 100%;
     padding-left:0.5ex;
 }
 #help {
@@ -169,6 +170,105 @@ nav a {
     body {
                 font-size: 30pt;
         }
+    #content {
+	margin-top: 2ex;
+	margin-left:0px;
+	margin-bottom:4em;
+	margin-right:0px;
+    }
+    #navigation {
+	background: #0f0
+	position: absolute;
+	/* 	float: left; */
+	left:0;
+	top: 0px;
+	width: 100%;
+	height: 1ex;
+	/*	right: auto;
+	left: 0;*/
+	margin-bottom: 2ex;
+	margin-right: 1em;
+	margin-left: 0;
+	margin-top: 0;
+	padding-left: 0px;
+	padding-right: 1em;
+	padding-top: 0ex;
+	padding-bottom: 0ex;
+	z-index : 50;
+    }
+    nav {
+	background: #00f
+	display: block;
+	position: absolute;
+	top:0;
+	min-height: 1em;
+	margin: 0;
+	padding: 0;
+	width:95%;
+    }
+    nav ul {
+	position: absolute;
+	top:0;
+	width:100%;
+	height:1em
+	border: solid 1px #a00;
+	background: #fff url(image/icon-menu.png) no-repeat 0.5em 1.2em;
+	background-size: 2.7em auto;
+	border-radius: 5px;
+	box-shadow: 0 1px 2px rgba(0,0,0,.3);
+    }
+    nav ul li {
+	display: none; /* hide all <li> items */
+	transition: none !important;
+	box-shadow: none !important;
+	border: none !important;
+	background: none !important;
+	text-align: left;
+	list-style: none;
+	margin: 0 0 0 1.5em;
+	padding: 0.5em 0.5em 0.5em 0;
+	width:100%;
+    }
+    nav ul li:hover {
+	background: none !important;
+	transition: none !important;
+	box-shadow: none !important;
+	border: none !important;
+	width:100%;
+    }
+    nav li.current {
+	display: block; /* show only current <li> item */
+    }
+    nav ul li a {
+	margin: 0;
+	padding: 0;
+	text-decoration: none !important;
+	color: black !important;
+	line-height: 100%;
+	font-size: 2em;
+	width:100%;
+    }
+    nav li.current a {
+	background: none;
+	color: #666 !important;
+    }
+    nav ul:hover {
+	background-image: none;
+    }
+    nav ul:hover li {
+	display: block;
+	margin-top: 0.5em;
+    }
+    nav ul:hover li.current {
+	margin:0;
+	margin-top: 0.5em;
+	padding:0 0 0 1.5em;
+	background: url(image/icon-check.png) no-repeat 0.5em 0.7em !important;
+	background-size: 0.7em auto !important;
+    }
+    nav.center ul {
+	left: 2.5%;
+    }
 }
 
 @media print {

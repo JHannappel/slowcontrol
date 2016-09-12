@@ -6,6 +6,8 @@ if (!$dbconn) {
 	die('Could not connect: ' . pg_last_error());
 };
 
+page_head("value config history");
+
 $uids=explode(",",$_GET["uid"]);
 $name=$_GET['name'];
 foreach ($uids as $uid) {
@@ -31,4 +33,5 @@ foreach ($uids as $uid) {
   echo "<tr>\n";	
   echo "</table>\n";
 }
+page_foot();
 ?>
