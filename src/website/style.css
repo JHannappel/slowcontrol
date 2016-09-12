@@ -52,6 +52,7 @@
     left: 0em;
     width: 100%;
     padding-left:0.5ex;
+    z-index : 100;
 }
 #help {
     position: fixed;
