@@ -155,3 +155,41 @@ nav li {
 nav a {
     color: #FFFFFF;
 }
+/* All Smartphones in portrait and landscape ----------- */
+@media only screen and (min-device-width : 320px) and (max-device-width : 480px),
+/* Android 240 X 320 ----------- */
+(max-width: 241px),
+/* Android(Samsung Galaxy) in portrait 380 X 685 ----------- */
+(min-width: 375px) and (max-width: 385px),
+/* Android(Samsung Galaxy) in Landscape 685 X  380 ----------- */
+(min-width: 680px) and (max-width: 690px),
+(-webkit-min-device-pixel-ratio: 1.1) and (max-width: 1000px),
+(max-width: 500px)
+{
+    body {
+                font-size: 30pt;
+        }
+}
+
+@media print {
+        body {
+                background: none;
+                line-height: 1.2em;
+        }
+       #header {
+                background: none;
+                display: none;
+        }
+        #navigation {
+                display: none;
+        }
+        #content {
+                margin: 0;
+        }
+        tr.rundbhead {
+                font-weight: bold;
+        }
+        a:link, a:visited {
+                color: #000000;
+        }
+}
