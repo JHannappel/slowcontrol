@@ -6,11 +6,13 @@
 class presence: public slowcontrol::measurement<bool>,
 	public slowcontrol::defaultReaderInterface {
   protected:
+	configValue<measurementBase::durationType> lQuickReadoutInterval;
 	std::string lCommand;
   public:
 	presence(const std::string& aAddress):
 		measurement(),
-		defaultReaderInterface(lConfigValues, std::chrono::minutes(10)) {
+		defaultReaderInterface(lConfigValues, std::chrono::minutes(10)),
+		lQuickReadoutInterval("quickReadoutInterval", lConfigValues, std::chrono::seconds(10)) {
 		lClassName.fSetFromString(__func__);
 		lCommand = "l2ping -c 1 ";
 		lCommand += aAddress;
@@ -26,6 +28,13 @@ class presence: public slowcontrol::measurement<bool>,
 			fStore(false);
 		}
 	};
+	virtual decltype(lReadoutInterval.fGetValue()) fGetReadoutInterval() const {
+		if (lNoValueYet || lOldValue) {
+			return lReadoutInterval.fGetValue();
+		} else {
+			return lQuickReadoutInterval.fGetValue();
+		}
+	}
 };
 
 

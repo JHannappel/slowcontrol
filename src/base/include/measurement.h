@@ -55,6 +55,7 @@ namespace slowcontrol {
 	};
 
 	class defaultReaderInterface { ///< interface for measurements that can read themselves.
+	  protected:
 		configValue<measurementBase::durationType> lReadoutInterval;
 	  public:
 		defaultReaderInterface(configValueBase::mapType& aMap,
