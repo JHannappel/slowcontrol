@@ -110,12 +110,17 @@ while ($row = pg_fetch_assoc($result)) {
 	}
 	if ($item['data_table']=='measurements_bool') {
 		$value_expression='cast(value as integer)';
+		$plotstyle="filledcurves x1";
 	} else {
 		$value_expression='value';
+		$plotstyle="lines";
 	}
 	$value_expression.=$manipulate;
 	$item['value_expression']=$value_expression;
 	$item['manipulation']=$manipulate;
+	if (!isset($item['plotstyle'])) {
+		$item['plotstyle'] = $plotstyle;
+	}
 	$values[$uid]=$item;
  }
 
@@ -212,7 +217,7 @@ if (is_resource($process)) {
     if ($need_comma) {fwrite($pipes[0],",");}
     $query="SELECT $timeexpr, ${value['value_expression']} FROM ${value['data_table']} WHERE uid=$uid AND $timeinterval ORDER BY time";
     //        file_put_contents("/tmp/graphdebug.log",$query,FILE_APPEND);
-    fwrite($pipes[0], "\"<  /bin/echo -e \\\"$query\\\" | psql \\\"$dbstring\\\"\" u 1:3 title \"${value['label']}${value['manipulation']}\"");
+    fwrite($pipes[0], "\"<  /bin/echo -e \\\"$query\\\" | psql \\\"$dbstring\\\"\" u 1:3 with ${value['plotstyle']} title \"${value['label']}${value['manipulation']}\"");
     $need_comma=1;
   }
   fwrite($pipes[0], "\n");
