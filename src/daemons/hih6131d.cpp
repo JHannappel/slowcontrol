@@ -27,14 +27,14 @@
 
 
 
-class hih6313moisture: public slowcontrol::boundCheckerInterface<slowcontrol::measurement<float>>,
+class hih6131moisture: public slowcontrol::boundCheckerInterface<slowcontrol::measurement<float>>,
 	        public slowcontrol::defaultReaderInterface,
 	        public slowcontrol::unitInterface {
   protected:
 	int fd;
 	slowcontrol::parasitic_temperature *lTemperature;
   public:
-	hih6313moisture(const char *aPath, const char *aNameBase):
+	hih6131moisture(const char *aPath, const char *aNameBase):
 		boundCheckerInterface(0.5, 40, 60),
 		defaultReaderInterface(lConfigValues, std::chrono::seconds(30)),
 		unitInterface(lConfigValues, " %") {
@@ -80,7 +80,7 @@ int main(int argc, const char *argv[]) {
 
 	auto daemon = new slowcontrol::daemon("hih6131d");
 
-	new hih6313moisture(deviceName, measurementName);
+	new hih6131moisture(deviceName, measurementName);
 
 	daemon->fStartThreads();
 	daemon->fWaitForThreads();
