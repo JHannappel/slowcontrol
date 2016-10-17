@@ -7,7 +7,7 @@ Type=forking
 PrivateTmp=false
 PIDFile=/var/run/${DAEMON}.pid
 Environment="HOME=/root"
-ExecStart=${CMAKE_INSTALL_PREFIX}/bin/${DAEMON} --pidFile /var/run/${DAEMON}.pid
+ExecStart=/bin/bash -c '${CMAKE_INSTALL_PREFIX}/bin/${DAEMON} --pidFile /var/run/${DAEMON}.pid &> /tmp/${DAEMON}.log'
 KillMode=mixed
 
 [Install]
