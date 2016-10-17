@@ -245,7 +245,8 @@ namespace slowcontrol {
 			if (aValue > lValues.at(lMaxValueIndex).lValue) {
 				lMaxValueIndex = lValues.size() - 1;
 			}
-			if (fAbs(aValue - lValues.front().lValue) >= lDeadBand ||
+			if (aValue >= lValues.at(lMinValueIndex).lValue + lDeadBand ||
+			        aValue <= lValues.at(lMaxValueIndex).lValue - lDeadBand ||
 			        lValues.size() == 1) {
 				fFlush(lValues.size() == 1);
 			}
