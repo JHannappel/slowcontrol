@@ -1,18 +1,10 @@
 add_executable(testdaemon testdaemon.cpp)
 target_link_libraries(testdaemon slowcontrol_static ${OptionParser_LIBRARIES})
 
-add_executable(onewired onewired.cpp)
-target_link_libraries(onewired slowcontrol_static ${OptionParser_LIBRARIES})
-install(TARGETS onewired DESTINATION bin)
+set(daemons maassend onewired bluetoothPresenced hih6131d PARENT_SCOPE)
 
-add_executable(maassend maassend.cpp)
-target_link_libraries(maassend slowcontrol_static ${OptionParser_LIBRARIES})
-install(TARGETS maassend DESTINATION bin)
-
-add_executable(hih6313d hih6313d.cpp)
-target_link_libraries(hih6313d slowcontrol_static ${OptionParser_LIBRARIES})
-install(TARGETS hih6313d DESTINATION bin)
-
-add_executable(bluetoothPresenced bluetoothPresenced.cpp)
-target_link_libraries(bluetoothPresenced slowcontrol_static ${OptionParser_LIBRARIES})
-install(TARGETS bluetoothPresenced DESTINATION bin)
+foreach (DAEMON ${daemons})
+	add_executable(${DAEMON} ${DAEMON}.cpp)
+	target_link_libraries(${DAEMON} slowcontrol_static ${OptionParser_LIBRARIES})
+install(TARGETS ${DAEMON} DESTINATION bin)
+endforeach(DAEMON)

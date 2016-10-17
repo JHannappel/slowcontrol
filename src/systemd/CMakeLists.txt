@@ -1,4 +1,4 @@
-set(daemons maassend onewired bluetoothPresenced)
+#set(daemons maassend onewired bluetoothPresenced)
 
 foreach (DAEMON ${daemons})
        configure_file(slowcontrol.service.in ${DAEMON}.service)
