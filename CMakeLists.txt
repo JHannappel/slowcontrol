@@ -6,7 +6,7 @@ PROJECT(Slowcontrol)
 
 OPTION(INSTALL_DOCUMENTATION "Also install the HTML based API documentation (you first need to make the doc-target)" OFF)
 
-SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/" "/usr/local/lib/cmake/OptionParser/")
+SET(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/" "/usr/local/lib/cmake/OptionParser/" "/usr/local/lib/cmake/" )
 
 include(CheckCXXCompilerFlag)
 
