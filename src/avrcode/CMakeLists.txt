@@ -8,7 +8,9 @@ set(AVR_H_FUSE "D9")
 set(MCU_SPEED "16000000UL")
 
 set(AVR_UPLOADTOOL_PORT /dev/ttyACM0)
-include(generic-gcc-avr)
+include(generic-gcc-avr OPTIONAL RESULT_VARIABLE generic-gcc-avr-path)
+
+if (NOT ${generic-gcc-avr-path} STREQUAL "NOTFOUND")
 
 set(CMAKE_C_FLAGS "-O3")
 set(CMAKE_CXX_FLAGS "-O3 ")
@@ -30,3 +32,4 @@ add_definitions("-ffunction-sections")
 add_definitions("-c")
 
 add_avr_executable(avrtest avrtest.cpp)
+endif (NOT ${generic-gcc-avr-path} STREQUAL "NOTFOUND")
