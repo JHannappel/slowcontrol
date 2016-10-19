@@ -13,7 +13,7 @@ include(generic-gcc-avr OPTIONAL RESULT_VARIABLE generic-gcc-avr-path)
 if (NOT ${generic-gcc-avr-path} STREQUAL "NOTFOUND")
 
 set(CMAKE_C_FLAGS "-O3")
-set(CMAKE_CXX_FLAGS "-O3 ")
+set(CMAKE_CXX_FLAGS "-O3 -std=c++11")
 set(CMAKE_EXE_LINKER_FLAGS "")
 set(CMAKE_EXE_LINKER_FLAGS_RelWithDebInfo "")
 SET(CMAKE_SHARED_LIBRARY_LINK_C_FLAGS)
