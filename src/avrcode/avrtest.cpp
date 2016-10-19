@@ -22,6 +22,9 @@ class pulseBuffer {
 		if (aTime < kMinPulseLength) {
 			return false;
 		}
+		if (isHighPulse) {
+			aTime |= 0x8000u;
+		}
 		lPulses[lIndex++] = aTime;
 		if (lIndex >= kSize) {
 			return (false);
@@ -46,14 +49,20 @@ volatile unsigned char gNextReadBufferIndex;
 IOPin(C, 0) ACOmonitor(true);
 IOPin(C, 1) AquiringPulseTrain(true);
 IOPin(C, 2) ProcessingPulseTrain(true);
+IOPin(C, 3) TimeOut(true);
+IOPin(C, 4) Capture(true);
+
+ISR(ANA_COMP_vect) {
+	ACOmonitor.fSet(bit_is_set(ACSR, ACO));
+}
 
 ISR(TIMER1_CAPT_vect) { // an edge was detected and captured
 	cli();
-	auto interval = ICR1;
+	Capture.fSet(true);
+	unsigned short interval = ICR1;
 	bool wasPosEdge = bit_is_set(TCCR1B, ICES1);
 	TCCR1B ^= _BV(ICES1); // change edge
 	TIFR = _BV(ICF1); // reset interrupt flag
-	ACOmonitor.fSet(bit_is_set(ACSR, ACO));
 	if (gBuffer[gWriteBufferIndex].fAddPulse(interval, wasPosEdge) == false) { // probably an overflow
 		gBuffer[gWriteBufferIndex].fClear();
 		OCR1A = 0x7FFF; // set max counter value to 15 bits
@@ -62,16 +71,18 @@ ISR(TIMER1_CAPT_vect) { // an edge was detected and captured
 	} else if (gBuffer[gWriteBufferIndex].fGetNEntries() == 2) {
 		// set timeout for end of pulse train recognition to average of
 		// the start and pause pulse at the biginning of the train
-		OCR1A = (gBuffer[gWriteBufferIndex].fGetEntry(0) +
-		         gBuffer[gWriteBufferIndex].fGetEntry(1)) >> 1;
+		OCR1A = ((gBuffer[gWriteBufferIndex].fGetEntry(0) & 0x7FFF) +
+		         (gBuffer[gWriteBufferIndex].fGetEntry(1) & 0x7FFF)) >> 1;
 	} else {
 		AquiringPulseTrain.fSet(true);
 	}
+	Capture.fSet(false);
 	sei();
 }
 
 ISR(TIMER1_COMPA_vect) { // an edge timeout happened
 	cli();
+	TimeOut.fSet(true);
 	if (gBuffer[gWriteBufferIndex].fGetNEntries() > pulseBuffer::kMinEdges /* pulse train found */) {
 		gNextReadBufferIndex = gWriteBufferIndex;
 		gWriteBufferIndex = (gWriteBufferIndex + 1) % pulseBuffer::kNBuffers;
@@ -81,6 +92,7 @@ ISR(TIMER1_COMPA_vect) { // an edge timeout happened
 	OCR1A = 0x7FFF; // set max counter value to 15 bits
 	TCCR1B |= _BV(ICES1); // wait for a positive edge
 	AquiringPulseTrain.fSet(false);
+	TimeOut.fSet(false);
 	sei();
 }
 
@@ -91,16 +103,33 @@ void USART_Transmit( unsigned char data ) {
 	UDR = data;
 }
 
+void USART_hexnibble(unsigned char nibble) {
+	nibble &= 0x0f;
+	if (nibble < 0x0A) {
+		USART_Transmit('0' + nibble);
+	} else {
+		USART_Transmit('A' + nibble - 0x0A);
+	}
+}
+void USART_hexbyte(unsigned char byte) {
+	USART_hexnibble((byte >> 4) & 0x0f);
+	USART_hexnibble(byte & 0x0f);
+}
+void USART_hexshort(unsigned short value) {
+	USART_hexbyte((value >> 8) & 0xff);
+	USART_hexbyte(value & 0xff);
+}
+
 int main(void) {
 	gNextReadBufferIndex = 0xFFu; // mark next read buffer as invalid
 
 
-	// enable comparator with builtin reference
-	ACSR = _BV(ACBG); // ACIE
+	// enable comparator
+	ACSR = _BV(ACIE) | _BV(ACIC);
 	TCCR1A = 0; // normal mode
 	TCCR1B = _BV(ICNC1) // noise canceller on
 	         | _BV(ICES1) // capture on positive edge
-	         | _BV(WGM12) // use CTC mode with TOP at OCR1A
+	         //| _BV(WGM12) // use CTC mode with TOP at OCR1A
 	         | _BV(CS11) | _BV(CS10); // use sysclck/64 as counting freq, i.e. 250hKz or 4us ticks.
 	TIMSK = _BV(TICIE1) // enable capture interrupt
 	        | _BV(OCIE1A); // enable compare interruppt
@@ -146,15 +175,7 @@ int main(void) {
 		ProcessingPulseTrain.fSet(true);
 		for (auto index = 0; index < gBuffer[readBufferIndex].fGetNEntries(); index++) {
 			auto value = gBuffer[readBufferIndex].fGetEntry(index);
-			for (char i = 0; i < 4; i++) {
-				char nibble = (value >> 12) & 0x0f;
-				value <<= 4;
-				if (nibble < 0x0A) {
-					USART_Transmit('0' + nibble);
-				} else {
-					USART_Transmit('A' + nibble);
-				}
-			}
+			USART_hexshort(value);
 			USART_Transmit(' ');
 		}
 		USART_Transmit('\n');
