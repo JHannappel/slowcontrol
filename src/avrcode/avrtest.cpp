@@ -9,11 +9,14 @@ class pulseBuffer {
 	enum : unsigned char {
 		kSize =  128,
 		kNBuffers = 2,
-		kMinEdges = 40,
-		kMinPulseLength = 25 // 100us
+		kMinEdges = 40
+	};
+	enum : unsigned short {
+		kMinPulseLength = 5, // 100us
+		kMaxCountValue = 0x7FFF
 	};
   private:
-	unsigned short lPulses[128];
+	unsigned short lPulses[kSize];
 	unsigned char lIndex;
   public:
 	pulseBuffer(): lIndex(0) {
@@ -23,7 +26,7 @@ class pulseBuffer {
 			return false;
 		}
 		if (isHighPulse) {
-			aTime |= 0x8000u;
+			aTime += 0x8000u;
 		}
 		lPulses[lIndex++] = aTime;
 		if (lIndex >= kSize) {
@@ -37,7 +40,7 @@ class pulseBuffer {
 	unsigned char fGetNEntries() {
 		return lIndex;
 	}
-	unsigned char fGetEntry(unsigned char aIndex) {
+	unsigned short fGetEntry(unsigned char aIndex) {
 		return lPulses[aIndex];
 	}
 };
@@ -60,12 +63,13 @@ ISR(TIMER1_CAPT_vect) { // an edge was detected and captured
 	cli();
 	Capture.fSet(true);
 	unsigned short interval = ICR1;
-	bool wasPosEdge = bit_is_set(TCCR1B, ICES1);
+	//	bool wasPosEdge = bit_is_set(TCCR1B, ICES1);
 	TCCR1B ^= _BV(ICES1); // change edge
 	TIFR = _BV(ICF1); // reset interrupt flag
-	if (gBuffer[gWriteBufferIndex].fAddPulse(interval, wasPosEdge) == false) { // probably an overflow
+	TCNT1 = 0;
+	if (gBuffer[gWriteBufferIndex].fAddPulse(interval, false) == false) { // probably an overflow
 		gBuffer[gWriteBufferIndex].fClear();
-		OCR1A = 0x7FFF; // set max counter value to 15 bits
+		OCR1A = pulseBuffer::kMaxCountValue; // set max counter value to 15 bits
 		TCCR1B |= _BV(ICES1); // wait for a positive edge
 		AquiringPulseTrain.fSet(false);
 	} else if (gBuffer[gWriteBufferIndex].fGetNEntries() == 2) {
@@ -89,7 +93,7 @@ ISR(TIMER1_COMPA_vect) { // an edge timeout happened
 	} else { /* maybe junk in the buffer, clear it */
 		gBuffer[gWriteBufferIndex].fClear();
 	}
-	OCR1A = 0x7FFF; // set max counter value to 15 bits
+	OCR1A = pulseBuffer::kMaxCountValue; // set max counter value to 15 bits
 	TCCR1B |= _BV(ICES1); // wait for a positive edge
 	AquiringPulseTrain.fSet(false);
 	TimeOut.fSet(false);
@@ -129,11 +133,12 @@ int main(void) {
 	TCCR1A = 0; // normal mode
 	TCCR1B = _BV(ICNC1) // noise canceller on
 	         | _BV(ICES1) // capture on positive edge
-	         //| _BV(WGM12) // use CTC mode with TOP at OCR1A
+	         | _BV(WGM12) // use CTC mode with TOP at OCR1A
 	         | _BV(CS11) | _BV(CS10); // use sysclck/64 as counting freq, i.e. 250hKz or 4us ticks.
+	//| _BV(CS12) | _BV(CS10); // use sysclck/1024 as counting freq
 	TIMSK = _BV(TICIE1) // enable capture interrupt
 	        | _BV(OCIE1A); // enable compare interruppt
-	OCR1A = 0x7FFF; // set max counter value to 15 bits
+	OCR1A = pulseBuffer::kMaxCountValue; // set max counter value to 15 bits
 
 
 	// set up usart
@@ -162,7 +167,6 @@ int main(void) {
 	USART_Transmit('d');
 	USART_Transmit('\n');
 
-
 	sei(); // make sure we get interrupts
 	while (true) {
 		if (gNextReadBufferIndex == 0xFF) { // no valid next read buffer
@@ -174,7 +178,7 @@ int main(void) {
 		sei();
 		ProcessingPulseTrain.fSet(true);
 		for (auto index = 0; index < gBuffer[readBufferIndex].fGetNEntries(); index++) {
-			auto value = gBuffer[readBufferIndex].fGetEntry(index);
+			unsigned short value = gBuffer[readBufferIndex].fGetEntry(index);
 			USART_hexshort(value);
 			USART_Transmit(' ');
 		}
