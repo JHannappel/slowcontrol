@@ -1,18 +1,21 @@
 #include <avr/io.h>
 #include <util/delay.h>
 #include <avr/interrupt.h>
-
+#include <avr/pgmspace.h>
 #include "iopin.h"
+#define BAUD 500000
+
+#include "usart.h"
 
 class pulseBuffer {
   public:
 	enum : unsigned char {
-		kSize =  128,
-		kNBuffers = 2,
-		kMinEdges = 40
+		kSize =  70,
+		kNBuffers = 3,
+		kMinEdges = 64
 	};
 	enum : unsigned short {
-		kMinPulseLength = 5, // 100us
+		kMinPulseLength = 0x3F,
 		kMaxCountValue = 0x7FFF
 	};
   private:
@@ -54,6 +57,8 @@ IOPin(C, 1) AquiringPulseTrain(true);
 IOPin(C, 2) ProcessingPulseTrain(true);
 IOPin(C, 3) TimeOut(true);
 IOPin(C, 4) Capture(true);
+
+IOPin(D, 7) RFDataOut(true);
 
 ISR(ANA_COMP_vect) {
 	ACOmonitor.fSet(bit_is_set(ACSR, ACO));
@@ -100,28 +105,48 @@ ISR(TIMER1_COMPA_vect) { // an edge timeout happened
 	sei();
 }
 
-void USART_Transmit( unsigned char data ) {
-	/* Wait for empty transmit buffer */
-	while ( !( UCSRA & (1 << UDRE)) );
-	/* Put data into buffer, sends the data */
-	UDR = data;
+void waitCounter0(unsigned short ticksOf4us) {
+	TCCR0 = _BV(CS02); // use normal mode with 1/256 sysclk, i.e. 16us
+	TCNT0 = 0xffu - (ticksOf4us >> 2);
+	while ((TIFR & _BV(TOV0)) == 0) {}; // wait until overflow happened
+	TIFR = _BV(TOV0); // clear overflow
 }
 
-void USART_hexnibble(unsigned char nibble) {
-	nibble &= 0x0f;
-	if (nibble < 0x0A) {
-		USART_Transmit('0' + nibble);
-	} else {
-		USART_Transmit('A' + nibble - 0x0A);
+void sendPattern(const char *aPattern) {
+	RFDataOut.fSet(true);
+	waitCounter0(0x99);
+	RFDataOut.fSet(false);
+	for (int i = 0; i < 3; i++) {
+		waitCounter0(0x99);
 	}
-}
-void USART_hexbyte(unsigned char byte) {
-	USART_hexnibble((byte >> 4) & 0x0f);
-	USART_hexnibble(byte & 0x0f);
-}
-void USART_hexshort(unsigned short value) {
-	USART_hexbyte((value >> 8) & 0xff);
-	USART_hexbyte(value & 0xff);
+	while (*aPattern != '\0') {
+		unsigned short nibble;
+		if (*aPattern > 'A') {
+			nibble = *aPattern - 'A' + 0x0A;
+		} else {
+			nibble = *aPattern - '0';
+		}
+		unsigned char mask = 0x08;
+		while (mask != 0) {
+			if ((nibble & mask) != 0) {
+				RFDataOut.fSet(true);
+				waitCounter0(0x135);
+				RFDataOut.fSet(false);
+				waitCounter0(0x99);
+			} else {
+				RFDataOut.fSet(true);
+				waitCounter0(0x99);
+				RFDataOut.fSet(false);
+				waitCounter0(0x135);
+			}
+			mask >>= 1;
+		}
+		aPattern++;
+	}
+	RFDataOut.fSet(false);
+	waitCounter0(0x3FF);
+	waitCounter0(0x3FF);
+	waitCounter0(0x3FF);
 }
 
 int main(void) {
@@ -140,35 +165,29 @@ int main(void) {
 	        | _BV(OCIE1A); // enable compare interruppt
 	OCR1A = pulseBuffer::kMaxCountValue; // set max counter value to 15 bits
 
+	gUSARTHandler.fString_P(PSTR("hello world by " __FILE__ "\n"));
 
-	// set up usart
-#define BAUD 500000
-#include <util/setbaud.h>
-	UBRRH = UBRRH_VALUE;
-	UBRRL = UBRRL_VALUE;
-	#if USE_2X
-	UCSRA |= _BV(U2X);
-	#else
-	UCSRA &= ~_BV(U2X);
-	#endif
-	UCSRB = _BV(RXEN) | _BV(TXEN);
-	UCSRC = _BV(URSEL) | _BV(USBS) | (3 << UCSZ0);
-
-	USART_Transmit('h');
-	USART_Transmit('e');
-	USART_Transmit('l');
-	USART_Transmit('l');
-	USART_Transmit('o');
-	USART_Transmit(' ');
-	USART_Transmit('w');
-	USART_Transmit('o');
-	USART_Transmit('r');
-	USART_Transmit('l');
-	USART_Transmit('d');
-	USART_Transmit('\n');
+	bool fullOutput = false;
 
 	sei(); // make sure we get interrupts
 	while (true) {
+		auto line = gUSARTHandler.fNextLine();
+		if (line != nullptr) {
+			gUSARTHandler.fString_P(PSTR("received '"));
+			gUSARTHandler.fString(line);
+			gUSARTHandler.fString_P(PSTR("'\n"));
+
+			if (strcmp_P(line, PSTR("full")) == 0) {
+				fullOutput = true;
+			} else if (strcmp_P(line, PSTR("sparse")) == 0) {
+				fullOutput = false;
+			} else if (strncmp_P(line, PSTR("send "), 5) == 0) {
+				for (int i = 0; i < 4; i++) {
+					sendPattern(line + 5);
+				}
+			}
+		}
+
 		if (gNextReadBufferIndex == 0xFF) { // no valid next read buffer
 			continue;
 		}
@@ -177,12 +196,38 @@ int main(void) {
 		gNextReadBufferIndex = 0xFF;
 		sei();
 		ProcessingPulseTrain.fSet(true);
-		for (auto index = 0; index < gBuffer[readBufferIndex].fGetNEntries(); index++) {
-			unsigned short value = gBuffer[readBufferIndex].fGetEntry(index);
-			USART_hexshort(value);
-			USART_Transmit(' ');
+		if (fullOutput) {
+			for (auto index = 0; index < gBuffer[readBufferIndex].fGetNEntries(); index++) {
+				unsigned short value = gBuffer[readBufferIndex].fGetEntry(index);
+				gUSARTHandler.fHexShort(value);
+				gUSARTHandler.fTransmit(' ');
+			}
+			gUSARTHandler.fString_P(PSTR("=> "));
 		}
-		USART_Transmit('\n');
+		unsigned char code[16];
+		unsigned char byte = 0;
+		unsigned char bit = 8;
+		for (auto index = 1; index < gBuffer[readBufferIndex].fGetNEntries() - 1; index += 2) {
+			code[byte] <<= 1;
+			if (gBuffer[readBufferIndex].fGetEntry(index) < gBuffer[readBufferIndex].fGetEntry(index + 1)) {
+				gUSARTHandler.fTransmit('0');
+			} else {
+				gUSARTHandler.fTransmit('1');
+				code[byte] |= 0x01;
+			}
+			bit--;
+			if (bit == 0) {
+				byte++;
+				bit = 8;
+			}
+		}
+		gUSARTHandler.fTransmit(' ');
+		gUSARTHandler.fHexByte(byte);
+		gUSARTHandler.fTransmit(' ');
+		for (int b = 0; b <= byte; b++) {
+			gUSARTHandler.fHexByte(code[b]);
+		}
+		gUSARTHandler.fTransmit('\n');
 		ProcessingPulseTrain.fSet(false);
 		gBuffer[readBufferIndex].fClear(); // clear buffer after reading
 	}

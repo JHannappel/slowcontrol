@@ -1,4 +1,5 @@
-
+#ifndef __iopin_H_
+#define __iopin_H_
 
 template <unsigned short portAddr,
           unsigned short ddrAddr,
@@ -26,3 +27,5 @@ template <unsigned short portAddr,
 };
 
 #define IOPin(Port,Bit) ioPin<(unsigned short)(&PORT##Port),(unsigned short)(&DDR##Port),(unsigned short)(&PIN##Port),Bit>
+
+#endif
