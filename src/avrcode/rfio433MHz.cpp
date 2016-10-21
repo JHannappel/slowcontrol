@@ -11,7 +11,7 @@ class pulseBuffer {
   public:
 	enum : unsigned char {
 		kSize =  70,
-		kNBuffers = 3,
+		kNBuffers = 5,
 		kMinEdges = 64
 	};
 	enum : unsigned short {
@@ -104,20 +104,26 @@ ISR(TIMER1_COMPA_vect) { // an edge timeout happened
 	TimeOut.fSet(false);
 }
 
-void waitCounter0(unsigned short ticksOf4us) {
+void waitCounter0(unsigned short aMicroSeconds) {
 	TCCR0 = _BV(CS02); // use normal mode with 1/256 sysclk, i.e. 16us
-	TCNT0 = 0xffu - (ticksOf4us >> 2);
+	auto clockTicks = aMicroSeconds >> 4;
+	unsigned char highPart = clockTicks >> 8;
+	for (; highPart > 0; highPart--) {
+		TCNT0 = 0;
+		while ((TIFR & _BV(TOV0)) == 0) {}; // wait until overflow happened
+		TIFR = _BV(TOV0); // clear overflow
+	}
+	unsigned char lowPart = clockTicks & 0x00FFu;
+	TCNT0 = 0xffu - lowPart;
 	while ((TIFR & _BV(TOV0)) == 0) {}; // wait until overflow happened
 	TIFR = _BV(TOV0); // clear overflow
 }
 
 void sendPattern(const char *aPattern) {
 	RFDataOut.fSet(true);
-	waitCounter0(0x99);
+	waitCounter0(600);
 	RFDataOut.fSet(false);
-	for (int i = 0; i < 3; i++) {
-		waitCounter0(0x99);
-	}
+	waitCounter0(4000);
 	while (*aPattern != '\0') {
 		unsigned short nibble;
 		if (*aPattern > 'A') {
@@ -129,14 +135,14 @@ void sendPattern(const char *aPattern) {
 		while (mask != 0) {
 			if ((nibble & mask) != 0) {
 				RFDataOut.fSet(true);
-				waitCounter0(0x135);
+				waitCounter0(1200);
 				RFDataOut.fSet(false);
-				waitCounter0(0x99);
+				waitCounter0(600);
 			} else {
 				RFDataOut.fSet(true);
-				waitCounter0(0x99);
+				waitCounter0(600);
 				RFDataOut.fSet(false);
-				waitCounter0(0x135);
+				waitCounter0(1200);
 			}
 			mask >>= 1;
 		}
@@ -203,6 +209,10 @@ int main(void) {
 			}
 			gUSARTHandler.fString_P(PSTR("=> "));
 		}
+		gUSARTHandler.fHexByte(readBufferIndex);
+		gUSARTHandler.fTransmit(' ');
+		gUSARTHandler.fHexByte(gWriteBufferIndex);
+		gUSARTHandler.fTransmit(' ');
 		unsigned char code[16];
 		unsigned char byte = 0;
 		unsigned char bit = 8;
