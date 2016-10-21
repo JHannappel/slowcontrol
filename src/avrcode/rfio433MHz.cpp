@@ -60,9 +60,6 @@ IOPin(C, 4) Capture(true);
 
 IOPin(D, 7) RFDataOut(true);
 
-ISR(ANA_COMP_vect) {
-	ACOmonitor.fSet(bit_is_set(ACSR, ACO));
-}
 
 ISR(TIMER1_CAPT_vect) { // an edge was detected and captured
 	cli();
@@ -72,6 +69,7 @@ ISR(TIMER1_CAPT_vect) { // an edge was detected and captured
 	TCCR1B ^= _BV(ICES1); // change edge
 	TIFR = _BV(ICF1); // reset interrupt flag
 	TCNT1 = 0;
+	ACOmonitor.fSet(bit_is_set(ACSR, ACO));
 	if (gBuffer[gWriteBufferIndex].fAddPulse(interval, false) == false) { // probably an overflow
 		gBuffer[gWriteBufferIndex].fClear();
 		OCR1A = pulseBuffer::kMaxCountValue; // set max counter value to 15 bits
@@ -153,8 +151,8 @@ int main(void) {
 	gNextReadBufferIndex = 0xFFu; // mark next read buffer as invalid
 
 
-	// enable comparator
-	ACSR = _BV(ACIE) | _BV(ACIC);
+	// enable comparator and set as capture source
+	ACSR = _BV(ACIC);
 	TCCR1A = 0; // normal mode
 	TCCR1B = _BV(ICNC1) // noise canceller on
 	         | _BV(ICES1) // capture on positive edge
