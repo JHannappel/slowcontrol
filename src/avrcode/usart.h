@@ -44,11 +44,12 @@ template <unsigned char bufferSize> class usartHandlerWithBuffer: public usartHa
   public:
 	enum : unsigned char { kBufSize = bufferSize};
 	char lBuffer[bufferSize];
-	char lLine[64];
+	char lLine[bufferSize];
 	volatile unsigned char lBytesInBuffer;
 	volatile unsigned char lWriteIndex;
 	unsigned char lReadIndex;
-	usartHandlerWithBuffer() {
+	usartHandlerWithBuffer() : lBytesInBuffer(0),
+		lWriteIndex(0), lReadIndex(0) {
 #include <util/setbaud.h>
 		UBRRH = UBRRH_VALUE;
 		UBRRL = UBRRL_VALUE;
@@ -67,26 +68,22 @@ template <unsigned char bufferSize> class usartHandlerWithBuffer: public usartHa
 	const char* fNextLine() {
 		// check if a newline is found
 		unsigned char bytesInBuffer = lBytesInBuffer;
-		bool foundNewline = false;
 		unsigned char readIndex = lReadIndex;
-		unsigned char i;
-		for (i = 0; i < bytesInBuffer; i++) {
-			if (lBuffer[readIndex] == '\n') {
-				foundNewline = true;
-				break;
-			}
-			lLine[i] = lBuffer[readIndex];
+		for (unsigned char i = 0; i < bytesInBuffer; i++) {
+			auto value = lBuffer[readIndex];
 			readIndex = (readIndex + 1) % kBufSize;
+			if (value == '\n') {
+				lLine[i++] = '\0';
+				cli();
+				// we copied out i bytes, subtract them from the current value
+				lBytesInBuffer -= i;
+				lReadIndex = readIndex;
+				sei();
+				return lLine;
+			}
+			lLine[i] = value;
 		}
-		if (!foundNewline) {
-			return nullptr;
-		}
-		lLine[i] = '\0';
-		cli();
-		lBytesInBuffer -= i;
-		lReadIndex = readIndex;
-		sei();
-		return lLine;
+		return nullptr;
 	};
 };
 
