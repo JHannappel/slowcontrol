@@ -90,7 +90,6 @@ template <unsigned char bufferSize> class usartHandlerWithBuffer: public usartHa
 usartHandlerWithBuffer<128> gUSARTHandler;
 
 ISR(USARTRXC_vect) {
-	cli();
 	auto byte = UDR;
 	if (byte == '\n') {
 		byte = '\0';
@@ -99,6 +98,5 @@ ISR(USARTRXC_vect) {
 	gUSARTHandler.lBuffer[gUSARTHandler.lWriteIndex] = byte;
 	gUSARTHandler.lWriteIndex = (gUSARTHandler.lWriteIndex + 1) % gUSARTHandler.fGetBufSize();
 	gUSARTHandler.lBytesInBuffer++;
-	sei();
 }
 #endif

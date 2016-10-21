@@ -62,7 +62,6 @@ IOPin(D, 7) RFDataOut(true);
 
 
 ISR(TIMER1_CAPT_vect) { // an edge was detected and captured
-	cli();
 	Capture.fSet(true);
 	unsigned short interval = ICR1;
 	//	bool wasPosEdge = bit_is_set(TCCR1B, ICES1);
@@ -84,11 +83,9 @@ ISR(TIMER1_CAPT_vect) { // an edge was detected and captured
 		AquiringPulseTrain.fSet(true);
 	}
 	Capture.fSet(false);
-	sei();
 }
 
 ISR(TIMER1_COMPA_vect) { // an edge timeout happened
-	cli();
 	TimeOut.fSet(true);
 	if (gBuffer[gWriteBufferIndex].fGetNEntries() > pulseBuffer::kMinEdges /* pulse train found */) {
 		gNextReadBufferIndex = gWriteBufferIndex;
@@ -100,7 +97,6 @@ ISR(TIMER1_COMPA_vect) { // an edge timeout happened
 	TCCR1B |= _BV(ICES1); // wait for a positive edge
 	AquiringPulseTrain.fSet(false);
 	TimeOut.fSet(false);
-	sei();
 }
 
 void waitCounter0(unsigned short ticksOf4us) {
