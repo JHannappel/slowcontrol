@@ -22,6 +22,7 @@ class pulseBuffer {
   private:
 	unsigned short lPulses[kSize];
 	unsigned char lIndex;
+	volatile bool lValid;
   public:
 	pulseBuffer(): lIndex(0) {
 	};
@@ -41,8 +42,15 @@ class pulseBuffer {
 		}
 		return (true);
 	};
+	bool fIsValid() const {
+		return lValid;
+	};
+	void fSetValid() {
+		lValid = true;
+	};
 	void fClear() {
 		lIndex = 0;
+		lValid = false;
 	};
 	unsigned char fGetNEntries() {
 		return lIndex;
@@ -50,11 +58,11 @@ class pulseBuffer {
 	unsigned short fGetEntry(unsigned char aIndex) {
 		return lPulses[aIndex];
 	}
+
 };
 
 pulseBuffer gBuffer[pulseBuffer::kNBuffers];
 volatile unsigned char gWriteBufferIndex;
-volatile unsigned char gNextReadBufferIndex;
 
 IOPin(C, 0) ACOmonitor(true);
 IOPin(C, 1) AquiringPulseTrain(true);
@@ -93,7 +101,7 @@ ISR(TIMER1_CAPT_vect) { // an edge was detected and captured
 ISR(TIMER1_COMPA_vect) { // an edge timeout happened
 	TimeOut.fSet(true);
 	if (gBuffer[gWriteBufferIndex].fGetNEntries() > pulseBuffer::kMinEdges /* pulse train found */) {
-		gNextReadBufferIndex = gWriteBufferIndex;
+		gBuffer[gWriteBufferIndex].fSetValid();
 		gWriteBufferIndex = (gWriteBufferIndex + 1) % pulseBuffer::kNBuffers;
 	} else { /* maybe junk in the buffer, clear it */
 		gBuffer[gWriteBufferIndex].fClear();
@@ -155,9 +163,6 @@ void sendPattern(const char *aPattern) {
 }
 
 int main(void) {
-	gNextReadBufferIndex = 0xFFu; // mark next read buffer as invalid
-
-
 	// enable comparator and set as capture source
 	ACSR = _BV(ACIC);
 	TCCR1A = 0; // normal mode
@@ -173,7 +178,7 @@ int main(void) {
 	gUSARTHandler.fString_P(PSTR("hello world by " __FILE__ "\n"));
 
 	bool fullOutput = false;
-
+	unsigned char readBufferIndex = 0;
 	sei(); // make sure we get interrupts
 	while (true) {
 		auto line = gUSARTHandler.fNextLine();
@@ -192,14 +197,9 @@ int main(void) {
 				}
 			}
 		}
-
-		if (gNextReadBufferIndex == 0xFF) { // no valid next read buffer
+		if (!gBuffer[readBufferIndex].fIsValid()) {
 			continue;
 		}
-		cli(); // atomic operation to get the gNextReadBufferIndex read and set to invalid
-		auto readBufferIndex = gNextReadBufferIndex;
-		gNextReadBufferIndex = 0xFF;
-		sei();
 		ProcessingPulseTrain.fSet(true);
 		if (fullOutput) {
 			for (auto index = 0; index < gBuffer[readBufferIndex].fGetNEntries(); index++) {
@@ -252,6 +252,11 @@ int main(void) {
 		}
 		gUSARTHandler.fTransmit('\n');
 		ProcessingPulseTrain.fSet(false);
-		gBuffer[readBufferIndex].fClear(); // clear buffer after reading
+		if (gBuffer[readBufferIndex].fIsValid()) {
+			gBuffer[readBufferIndex].fClear(); // clear buffer after reading
+		} else {
+			gUSARTHandler.fString_P(PSTR("pulse buffer overrun"));
+		}
+		readBufferIndex = (readBufferIndex + 1) % pulseBuffer::kNBuffers;
 	}
 }
