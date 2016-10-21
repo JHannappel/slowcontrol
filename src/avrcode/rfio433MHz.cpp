@@ -3,7 +3,7 @@
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include "iopin.h"
-#define BAUD 500000
+#define BAUD 125000
 
 #include "usart.h"
 
@@ -16,7 +16,8 @@ class pulseBuffer {
 	};
 	enum : unsigned short {
 		kMinPulseLength = 0x3F,
-		kMaxCountValue = 0x7FFF
+		kMaxCountValue = 0x7FFF,
+		kValueMask = 0x3FFF
 	};
   private:
 	unsigned short lPulses[kSize];
@@ -24,12 +25,15 @@ class pulseBuffer {
   public:
 	pulseBuffer(): lIndex(0) {
 	};
-	bool fAddPulse(unsigned short aTime, bool isHighPulse) {
+	bool fAddPulse(unsigned short aTime, bool isHighPulse, bool isNowHigh) {
 		if (aTime < kMinPulseLength) {
 			return false;
 		}
 		if (isHighPulse) {
 			aTime += 0x8000u;
+		}
+		if (isNowHigh) {
+			aTime += 0x4000u;
 		}
 		lPulses[lIndex++] = aTime;
 		if (lIndex >= kSize) {
@@ -64,12 +68,13 @@ IOPin(D, 7) RFDataOut(true);
 ISR(TIMER1_CAPT_vect) { // an edge was detected and captured
 	Capture.fSet(true);
 	unsigned short interval = ICR1;
-	//	bool wasPosEdge = bit_is_set(TCCR1B, ICES1);
+	bool wasPosEdge = bit_is_set(TCCR1B, ICES1);
 	TCCR1B ^= _BV(ICES1); // change edge
 	TIFR = _BV(ICF1); // reset interrupt flag
 	TCNT1 = 0;
-	ACOmonitor.fSet(bit_is_set(ACSR, ACO));
-	if (gBuffer[gWriteBufferIndex].fAddPulse(interval, false) == false) { // probably an overflow
+	bool isHigh = bit_is_set(ACSR, ACO);
+	ACOmonitor.fSet(isHigh);
+	if (gBuffer[gWriteBufferIndex].fAddPulse(interval, wasPosEdge, isHigh) == false) { // probably an overflow
 		gBuffer[gWriteBufferIndex].fClear();
 		OCR1A = pulseBuffer::kMaxCountValue; // set max counter value to 15 bits
 		TCCR1B |= _BV(ICES1); // wait for a positive edge
@@ -77,8 +82,8 @@ ISR(TIMER1_CAPT_vect) { // an edge was detected and captured
 	} else if (gBuffer[gWriteBufferIndex].fGetNEntries() == 2) {
 		// set timeout for end of pulse train recognition to average of
 		// the start and pause pulse at the biginning of the train
-		OCR1A = ((gBuffer[gWriteBufferIndex].fGetEntry(0) & 0x7FFF) +
-		         (gBuffer[gWriteBufferIndex].fGetEntry(1) & 0x7FFF)) >> 1;
+		OCR1A = ((gBuffer[gWriteBufferIndex].fGetEntry(0) & pulseBuffer::kValueMask) +
+		         (gBuffer[gWriteBufferIndex].fGetEntry(1) & pulseBuffer::kValueMask)) >> 1;
 	} else {
 		AquiringPulseTrain.fSet(true);
 	}
@@ -201,11 +206,22 @@ int main(void) {
 		unsigned char code[16];
 		unsigned char byte = 0;
 		unsigned char bit = 8;
+		unsigned short pulse = 0;
+		unsigned short nPulses = 0;
 		for (auto index = 1; index < gBuffer[readBufferIndex].fGetNEntries() - 1; index += 2) {
 			code[byte] <<= 1;
-			if (gBuffer[readBufferIndex].fGetEntry(index) < gBuffer[readBufferIndex].fGetEntry(index + 1)) {
+			auto firstpulse = gBuffer[readBufferIndex].fGetEntry(index);
+			auto secondpulse = gBuffer[readBufferIndex].fGetEntry(index + 1);
+			firstpulse &= pulseBuffer::kValueMask;
+			secondpulse &= pulseBuffer::kValueMask;
+
+			if (firstpulse < secondpulse) {
+				pulse += firstpulse;
+				nPulses++;
 				gUSARTHandler.fTransmit('0');
 			} else {
+				pulse += secondpulse;;
+				nPulses++;
 				gUSARTHandler.fTransmit('1');
 				code[byte] |= 0x01;
 			}
@@ -215,6 +231,9 @@ int main(void) {
 				bit = 8;
 			}
 		}
+		pulse /= nPulses;
+		gUSARTHandler.fTransmit(' ');
+		gUSARTHandler.fHexShort(pulse << 2);
 		gUSARTHandler.fTransmit(' ');
 		gUSARTHandler.fHexByte(byte);
 		gUSARTHandler.fTransmit(' ');
