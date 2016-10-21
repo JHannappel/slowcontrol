@@ -31,5 +31,5 @@ add_definitions("-funsigned-bitfields")
 add_definitions("-ffunction-sections")
 add_definitions("-c")
 
-add_avr_executable(avrtest avrtest.cpp)
+add_avr_executable(rfio433MHz rfio433MHz.cpp)
 endif (NOT ${generic-gcc-avr-path} STREQUAL "NOTFOUND")
