@@ -45,10 +45,9 @@ template <unsigned char bufferSize> class usartHandlerWithBuffer: public usartHa
 	enum : unsigned char { kBufSize = bufferSize};
 	char lBuffer[bufferSize];
 	char lLine[64];
-	unsigned char lBytesInBuffer;
-	unsigned char lWriteIndex;
+	volatile unsigned char lBytesInBuffer;
+	volatile unsigned char lWriteIndex;
 	unsigned char lReadIndex;
-	volatile unsigned char lNLines;
 	usartHandlerWithBuffer() {
 #include <util/setbaud.h>
 		UBRRH = UBRRH_VALUE;
@@ -66,22 +65,26 @@ template <unsigned char bufferSize> class usartHandlerWithBuffer: public usartHa
 		return kBufSize;
 	};
 	const char* fNextLine() {
-		if (lNLines == 0) {
-			return nullptr;
-		}
-		cli();
+		// check if a newline is found
+		unsigned char bytesInBuffer = lBytesInBuffer;
+		bool foundNewline = false;
+		unsigned char readIndex = lReadIndex;
 		unsigned char i;
-		for (i = 0; lBytesInBuffer > 0 && i < sizeof(lLine) - 1; i++) {
-			lLine[i] = lBuffer[lReadIndex];
-			lBuffer[lReadIndex] = '\0';
-			lBytesInBuffer--;
-			lReadIndex = (lReadIndex + 1) % kBufSize;
-			if (lLine[i] == '\0') {
+		for (i = 0; i < bytesInBuffer; i++) {
+			if (lBuffer[readIndex] == '\n') {
+				foundNewline = true;
 				break;
 			}
+			lLine[i] = lBuffer[readIndex];
+			readIndex = (readIndex + 1) % kBufSize;
+		}
+		if (!foundNewline) {
+			return nullptr;
 		}
 		lLine[i] = '\0';
-		lNLines--;
+		cli();
+		lBytesInBuffer -= i;
+		lReadIndex = readIndex;
 		sei();
 		return lLine;
 	};
@@ -91,10 +94,6 @@ usartHandlerWithBuffer<128> gUSARTHandler;
 
 ISR(USARTRXC_vect) {
 	auto byte = UDR;
-	if (byte == '\n') {
-		byte = '\0';
-		gUSARTHandler.lNLines++;
-	}
 	gUSARTHandler.lBuffer[gUSARTHandler.lWriteIndex] = byte;
 	gUSARTHandler.lWriteIndex = (gUSARTHandler.lWriteIndex + 1) % gUSARTHandler.fGetBufSize();
 	gUSARTHandler.lBytesInBuffer++;
