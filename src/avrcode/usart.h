@@ -42,13 +42,12 @@ class usartHandler {
 
 template <unsigned char bufferSize> class usartHandlerWithBuffer: public usartHandler {
   public:
-	enum : unsigned char { kBufSize = bufferSize};
-	char lBuffer[bufferSize];
-	char lLine[bufferSize];
-	volatile unsigned char lBytesInBuffer;
+	enum : unsigned char { kBufSize = 1 << bufferSize};
 	volatile unsigned char lWriteIndex;
 	unsigned char lReadIndex;
-	usartHandlerWithBuffer() : lBytesInBuffer(0),
+	char lBuffer[kBufSize];
+	char lLine[kBufSize];
+	usartHandlerWithBuffer() :
 		lWriteIndex(0), lReadIndex(0) {
 #include <util/setbaud.h>
 		UBRRH = UBRRH_VALUE;
@@ -67,32 +66,36 @@ template <unsigned char bufferSize> class usartHandlerWithBuffer: public usartHa
 	};
 	const char* fNextLine() {
 		// check if a newline is found
-		unsigned char bytesInBuffer = lBytesInBuffer;
+		unsigned char bytesInBuffer = (lWriteIndex - lReadIndex) & (kBufSize - 1);
 		unsigned char readIndex = lReadIndex;
 		for (unsigned char i = 0; i < bytesInBuffer; i++) {
 			auto value = lBuffer[readIndex];
-			readIndex = (readIndex + 1) % kBufSize;
+			readIndex = (readIndex + 1) & (kBufSize - 1);
 			if (value == '\n') {
 				lLine[i++] = '\0';
-				cli();
-				// we copied out i bytes, subtract them from the current value
-				lBytesInBuffer -= i;
+				fTransmit('w');
+				fHexByte(lWriteIndex);
+				fTransmit('r');
+				fHexByte(lReadIndex);
+				fTransmit('b');
+				fHexByte(bytesInBuffer);
+				fTransmit('\n');
 				lReadIndex = readIndex;
-				sei();
 				return lLine;
 			}
 			lLine[i] = value;
 		}
 		return nullptr;
 	};
+	inline void fAddByteToBuffer(unsigned char byte) {
+		lBuffer[lWriteIndex] = byte;
+		lWriteIndex = (lWriteIndex + 1) & (kBufSize - 1);
+	};
 };
 
-usartHandlerWithBuffer<128> gUSARTHandler;
+usartHandlerWithBuffer<7> gUSARTHandler;
 
 ISR(USARTRXC_vect) {
-	auto byte = UDR;
-	gUSARTHandler.lBuffer[gUSARTHandler.lWriteIndex] = byte;
-	gUSARTHandler.lWriteIndex = (gUSARTHandler.lWriteIndex + 1) % gUSARTHandler.fGetBufSize();
-	gUSARTHandler.lBytesInBuffer++;
+	gUSARTHandler.fAddByteToBuffer(UDR);
 }
 #endif
