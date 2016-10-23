@@ -11,7 +11,7 @@ class pulseBuffer {
   public:
 	enum : unsigned char {
 		kSize =  70,
-		kNBuffers = 5,
+		kNBuffers = 4,
 		kMinEdges = 64
 	};
 	enum : unsigned short {
@@ -127,30 +127,54 @@ void waitCounter0(unsigned short aMicroSeconds) {
 	TIFR = _BV(TOV0); // clear overflow
 }
 
+unsigned char HexToNibble(char code) {
+	if (code >= 'A' && code <= 'F') {
+		return code - 'A' + 0x0A;
+	} else if (code >= '0' && code <= '9') {
+		return code - '0';
+	}
+	return 0xFF;
+}
+
+unsigned short HexToShort(const char **aCode) {
+	unsigned short value = 0;
+	while (true) {
+		auto byte = *((*aCode)++);
+		auto nibble = HexToNibble(byte);
+		if (nibble == 0xFF) {
+			return value;
+		}
+		value = (value << 4) | nibble;
+	}
+}
 void sendPattern(const char *aPattern) {
+	auto period = HexToShort(&aPattern);
+	gUSARTHandler.fHexShort(period);
+	gUSARTHandler.fTransmit(' ');
+	gUSARTHandler.fString(aPattern);
+	gUSARTHandler.fTransmit(' ');
 	RFDataOut.fSet(true);
-	waitCounter0(600);
+	waitCounter0(period);
 	RFDataOut.fSet(false);
-	waitCounter0(4000);
+	waitCounter0(period * 5);
 	while (*aPattern != '\0') {
 		unsigned short nibble;
-		if (*aPattern > 'A') {
-			nibble = *aPattern - 'A' + 0x0A;
-		} else {
-			nibble = *aPattern - '0';
+		nibble = HexToNibble(*aPattern);
+		if (nibble == 0xFF) {
+			break;
 		}
 		unsigned char mask = 0x08;
 		while (mask != 0) {
 			if ((nibble & mask) != 0) {
 				RFDataOut.fSet(true);
-				waitCounter0(1200);
+				waitCounter0(period * 2);
 				RFDataOut.fSet(false);
-				waitCounter0(600);
+				waitCounter0(period);
 			} else {
 				RFDataOut.fSet(true);
-				waitCounter0(600);
+				waitCounter0(period);
 				RFDataOut.fSet(false);
-				waitCounter0(1200);
+				waitCounter0(period * 2);
 			}
 			mask >>= 1;
 		}
