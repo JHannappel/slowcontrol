@@ -12,12 +12,12 @@ class pulseBuffer {
 	enum : unsigned char {
 		kSize =  70,
 		kNBuffers = 4,
-		kMinEdges = 64
+		kMinEdges = 44
 	};
 	enum : unsigned short {
 		kMinPulseLength = 0x3F,
 		kMaxCountValue = 0x7FFF,
-		kValueMask = 0x3FFF
+		kValueMask = 0x7FFF
 	};
   private:
 	unsigned short lPulses[kSize];
@@ -26,15 +26,12 @@ class pulseBuffer {
   public:
 	pulseBuffer(): lIndex(0) {
 	};
-	bool fAddPulse(unsigned short aTime, bool isHighPulse, bool isNowHigh) {
+	bool fAddPulse(unsigned short aTime, bool isNowHigh) {
 		if (aTime < kMinPulseLength) {
 			return false;
 		}
-		if (isHighPulse) {
-			aTime += 0x8000u;
-		}
 		if (isNowHigh) {
-			aTime += 0x4000u;
+			aTime |= ~kValueMask;
 		}
 		lPulses[lIndex++] = aTime;
 		if (lIndex >= kSize) {
@@ -76,13 +73,12 @@ IOPin(D, 7) RFDataOut(true);
 ISR(TIMER1_CAPT_vect) { // an edge was detected and captured
 	Capture.fSet(true);
 	unsigned short interval = ICR1;
-	bool wasPosEdge = bit_is_set(TCCR1B, ICES1);
 	TCCR1B ^= _BV(ICES1); // change edge
 	TIFR = _BV(ICF1); // reset interrupt flag
 	TCNT1 = 0;
 	bool isHigh = bit_is_set(ACSR, ACO);
 	ACOmonitor.fSet(isHigh);
-	if (gBuffer[gWriteBufferIndex].fAddPulse(interval, wasPosEdge, isHigh) == false) { // probably an overflow
+	if (gBuffer[gWriteBufferIndex].fAddPulse(interval, isHigh) == false) { // probably an overflow
 		gBuffer[gWriteBufferIndex].fClear();
 		OCR1A = pulseBuffer::kMaxCountValue; // set max counter value to 15 bits
 		TCCR1B |= _BV(ICES1); // wait for a positive edge
@@ -136,6 +132,18 @@ unsigned char HexToNibble(char code) {
 	return 0xFF;
 }
 
+unsigned char HexToByte(const char **aCode) {
+	unsigned char value = 0;
+	while (true) {
+		auto byte = *((*aCode)++);
+		auto nibble = HexToNibble(byte);
+		if (nibble == 0xFF) {
+			return value;
+		}
+		value = (value << 4) | nibble;
+	}
+}
+
 unsigned short HexToShort(const char **aCode) {
 	unsigned short value = 0;
 	while (true) {
@@ -147,7 +155,9 @@ unsigned short HexToShort(const char **aCode) {
 		value = (value << 4) | nibble;
 	}
 }
+
 void sendPattern(const char *aPattern) {
+	auto nPulses = HexToByte(&aPattern);
 	auto period = HexToShort(&aPattern);
 	gUSARTHandler.fHexShort(period);
 	gUSARTHandler.fTransmit(' ');
@@ -156,7 +166,8 @@ void sendPattern(const char *aPattern) {
 	RFDataOut.fSet(true);
 	waitCounter0(period);
 	RFDataOut.fSet(false);
-	waitCounter0(period * 5);
+	waitCounter0(10 * period);
+	unsigned char pulsesSent = 0;
 	while (*aPattern != '\0') {
 		unsigned short nibble;
 		nibble = HexToNibble(*aPattern);
@@ -177,10 +188,17 @@ void sendPattern(const char *aPattern) {
 				waitCounter0(period * 2);
 			}
 			mask >>= 1;
+			pulsesSent++;
+			if (pulsesSent == nPulses) {
+				break;
+			}
 		}
 		aPattern++;
 	}
 	RFDataOut.fSet(false);
+	gUSARTHandler.fTransmit('-');
+	gUSARTHandler.fHexByte(pulsesSent);
+	gUSARTHandler.fTransmit('\n');
 	waitCounter0(0x3FF);
 	waitCounter0(0x3FF);
 	waitCounter0(0x3FF);
@@ -194,7 +212,6 @@ int main(void) {
 	         | _BV(ICES1) // capture on positive edge
 	         | _BV(WGM12) // use CTC mode with TOP at OCR1A
 	         | _BV(CS11) | _BV(CS10); // use sysclck/64 as counting freq, i.e. 250hKz or 4us ticks.
-	//| _BV(CS12) | _BV(CS10); // use sysclck/1024 as counting freq
 	TIMSK = _BV(TICIE1) // enable capture interrupt
 	        | _BV(OCIE1A); // enable compare interruppt
 	OCR1A = pulseBuffer::kMaxCountValue; // set max counter value to 15 bits
@@ -237,6 +254,8 @@ int main(void) {
 		gUSARTHandler.fTransmit(' ');
 		gUSARTHandler.fHexByte(gWriteBufferIndex);
 		gUSARTHandler.fTransmit(' ');
+		gUSARTHandler.fHexByte(gBuffer[readBufferIndex].fGetNEntries());
+		gUSARTHandler.fTransmit(' ');
 		unsigned char code[16];
 		unsigned char byte = 0;
 		unsigned char bit = 8;
@@ -267,11 +286,11 @@ int main(void) {
 		}
 		pulse /= nPulses;
 		gUSARTHandler.fTransmit(' ');
+		gUSARTHandler.fHexByte(nPulses);
+		gUSARTHandler.fTransmit(' ');
 		gUSARTHandler.fHexShort(pulse << 2);
 		gUSARTHandler.fTransmit(' ');
-		gUSARTHandler.fHexByte(byte);
-		gUSARTHandler.fTransmit(' ');
-		for (int b = 0; b <= byte; b++) {
+		for (int b = 0; b < byte; b++) {
 			gUSARTHandler.fHexByte(code[b]);
 		}
 		gUSARTHandler.fTransmit('\n');
