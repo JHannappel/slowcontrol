@@ -45,6 +45,7 @@ template <unsigned char bufferSize> class usartHandlerWithBuffer: public usartHa
 	enum : unsigned char { kBufSize = 1 << bufferSize};
 	volatile unsigned char lWriteIndex;
 	unsigned char lReadIndex;
+	unsigned char lLineIndex;
 	char lBuffer[kBufSize];
 	char lLine[kBufSize];
 	usartHandlerWithBuffer() :
@@ -66,24 +67,29 @@ template <unsigned char bufferSize> class usartHandlerWithBuffer: public usartHa
 	};
 	const char* fNextLine() {
 		// check if a newline is found
-		unsigned char bytesInBuffer = (lWriteIndex - lReadIndex) & (kBufSize - 1);
-		unsigned char readIndex = lReadIndex;
-		for (unsigned char i = 0; i < bytesInBuffer; i++) {
-			auto value = lBuffer[readIndex];
-			readIndex = (readIndex + 1) & (kBufSize - 1);
+		unsigned char bytesInBuffer;
+		while ((bytesInBuffer = (lWriteIndex - lReadIndex) & (kBufSize - 1))) {
+			auto value = lBuffer[lReadIndex];
+			lReadIndex = (lReadIndex + 1) & (kBufSize - 1);
 			if (value == '\n') {
-				lLine[i++] = '\0';
+				lLine[lLineIndex] = '\0';
 				fTransmit('w');
 				fHexByte(lWriteIndex);
 				fTransmit('r');
 				fHexByte(lReadIndex);
 				fTransmit('b');
 				fHexByte(bytesInBuffer);
+				fTransmit('l');
+				fHexByte(lLineIndex);
 				fTransmit('\n');
-				lReadIndex = readIndex;
+				lLineIndex = 0;
 				return lLine;
 			}
-			lLine[i] = value;
+			lLine[lLineIndex++] = value;
+			if (lLineIndex == kBufSize) {
+				lLineIndex = 0;
+				return nullptr;
+			}
 		}
 		return nullptr;
 	};
