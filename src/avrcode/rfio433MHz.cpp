@@ -11,8 +11,8 @@ class pulseBuffer {
   public:
 	enum : unsigned char {
 		kSize =  70,
-		kNBuffers = 4,
-		kMinEdges = 44
+		kNBuffers = 6,
+		kMinEdges = 0x40
 	};
 	enum : unsigned short {
 		kMinPulseLength = 0x3F,
@@ -160,10 +160,10 @@ unsigned short HexToShort(const char **aCode) {
 void sendPattern(const char *aPattern) {
 	auto nPulses = HexToByte(&aPattern);
 	auto period = HexToShort(&aPattern);
-	gUSARTHandler.fHexShort(period);
-	gUSARTHandler.fTransmit(' ');
-	gUSARTHandler.fString(aPattern);
-	gUSARTHandler.fTransmit(' ');
+	// gUSARTHandler.fHexShort(period);
+	// gUSARTHandler.fTransmit(' ');
+	// gUSARTHandler.fString(aPattern);
+	// gUSARTHandler.fTransmit(' ');
 	RFDataOut.fSet(true);
 	waitCounter0(period);
 	RFDataOut.fSet(false);
@@ -196,13 +196,13 @@ void sendPattern(const char *aPattern) {
 		}
 		aPattern++;
 	}
+	RFDataOut.fSet(true);
+	waitCounter0(period);
 	RFDataOut.fSet(false);
-	gUSARTHandler.fTransmit('-');
-	gUSARTHandler.fHexByte(pulsesSent);
-	gUSARTHandler.fTransmit('\n');
-	waitCounter0(0x3FF);
-	waitCounter0(0x3FF);
-	waitCounter0(0x3FF);
+	// gUSARTHandler.fTransmit('-');
+	// gUSARTHandler.fHexByte(pulsesSent);
+	// gUSARTHandler.fTransmit('\n');
+	waitCounter0(period * 10);
 }
 
 void decodePulses(pulseBuffer *aBuffer) {
@@ -211,6 +211,7 @@ void decodePulses(pulseBuffer *aBuffer) {
 		for (auto index = 0; index < aBuffer->fGetNEntries(); index++) {
 			unsigned short value = aBuffer->fGetEntry(index);
 			gUSARTHandler.fHexShort(value);
+
 			gUSARTHandler.fTransmit(' ');
 		}
 		gUSARTHandler.fString_P(PSTR("=> "));
@@ -290,7 +291,7 @@ int main(void) {
 			} else if (strcmp_P(line, PSTR("sparse")) == 0) {
 				gFullOutput = false;
 			} else if (strncmp_P(line, PSTR("send "), 5) == 0) {
-				for (int i = 0; i < 4; i++) {
+				for (int i = 0; i < 6; i++) {
 					sendPattern(line + 5);
 				}
 			}

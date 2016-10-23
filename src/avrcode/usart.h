@@ -99,7 +99,7 @@ template <unsigned char bufferSize> class usartHandlerWithBuffer: public usartHa
 	};
 };
 
-usartHandlerWithBuffer<7> gUSARTHandler;
+usartHandlerWithBuffer<6> gUSARTHandler;
 
 ISR(USARTRXC_vect) {
 	gUSARTHandler.fAddByteToBuffer(UDR);
