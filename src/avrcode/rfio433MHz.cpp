@@ -1,9 +1,7 @@
 #include <avr/io.h>
-#include <util/delay.h>
 #include <avr/interrupt.h>
 #include <avr/pgmspace.h>
 #include "iopin.h"
-#define BAUD 125000
 
 #include "usart.h"
 

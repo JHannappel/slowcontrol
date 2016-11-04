@@ -1,13 +1,45 @@
 #ifndef __usart_H_
 #define __usart_H_
 
-class usartHandler {
+template <
+    unsigned short csraAddr,
+    unsigned short csrbAddr,
+    unsigned short csrcAddr,
+    unsigned short brlAddr,
+    unsigned short brhAddr,
+    unsigned short udrAddr,
+    unsigned long BAUD,
+    unsigned long BAUD_TOL = 2
+    > class usartHandler {
   public:
+	usartHandler() {
+		constexpr unsigned long UBRR_VALUE16 = (((F_CPU) + 8UL * BAUD)
+		                                        / (16UL * BAUD) - 1UL);
+		unsigned short UBRR_VALUE;
+		static_assert(BAUD <= 1000000, "baud rate too high");
+		if (100 * (F_CPU) > (16 * (UBRR_VALUE16 + 1)) * (100 * BAUD + BAUD * BAUD_TOL)
+		        || 100 * (F_CPU) < (16 * (UBRR_VALUE16 + 1)) * (100 * BAUD - BAUD * BAUD_TOL)) { // we need USE_2X
+			_MMIO_BYTE(csraAddr) |= _BV(U2X);
+			constexpr unsigned long UBRR_VALUE8 = (((F_CPU) + 4UL * BAUD)
+			                                       / (8UL * BAUD) - 1UL);
+			static_assert(UBRR_VALUE8 < 4096UL, "UBRR value too high");
+			UBRR_VALUE = UBRR_VALUE8 & 0x0FFF;
+		} else {
+			static_assert(UBRR_VALUE16 < 4096UL, "UBRR value too high");
+			UBRR_VALUE = UBRR_VALUE16 & 0x0FFF;
+			_MMIO_BYTE(csraAddr) &= ~_BV(U2X);
+		}
+		_MMIO_BYTE(brhAddr) = UBRR_VALUE >> 8;
+		_MMIO_BYTE(brlAddr) = UBRR_VALUE & 0xff;
+		_MMIO_BYTE(csrbAddr) = _BV(RXEN) | _BV(TXEN) | _BV(RXCIE);
+		_MMIO_BYTE(csrcAddr) = _BV(URSEL) | (3 << UCSZ0);
+	};
+
 	void fTransmit( unsigned char data ) {
 		/* Wait for empty transmit buffer */
-		while ( !( UCSRA & (1 << UDRE)) );
+		while ( !( _MMIO_BYTE(csraAddr) & (1 << UDRE)) );
 		/* Put data into buffer, sends the data */
-		UDR = data;
+		_MMIO_BYTE(udrAddr) = data;
 	};
 
 	void fHexNibble(unsigned char nibble) {
@@ -40,68 +72,84 @@ class usartHandler {
 	};
 };
 
-template <unsigned char bufferSize> class usartHandlerWithBuffer: public usartHandler {
+template <
+    unsigned short csraAddr,
+    unsigned short csrbAddr,
+    unsigned short csrcAddr,
+    unsigned short brlAddr,
+    unsigned short brhAddr,
+    unsigned short udrAddr,
+    unsigned long BAUD,
+    unsigned long BAUD_TOL,
+    unsigned char ringBufferSize,
+    unsigned char lineBufferSize
+    > class usartHandlerWithBuffer: public usartHandler<csraAddr, csrbAddr, csrcAddr, brlAddr, brhAddr,  udrAddr, BAUD, BAUD_TOL> {
   public:
-	enum : unsigned char { kBufSize = 1 << bufferSize};
+	enum : unsigned char { kRingBuferSize = 1 << ringBufferSize,
+	                       kLineBufferSize = lineBufferSize
+	                     };
 	volatile unsigned char lWriteIndex;
 	unsigned char lReadIndex;
 	unsigned char lLineIndex;
-	char lBuffer[kBufSize];
-	char lLine[kBufSize];
+	char lBuffer[kRingBuferSize];
+	char lLine[kLineBufferSize];
 	usartHandlerWithBuffer() :
 		lWriteIndex(0), lReadIndex(0) {
-#include <util/setbaud.h>
-		UBRRH = UBRRH_VALUE;
-		UBRRL = UBRRL_VALUE;
-		#if USE_2X
-		UCSRA |= _BV(U2X);
-		#else
-		UCSRA &= ~_BV(U2X);
-		#endif
-		UCSRB = _BV(RXEN) | _BV(TXEN) | _BV(RXCIE);
-		UCSRC = _BV(URSEL) | (3 << UCSZ0);
 
-	};
-	unsigned char fGetBufSize() const {
-		return kBufSize;
 	};
 	const char* fNextLine() {
 		// check if a newline is found
 		unsigned char bytesInBuffer;
-		while ((bytesInBuffer = (lWriteIndex - lReadIndex) & (kBufSize - 1))) {
+		while ((bytesInBuffer = (lWriteIndex - lReadIndex) & (kRingBuferSize - 1))) {
 			auto value = lBuffer[lReadIndex];
-			lReadIndex = (lReadIndex + 1) & (kBufSize - 1);
+			lReadIndex = (lReadIndex + 1) & (kRingBuferSize - 1);
 			if (value == '\n') {
 				lLine[lLineIndex] = '\0';
-				fTransmit('w');
-				fHexByte(lWriteIndex);
-				fTransmit('r');
-				fHexByte(lReadIndex);
-				fTransmit('b');
-				fHexByte(bytesInBuffer);
-				fTransmit('l');
-				fHexByte(lLineIndex);
-				fTransmit('\n');
+				this->fTransmit('w');
+				this->fHexByte(lWriteIndex);
+				this->fTransmit('r');
+				this->fHexByte(lReadIndex);
+				this->fTransmit('b');
+				this->fHexByte(bytesInBuffer);
+				this->fTransmit('l');
+				this->fHexByte(lLineIndex);
+				this->fTransmit('\n');
 				lLineIndex = 0;
 				return lLine;
 			}
 			lLine[lLineIndex++] = value;
-			if (lLineIndex == kBufSize) {
+			if (lLineIndex == kLineBufferSize) {
 				lLineIndex = 0;
 				return nullptr;
 			}
 		}
 		return nullptr;
 	};
-	inline void fAddByteToBuffer(unsigned char byte) {
-		lBuffer[lWriteIndex] = byte;
-		lWriteIndex = (lWriteIndex + 1) & (kBufSize - 1);
+	inline void fAddByteToBuffer() {
+		lBuffer[lWriteIndex] = _MMIO_BYTE(udrAddr);
+		lWriteIndex = (lWriteIndex + 1) & (kRingBuferSize - 1);
 	};
 };
 
-usartHandlerWithBuffer<6> gUSARTHandler;
+
+#define USARTHandler(UartIndex, BaudRate, BS, LS)								 \
+	usartHandlerWithBuffer<																			 \
+	(unsigned short)(&UCSR##UartIndex##A),											 \
+	(unsigned short)(&UCSR##UartIndex##B),										 \
+	(unsigned short)(&UCSR##UartIndex##C),										 \
+	(unsigned short)(&UBRR##UartIndex##L),										 \
+	(unsigned short)(&UBRR##UartIndex##H),										 \
+	(unsigned short)(&UDR##UartIndex),												 \
+	BaudRate,																									 \
+	2,																												 \
+	BS,																												 \
+	LS>
+
+USARTHandler(, 125000, 6, 64) gUSARTHandler;
+
 
 ISR(USARTRXC_vect) {
-	gUSARTHandler.fAddByteToBuffer(UDR);
+	gUSARTHandler.fAddByteToBuffer();
 }
+
 #endif
