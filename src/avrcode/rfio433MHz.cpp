@@ -158,14 +158,16 @@ unsigned short HexToShort(const char **aCode) {
 void sendPattern(const char *aPattern) {
 	auto nPulses = HexToByte(&aPattern);
 	auto period = HexToShort(&aPattern);
+	auto syncPulse = HexToShort(&aPattern);
+	auto syncPause = HexToShort(&aPattern);
 	// gUSARTHandler.fHexShort(period);
 	// gUSARTHandler.fTransmit(' ');
 	// gUSARTHandler.fString(aPattern);
 	// gUSARTHandler.fTransmit(' ');
 	RFDataOut.fSet(true);
-	waitCounter0(period);
+	waitCounter0(syncPulse * period);
 	RFDataOut.fSet(false);
-	waitCounter0(10 * period);
+	waitCounter0(syncPause * period);
 	unsigned char pulsesSent = 0;
 	while (*aPattern != '\0') {
 		unsigned short nibble;
