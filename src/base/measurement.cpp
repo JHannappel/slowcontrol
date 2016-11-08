@@ -17,10 +17,20 @@ namespace slowcontrol {
 		                             "description", aDescription.c_str(),
 		                             "data_table", fGetDefaultTableName(),
 		                             &sendDefaultConfigValues);
-		if (sendDefaultConfigValues) {
+		if (sendDefaultConfigValues) { // we must initialize some other table entries
 			for (auto it : lConfigValues) {
 				fSaveOption(*(it.second), "initial default");
 			}
+
+			// the insert into the uid_states table can't be done via rule in the databse,
+			// because the new.uid is not the freshly inserted one but the next value
+			std::string  query("INSERT INTO uid_states (uid,type,valid_from,reason) VALUES (");
+			query += std::to_string(fGetUid());
+			query += ",";
+			query += std::to_string(lState);
+			query += ",'-infinity','initial state');";
+			auto result = PQexec(base::fGetDbconn(), query.c_str());
+			PQclear(result);
 		}
 		if (dynamic_cast<writeValue*>(this) != nullptr) {
 			std::string query("UPDATE uid_list SET is_write_value='true' WHERE uid=");
