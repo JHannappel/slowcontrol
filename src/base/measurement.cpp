@@ -31,6 +31,13 @@ namespace slowcontrol {
 			query += ",'-infinity','initial state');";
 			auto result = PQexec(base::fGetDbconn(), query.c_str());
 			PQclear(result);
+		} else {
+			std::string  query("SELECT type FROM uid_states WHERE uid=");
+			query += std::to_string(fGetUid());
+			query += ";";
+			auto result = PQexec(base::fGetDbconn(), query.c_str());
+			lState = std::stol(PQgetvalue(result, 0, 0));
+			PQclear(result);
 		}
 		if (dynamic_cast<writeValue*>(this) != nullptr) {
 			std::string query("UPDATE uid_list SET is_write_value='true' WHERE uid=");
