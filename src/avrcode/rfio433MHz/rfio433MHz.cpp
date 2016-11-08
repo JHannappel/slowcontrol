@@ -68,6 +68,14 @@ IOPin(C, 4) Capture(true);
 
 IOPin(D, 7) RFDataOut(true);
 
+USARTHandler(, 125000, 6, 64) gUSARTHandler;
+
+
+ISR(USART_RXC_vect) {
+	gUSARTHandler.fAddByteToBuffer();
+}
+
+
 
 ISR(TIMER1_CAPT_vect) { // an edge was detected and captured
 	Capture.fSet(true);

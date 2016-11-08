@@ -145,11 +145,5 @@ template <
 	BS,																												 \
 	LS>
 
-USARTHandler(, 125000, 6, 64) gUSARTHandler;
-
-
-ISR(USARTRXC_vect) {
-	gUSARTHandler.fAddByteToBuffer();
-}
 
 #endif
