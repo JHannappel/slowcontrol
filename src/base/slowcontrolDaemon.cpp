@@ -354,7 +354,7 @@ namespace slowcontrol {
 				if (req == nullptr) {
 					query += "'malformed request', result='false'";
 				} else if (request_time - std::chrono::system_clock::now() >
-				        std::chrono::milliseconds(1)) { // do it delayed
+				           std::chrono::milliseconds(1)) { // do it delayed
 					query += "'scheduled'";
 					{
 						std::lock_guard<decltype(lScheduledWriteRequestMutex)> lock(lScheduledWriteRequestMutex);

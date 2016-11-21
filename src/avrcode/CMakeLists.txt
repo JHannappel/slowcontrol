@@ -1,4 +1,5 @@
 set(AVR_UPLOADTOOL_PORT /dev/ttyACM0)
+set(AVR_MCU "atmega16a")
 include(generic-gcc-avr OPTIONAL RESULT_VARIABLE generic-gcc-avr-path)
 
 if (NOT ${generic-gcc-avr-path} STREQUAL "NOTFOUND")

@@ -1,5 +1,5 @@
 
-set(AVR_MCU "atmega8a")
+set(AVR_MCU "atmega16a")
 #     the type of AVR the application is built for
 set(AVR_L_FUSE "BF")
 #     the LOW fuse value for the MCU used

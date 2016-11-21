@@ -71,7 +71,7 @@ IOPin(D, 7) RFDataOut(true);
 USARTHandler(, 125000, 6, 64) gUSARTHandler;
 
 
-ISR(USART_RXC_vect) {
+ISR(USARTRXC_vect) {
 	gUSARTHandler.fAddByteToBuffer();
 }
 
@@ -168,6 +168,7 @@ void sendPattern(const char *aPattern) {
 	auto period = HexToShort(&aPattern);
 	auto syncPulse = HexToShort(&aPattern);
 	auto syncPause = HexToShort(&aPattern);
+	auto afterPause = HexToShort(&aPattern);
 	// gUSARTHandler.fHexShort(period);
 	// gUSARTHandler.fTransmit(' ');
 	// gUSARTHandler.fString(aPattern);
@@ -210,7 +211,7 @@ void sendPattern(const char *aPattern) {
 	// gUSARTHandler.fTransmit('-');
 	// gUSARTHandler.fHexByte(pulsesSent);
 	// gUSARTHandler.fTransmit('\n');
-	waitCounter0(period * 10);
+	waitCounter0(period * afterPause);
 }
 
 void decodePulses(pulseBuffer *aBuffer) {
