@@ -112,8 +112,8 @@ class gpio_output_value: public slowcontrol::measurement<bool>,
 
 int main(int argc, const char *argv[]) {
 	OptionParser parser("slowcontrol program for test purposes");
-	OptionMap<unsigned int> inPinNumbers('i',"--inpin","input pin name/number pairs");
-	OptionMap<unsigned int> outPinNumbers('o',"--outpin","output pin name/number pairs");
+	OptionMap<unsigned int> inPinNumbers('i',"inpin","input pin name/number pairs");
+	OptionMap<unsigned int> outPinNumbers('o',"outpin","output pin name/number pairs");
 	parser.fParse(argc, argv);
 
 	auto daemon = new slowcontrol::daemon("gpiod");
