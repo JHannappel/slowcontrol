@@ -353,8 +353,7 @@ namespace slowcontrol {
 				auto req = it->second.lWriter->fParseForRequest(request, request_time, id);
 				if (req == nullptr) {
 					query += "'malformed request', result='false'";
-				}
-				if (request_time - std::chrono::system_clock::now() >
+				} else if (request_time - std::chrono::system_clock::now() >
 				        std::chrono::milliseconds(1)) { // do it delayed
 					query += "'scheduled'";
 					{
