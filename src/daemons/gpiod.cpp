@@ -40,6 +40,12 @@ class gpio_input: public gpiopin_base {
 		valuepath += "/value";
 		lValueFd = open(valuepath.c_str(), O_RDONLY);
 	};
+	bool fRead() {
+		lseek(lValueFd, 0, SEEK_SET);
+		char buffer;
+		read(lValueFd, &buffer, 1);
+		return buffer == '1';
+	};
 };
 class gpio_output: public gpiopin_base {
   public:
@@ -52,6 +58,13 @@ class gpio_output: public gpiopin_base {
 		valuepath += "/value";
 		lValueFd = open(valuepath.c_str(), O_WRONLY);
 	};
+	void fWrite(bool aValue) {
+		if (aValue) {
+			write(lValueFd, "1\n", 2);
+		} else {
+			write(lValueFd, "0\n", 2);
+		}
+	}
 };
 
 
@@ -71,10 +84,7 @@ class gpio_input_value: public slowcontrol::measurement<bool>,
 		aPollfd->events = POLLPRI | POLLERR;
 	};
 	virtual void fProcessData(short /*aRevents*/) {
-		lseek(lValueFd, 0, SEEK_SET);
-		char buffer;
-		read(lValueFd, &buffer, 1);
-		fStore(buffer == '1');
+		fStore(fRead());
 	};
 
 };
@@ -93,11 +103,7 @@ class gpio_output_value: public slowcontrol::measurement<bool>,
 	virtual bool fProcessRequest(const writeValue::request* aRequest, std::string& aResponse) {
 		auto req = dynamic_cast<const requestWithType*>(aRequest);
 		if (req != nullptr) {
-			if (req->lGoalValue) {
-				write(lValueFd, "1\n", 2);
-			} else {
-				write(lValueFd, "0\n", 2);
-			}
+			fWrite(req->lGoalValue);
 			fStore(req->lGoalValue);
 			aResponse = "done.";
 			return true;
@@ -107,11 +113,44 @@ class gpio_output_value: public slowcontrol::measurement<bool>,
 	};
 };
 
+class gpio_timediff_value: public slowcontrol::boundCheckerInterface<slowcontrol::measurement<float>>,
+	        public slowcontrol::defaultReaderInterface,
+	        public gpio_input,
+	        public gpio_output {
+  public:
+	gpio_timediff_value(const std::string& aName, unsigned int aInPin, unsigned int aOutPin):
+		boundCheckerInterface(0.5, 0, 125),
+		defaultReaderInterface(lConfigValues, std::chrono::seconds(30)),
+		gpio_input(aInPin),
+		gpio_output(aOutPin) {
+		lClassName.fSetFromString(__func__);
+		fInitializeUid(aName);
+		fConfigure();
+	};
+	virtual void fReadCurrentValue() {
+		struct pollfd pfd;
+		pfd.fd = gpio_input::lValueFd;
+		pfd.events = POLLPRI | POLLERR;
+		fWrite(true);
+		while (fRead() == false) {
+			poll(&pfd, 1, 1000);
+		}
+		fWrite(false);
+		auto startTime = std::chrono::system_clock::now();
+		if (poll(&pfd, 1, 1000) > 0) {
+			auto stopTime = std::chrono::system_clock::now();
+			auto timeDiff = stopTime - startTime;
+			fStore(timeDiff.count(), startTime);
+		}
+	}
+};
 
 int main(int argc, const char *argv[]) {
 	OptionParser parser("slowcontrol program for test purposes");
 	OptionMap<unsigned int> inPinNumbers('i', "inpin", "input pin name/number pairs");
 	OptionMap<unsigned int> outPinNumbers('o', "outpin", "output pin name/number pairs");
+	OptionMap<unsigned int> durationInPinNumbers('I', "durationIn", "input pin name/number pairs for duration measurements");
+	OptionMap<unsigned int> durationOutPinNumbers('O', "durationOut", "output pin name/number pairs  for durationOut measurements");
 	parser.fParse(argc, argv);
 
 	auto daemon = new slowcontrol::daemon("gpiod");
@@ -132,6 +171,13 @@ int main(int argc, const char *argv[]) {
 		pollMeasurement.second->fSetPollFd(&pfd);
 		pfds.emplace_back(pfd);
 	}
+	for (auto inIt : durationInPinNumbers) {
+		auto outIt = durationOutPinNumbers.find(inIt.first);
+		if (outIt != durationOutPinNumbers.end()) {
+			new gpio_timediff_value(inIt.first, inIt.second, outIt->second);
+		}
+	}
+
 
 	daemon->fStartThreads();
 
