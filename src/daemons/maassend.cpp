@@ -297,14 +297,16 @@ int main(int argc, const char *argv[]) {
 	populateFswatches(compound);
 	new freeMemory(compound);
 	maassend->fStartThreads();
-	while (!maassend->fGetStopRequested()) {
-		for (auto dw : diskwatches) {
-			dw->read();
-			std::cerr << "waiting..." << maassend->fGetStopRequested() << std::endl;
-			maassend->fWaitFor(std::chrono::seconds(600 / diskwatches.size()));
-			std::cerr << "done." << maassend->fGetStopRequested() << std::endl;
-			if (maassend->fGetStopRequested()) {
-				break;
+	if (!diskwatches.empty()) {
+		while (!maassend->fGetStopRequested()) {
+			for (auto dw : diskwatches) {
+				dw->read();
+				std::cerr << "waiting..." << maassend->fGetStopRequested() << std::endl;
+				maassend->fWaitFor(std::chrono::seconds(600 / diskwatches.size()));
+				std::cerr << "done." << maassend->fGetStopRequested() << std::endl;
+				if (maassend->fGetStopRequested()) {
+					break;
+				}
 			}
 		}
 	}
