@@ -219,7 +219,8 @@ ALTER SEQUENCE setvalue_requests_id_seq OWNED BY setvalue_requests.id;
 CREATE TABLE state_types (
     typename text NOT NULL,
     explanation text,
-    type integer NOT NULL
+    type integer NOT NULL,
+    class text
 );
 
 
