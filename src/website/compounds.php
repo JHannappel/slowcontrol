@@ -35,7 +35,7 @@ while ($row = pg_fetch_assoc($result)) {
   echo "<td><a href=\"compound.php?id=${row['id']}\"> ${row['name']} </a></td>\n";
   echo "<td> ${row['description']} </td>\n";
   if ($row['uids'] != '') {
-      echo "<td><a href=\"valueconfig.php?uid=${row['uids']}\"> ${row['uids']}</a> </td>\n";
+      echo "<td><a href=\"valuelist.php?uid=${row['uids']}\"> ${row['uids']}</a> </td>\n";
   } else {
     echo "<td> --- </td>\n";
   }
