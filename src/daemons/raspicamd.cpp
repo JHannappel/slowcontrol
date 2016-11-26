@@ -38,6 +38,7 @@ class cameraRecording: public slowcontrol::measurement<bool> {
 	configValue<unsigned int> lFramesPerSecond;
 	configValue<unsigned int> lWidth;
 	configValue<unsigned int> lHeight;
+	configValue<std::string> lFilePattern;
 	std::string lCommand;
   public:
 	virtual void fConfigure() {
@@ -50,7 +51,8 @@ class cameraRecording: public slowcontrol::measurement<bool> {
 		lCommand += std::to_string(lWidth);
 		lCommand += " -h ";
 		lCommand += std::to_string(lHeight);
-		lCommand += " -o $(date +%Y%m%d_%H%M%S).h264";
+		lCommand += " -o ";
+		lCommand += lFilePattern;
 	}
 	float fGetMaxUnenlightenedDarkness() {
 		return lMaxUnenlightenedDarkness;
@@ -63,7 +65,8 @@ class cameraRecording: public slowcontrol::measurement<bool> {
 		lMaxUnenlightenedDarkness("MaxUnenlightenedDarkness", lConfigValues, 0.05),
 		lFramesPerSecond("framesPerSecond", lConfigValues, 25),
 		lWidth("with", lConfigValues, 1296),
-		lHeight("height", lConfigValues, 972) {
+		lHeight("height", lConfigValues, 972),
+		lFilePattern("filePattern", lConfigValues, "/tmp/vid/$(date +%Y%m%d_%H%M%S).h264" ) {
 		lClassName.fSetFromString(__func__);
 		fInitializeUid(aName);
 		fConfigure();
