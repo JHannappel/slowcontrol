@@ -59,21 +59,22 @@ namespace slowcontrol {
 
 		input_value::input_value(const std::string &aName,
 		                         unsigned int aPinNumber):
-			input(aPinNumber) {
+			lInPin(aPinNumber) {
 			lClassName.fSetFromString(__func__);
 			fInitializeUid(aName);
 			fConfigure();
+			fStore(lInPin.fRead());
 		}
 		void input_value::fSetPollFd(struct pollfd *aPollfd) {
-			aPollfd->fd = lValueFd;
+			aPollfd->fd = lInPin.fGetFd();
 			aPollfd->events = POLLPRI | POLLERR;
 		}
 		void input_value:: fProcessData(short /*aRevents*/) {
-			fStore(fRead());
+			fStore(lInPin.fRead());
 		}
 		output_value::output_value(const std::string &aName,
 		                           unsigned int aPinNumber):
-			output(aPinNumber) {
+			lOutPin(aPinNumber) {
 			lClassName.fSetFromString(__func__);
 			fInitializeUid(aName);
 			fConfigure();
@@ -82,7 +83,7 @@ namespace slowcontrol {
 		bool output_value::fProcessRequest(const writeValue::request* aRequest, std::string& aResponse) {
 			auto req = dynamic_cast<const requestWithType*>(aRequest);
 			if (req != nullptr) {
-				fWrite(req->lGoalValue);
+				lOutPin.fWrite(req->lGoalValue);
 				fStore(req->lGoalValue);
 				aResponse = "done.";
 				return true;
@@ -90,6 +91,11 @@ namespace slowcontrol {
 			aResponse = "can't cast request";
 			return false;
 		}
+		void output_value::fSet(bool aValue) {
+			lOutPin.fWrite(aValue);
+			fStore(aValue);
+		}
+
 
 		timediff_value::timediff_value(const std::string& aName, unsigned int aInPin, unsigned int aOutPin):
 			boundCheckerInterface(0.5, 0, 125),
