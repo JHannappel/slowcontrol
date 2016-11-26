@@ -340,9 +340,9 @@ namespace slowcontrol {
 				lOldValueUnsent = false;
 				daemon::fGetInstance()->fSignalToStorer();
 			} else {
-				lOldTime = aTime;
 				lOldValueUnsent = true;
 			}
+			lOldTime = aTime;
 		};
 
 		virtual bool fValuesToSend() {

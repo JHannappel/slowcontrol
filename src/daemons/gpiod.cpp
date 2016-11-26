@@ -23,6 +23,9 @@ class gpiopin_base {
 		lDirPath = "/sys/class/gpio/gpio";
 		lDirPath += std::to_string(lPinNumber);
 	};
+	int fGetFd() {
+		return lValueFd;
+	};
 };
 
 class gpio_input: public gpiopin_base {
@@ -114,28 +117,29 @@ class gpio_output_value: public slowcontrol::measurement<bool>,
 };
 
 class gpio_timediff_value: public slowcontrol::boundCheckerInterface<slowcontrol::measurement<float>>,
-	        public slowcontrol::defaultReaderInterface,
-	        public gpio_input,
-	        public gpio_output {
+	        public slowcontrol::defaultReaderInterface {
+  protected:
+	gpio_input lInPin;
+	gpio_output lOutPin;
   public:
 	gpio_timediff_value(const std::string& aName, unsigned int aInPin, unsigned int aOutPin):
 		boundCheckerInterface(0.5, 0, 125),
 		defaultReaderInterface(lConfigValues, std::chrono::seconds(30)),
-		gpio_input(aInPin),
-		gpio_output(aOutPin) {
+		lInPin(aInPin),
+		lOutPin(aOutPin) {
 		lClassName.fSetFromString(__func__);
 		fInitializeUid(aName);
 		fConfigure();
 	};
 	virtual void fReadCurrentValue() {
 		struct pollfd pfd;
-		pfd.fd = gpio_input::lValueFd;
+		pfd.fd = lInPin.fGetFd();
 		pfd.events = POLLPRI | POLLERR;
-		fWrite(true);
-		while (fRead() == false) {
+		lOutPin.fWrite(true);
+		while (lInPin.fRead() == false) {
 			poll(&pfd, 1, 1000);
 		}
-		fWrite(false);
+		lOutPin.fWrite(false);
 		auto startTime = std::chrono::system_clock::now();
 		if (poll(&pfd, 1, 1000) > 0) {
 			auto stopTime = std::chrono::system_clock::now();
