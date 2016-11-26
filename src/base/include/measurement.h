@@ -200,14 +200,13 @@ namespace slowcontrol {
 			lMinValueIndex = 0;
 			lMaxValueIndex = 0;
 		};
-		T fAbs(T aValue) {
-			if (aValue > 0) {
-				return aValue;
-			} else {
-				return -aValue;
+		bool fGetCurrentValue(T& aValue) {
+			if (!lValues.empty()) {
+				aValue = lValues.back().lValue;
+				return true;
 			}
+			return false;
 		};
-
 		virtual void fFlush(bool aFlushSingleValue) {
 			if (!lValues.empty() && (aFlushSingleValue || lValues.size() > 1)) {
 				std::set<size_t> indicesToSend;
@@ -315,6 +314,13 @@ namespace slowcontrol {
 			measurementBase() {
 			lNoValueYet = true;
 			lOldValueUnsent = true;
+		};
+		bool fGetCurrentValue(bool& aValue) {
+			if (!lNoValueYet) {
+				aValue = lOldValue;
+				return true;
+			}
+			return false;
 		};
 
 		virtual void fFlush(bool /*aFlushSingleValue*/) {
