@@ -68,6 +68,7 @@ namespace slowcontrol {
 
 	class pollReaderInterface { ///< interface for measurements that depend on a poll() able fd
 	  public:
+		virtual int fGetFd() = 0;
 		virtual void fSetPollFd(struct pollfd *aPollfd) = 0;
 		virtual void fProcessData(short aRevents) = 0;
 	};

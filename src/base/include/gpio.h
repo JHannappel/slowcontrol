@@ -35,6 +35,9 @@ namespace slowcontrol {
 		  public:
 			input_value(const std::string &aName,
 			            unsigned int aPinNumber);
+			virtual int fGetFd() {
+				return pin_base::fGetFd();
+			}
 			virtual void fSetPollFd(struct pollfd *aPollfd);
 			virtual void fProcessData(short /*aRevents*/);
 

@@ -17,22 +17,12 @@ int main(int argc, const char *argv[]) {
 	parser.fParse(argc, argv);
 
 	auto daemon = new slowcontrol::daemon("gpiod");
-	std::map<int, slowcontrol::pollReaderInterface*> pollMeasurements;
 
 	for (auto it : inPinNumbers) {
-		auto pollMeasurement = dynamic_cast<slowcontrol::pollReaderInterface*>(new slowcontrol::gpio::input_value(it.first, it.second));
-		struct pollfd pfd;
-		pollMeasurement->fSetPollFd(&pfd);
-		pollMeasurements.emplace(pfd.fd, pollMeasurement);
+		new slowcontrol::gpio::input_value(it.first, it.second);
 	}
 	for (auto it : outPinNumbers) {
 		new slowcontrol::gpio::output_value(it.first, it.second);
-	}
-	std::vector<struct pollfd> pfds;
-	for (auto pollMeasurement : pollMeasurements) {
-		struct pollfd pfd;
-		pollMeasurement.second->fSetPollFd(&pfd);
-		pfds.emplace_back(pfd);
 	}
 	for (auto inIt : durationInPinNumbers) {
 		auto outIt = durationOutPinNumbers.find(inIt.first);
@@ -43,20 +33,5 @@ int main(int argc, const char *argv[]) {
 
 
 	daemon->fStartThreads();
-
-	while (!daemon->fGetStopRequested()) {
-		auto result = poll(pfds.data(), pfds.size(), 1000);
-		if (result > 0) {
-			for (auto& pfd : pfds) {
-				if (pfd.revents != 0) {
-					auto it = pollMeasurements.find(pfd.fd);
-					if (it != pollMeasurements.end()) {
-						it->second->fProcessData(pfd.revents);
-					}
-				}
-			}
-		}
-	}
-
 	daemon->fWaitForThreads();
 }

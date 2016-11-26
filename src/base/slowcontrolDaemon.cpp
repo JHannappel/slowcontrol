@@ -109,6 +109,11 @@ namespace slowcontrol {
 			std::lock_guard<decltype(lMeasurementsWithReaderMutex)> lock(lMeasurementsWithReaderMutex);
 			lMeasurementsWithDefaultReader.emplace_back(aMeasurement, reader);
 		}
+		auto pollReader = dynamic_cast<pollReaderInterface*>(aMeasurement);
+		if (pollReader != nullptr) {
+			std::lock_guard<decltype(lMeasurementsWithPollReaderMutex)> lock(lMeasurementsWithPollReaderMutex);
+			lMeasurementsWithPollReader.emplace(pollReader->fGetFd(), pollReader);
+		}
 		auto writer = dynamic_cast<writeValue*>(aMeasurement);
 		if (writer != nullptr) {
 			writeableMeasurement wM(aMeasurement, writer);
@@ -249,6 +254,48 @@ namespace slowcontrol {
 				                              measurement);
 				if (std::chrono::system_clock::now() > nextHeartBeatTime) {
 					nextHeartBeatTime = fBeatHeart();
+				}
+			}
+		}
+	}
+
+	void daemon::fPollerThread() {
+		while (true) {
+			if (lMeasurementsWithPollReader.empty()) {
+				if (lStopRequested) {
+					std::cerr << "stopping poller thread" << std::endl;
+					return;
+				}
+				fWaitFor(std::chrono::seconds(1));
+				continue;
+			}
+
+			std::vector<struct pollfd> pfds;
+			{
+				std::lock_guard < decltype(lMeasurementsWithPollReaderMutex) > lock(lMeasurementsWithPollReaderMutex);
+				for (auto& measurement : lMeasurementsWithPollReader) {
+					struct pollfd pfd;
+					measurement.second->fSetPollFd(&pfd);
+					pfds.emplace_back(pfd);
+				}
+			}
+			// here no lock on the mutex is needed fur just acessing size()
+			while (lMeasurementsWithPollReader.size()
+			        == pfds.size()) {
+				if (lStopRequested) {
+					std::cerr << "stopping poller thread" << std::endl;
+					return;
+				}
+				auto result = poll(pfds.data(), pfds.size(), 1000);
+				if (result > 0) {
+					for (auto& pfd : pfds) {
+						if (pfd.revents != 0) {
+							auto it = lMeasurementsWithPollReader.find(pfd.fd);
+							if (it != lMeasurementsWithPollReader.end()) {
+								it->second->fProcessData(pfd.revents);
+							}
+						}
+					}
 				}
 			}
 		}
@@ -443,6 +490,7 @@ namespace slowcontrol {
 	void daemon::fStartThreads() {
 		lSignalCatcherThread = new std::thread(&daemon::fSignalCatcherThread, this);
 		lReaderThread = new std::thread(&daemon::fReaderThread, this);
+		lPollerThread = new std::thread(&daemon::fPollerThread, this);
 		lStorerThread = new std::thread(&daemon::fStorerThread, this);
 		fClearOldPendingRequests();
 		fProcessPendingRequests();
@@ -451,6 +499,7 @@ namespace slowcontrol {
 	}
 	void daemon::fWaitForThreads() {
 		lReaderThread->join();
+		lPollerThread->join();
 		lStorerThread->join();
 		lConfigChangeListenerThread->join();
 		lSignalCatcherThread->join();
