@@ -113,7 +113,7 @@ namespace slowcontrol {
 			if (poll(&pfd, 1, 1000) > 0) {
 				auto stopTime = std::chrono::system_clock::now();
 				auto timeDiff = stopTime - startTime;
-				fStore(timeDiff.count(), startTime);
+				fStore(std::chrono::duration_cast<std::chrono::nanoseconds>(timeDiff).count() * 1.0e-9, startTime);
 			}
 		}
 	} // end namespace gpio
