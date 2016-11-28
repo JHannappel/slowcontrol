@@ -101,7 +101,12 @@ int main(int argc, const char *argv[]) {
 				lightSwitch.fSet(true);
 			}
 			camera.fStore(true);
-			system(camera.fGetCommand());
+			bool motion = true;
+			motionDet.fGetCurrentValue(motion);
+			while (motion) {
+				system(camera.fGetCommand());
+				motionDet.fGetCurrentValue(motion);
+			}
 			camera.fStore(false);
 			if (darkness > camera.fGetMaxUnenlightenedDarkness()) { // dark, switch off the light
 				lightSwitch.fSet(false);

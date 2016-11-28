@@ -339,6 +339,8 @@ namespace slowcontrol {
 					std::lock_guard<decltype(lSendQueueMutex)> SendQueueLock(lSendQueueMutex);
 					if (lOldValueUnsent) {
 						lSendQueue.emplace_back(lOldTime, lOldValue);
+						lOldTime = aTime - std::chrono::microseconds(1);
+						lSendQueue.emplace_back(lOldTime, lOldValue);
 					}
 					lSendQueue.emplace_back(aTime, aValue);
 				}
