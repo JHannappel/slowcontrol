@@ -16,18 +16,14 @@ class motionWatch: public slowcontrol::gpio::input_value {
 	};
 	virtual void fProcessData(short aRevents) {
 		input_value::fProcessData(aRevents);
-		bool val = false;
-		fGetCurrentValue(val);
-		if (val) {
+		if (fGetCurrentValue()) {
 			lWaitCondition.notify_all();
 		}
 	};
 	virtual bool fWaitForChange() {
 		std::unique_lock < decltype(lWaitMutex) > lock(lWaitMutex);
 		lWaitCondition.wait_for(lock, std::chrono::seconds(1));
-		bool val = false;
-		fGetCurrentValue(val);
-		return val;
+		return fGetCurrentValue();
 	};
 };
 
@@ -95,17 +91,14 @@ int main(int argc, const char *argv[]) {
 
 	while (!daemon->fGetStopRequested()) {
 		if (motionDet.fWaitForChange()) {
-			float darkness = 1;
-			darknessDet.fGetCurrentValue(darkness);
+			auto darkness = darknessDet.fGetCurrentValue();
+
 			if (darkness > camera.fGetMaxUnenlightenedDarkness()) { // dark, switch on the light
 				lightSwitch.fSet(true);
 			}
 			camera.fStore(true);
-			bool motion = true;
-			motionDet.fGetCurrentValue(motion);
-			while (motion) {
+			while (motionDet.fGetCurrentValue()) {
 				system(camera.fGetCommand());
-				motionDet.fGetCurrentValue(motion);
 			}
 			camera.fStore(false);
 			if (darkness > camera.fGetMaxUnenlightenedDarkness()) { // dark, switch off the light

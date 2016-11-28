@@ -182,6 +182,7 @@ namespace slowcontrol {
 		size_t lMinValueIndex;
 		size_t lMaxValueIndex;
 		std::deque<timedValue> lSendQueue;
+		std::atomic<T> lCurrentValue;
 	  public:
 		configValue<T> lDeadBand;
 	  protected:
@@ -200,12 +201,8 @@ namespace slowcontrol {
 			lMinValueIndex = 0;
 			lMaxValueIndex = 0;
 		};
-		bool fGetCurrentValue(T& aValue) {
-			if (!lValues.empty()) {
-				aValue = lValues.back().lValue;
-				return true;
-			}
-			return false;
+		T fGetCurrentValue() {
+			return lCurrentValue.load();
 		};
 		virtual void fFlush(bool aFlushSingleValue) {
 			if (!lValues.empty() && (aFlushSingleValue || lValues.size() > 1)) {
@@ -237,6 +234,7 @@ namespace slowcontrol {
 			fStore(aValue, std::chrono::system_clock::now());
 		};
 		virtual void fStore(const T& aValue, timeType aTime) {
+			lCurrentValue = aValue;
 			if ((lValues.size() > 2)
 			        && lValues.at(lValues.size() - 1).lValue == aValue
 			        && lValues.at(lValues.size() - 2).lValue == aValue) { // no change
@@ -309,18 +307,15 @@ namespace slowcontrol {
 		bool lOldValueUnsent;
 		timeType lOldTime;
 		std::deque<timedValue> lSendQueue;
+		std::atomic<bool> lCurrentValue;
 	  public:
 		measurement():
 			measurementBase() {
 			lNoValueYet = true;
 			lOldValueUnsent = true;
 		};
-		bool fGetCurrentValue(bool& aValue) {
-			if (!lNoValueYet) {
-				aValue = lOldValue;
-				return true;
-			}
-			return false;
+		bool fGetCurrentValue() {
+			return lCurrentValue.load();
 		};
 
 		virtual void fFlush(bool /*aFlushSingleValue*/) {
@@ -334,6 +329,7 @@ namespace slowcontrol {
 			fStore(aValue, std::chrono::system_clock::now());
 		};
 		virtual void fStore(bool aValue, timeType aTime) {
+			lCurrentValue = aValue;
 			if (lNoValueYet || aValue != lOldValue) {
 				{
 					std::lock_guard<decltype(lSendQueueMutex)> SendQueueLock(lSendQueueMutex);
