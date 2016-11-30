@@ -451,6 +451,64 @@ namespace slowcontrol {
 	};
 
 
+	template <typename T> class watched_base {
+	  protected:
+		bool (*lWatchCondition)(T *aThat) ;
+		std::condition_variable lWaitCondition;
+		std::mutex lWaitMutex;
+	  public:
+		virtual bool fWaitForChange() {
+			std::unique_lock < decltype(lWaitMutex) > lock(lWaitMutex);
+			auto waitResult = lWaitCondition.wait_for(lock, std::chrono::seconds(1));
+			return waitResult == std::cv_status::no_timeout;
+		}
+	};
+	template <typename T> class watched_poller: public T, public watched_base<T> {
+	  public:
+		template<class ... Types> watched_poller (Types ... args) :
+			T(args...) {
+		};
+		virtual void fProcessData(short aRevents) override {
+			std::cout << __FILE__ << __LINE__ << "\n";
+			T::fProcessData(aRevents);
+			if (this->lWatchCondition(this)) {
+				this->lWaitCondition.notify_all();
+			}
+		};
+	};
+	template <typename T> class watched_reader: public T, public watched_base<T> {
+	  public:
+		template<class ... Types> watched_reader (Types ... args) :
+			T(args...) {
+		};
+		virtual void fReadCurrentValue() override {
+			std::cout << __FILE__ << __LINE__ << "\n";
+			T::fReadCurrentValue();
+			if (this->lWatchCondition(this)) {
+				this->lWaitCondition.notify_all();
+			}
+		};
+	};
+
+	template <typename T> class watched_measurement: public std::conditional<std::is_base_of<pollReaderInterface, T>::value,
+		watched_poller<T>,
+		typename std::conditional<std::is_base_of<defaultReaderInterface, T>::value,
+		watched_reader<T>,
+		T>::type>::type {
+	  public:
+		template<class ... Types> watched_measurement (bool (*aWatchCondition)(T* aThat),
+		        Types ... args) :
+			std::conditional<std::is_base_of<pollReaderInterface, T>::value,
+			watched_poller<T>,
+			typename std::conditional<std::is_base_of<defaultReaderInterface, T>::value,
+			watched_reader<T>,
+			T>::type>::type (args...) {
+			this->lWatchCondition = aWatchCondition;
+		};
+	};
+
+
+
 } // end of namespace slowcontrol
 #endif
 

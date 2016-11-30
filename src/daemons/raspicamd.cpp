@@ -5,28 +5,6 @@
 #include <Options.h>
 
 
-class motionWatch: public slowcontrol::gpio::input_value {
-  protected:
-	std::condition_variable lWaitCondition;
-	std::mutex lWaitMutex;
-  public:
-	motionWatch(const std::string &aName,
-	            unsigned int aPinNumber):
-		input_value(aName, aPinNumber) {
-	};
-	virtual void fProcessData(short aRevents) {
-		input_value::fProcessData(aRevents);
-		if (fGetCurrentValue()) {
-			lWaitCondition.notify_all();
-		}
-	};
-	virtual bool fWaitForChange() {
-		std::unique_lock < decltype(lWaitMutex) > lock(lWaitMutex);
-		lWaitCondition.wait_for(lock, std::chrono::seconds(1));
-		return fGetCurrentValue();
-	};
-};
-
 class cameraRecording: public slowcontrol::measurement<bool> {
   protected:
 	configValue<unsigned int> lChunkLength;
@@ -84,7 +62,10 @@ int main(int argc, const char *argv[]) {
 
 	cameraRecording camera(name);
 
-	motionWatch motionDet(name.fGetValue() + "_motion" , motionPin);
+	//	motionWatch motionDet(name.fGetValue() + "_motion" , motionPin);
+	slowcontrol::watched_measurement<slowcontrol::gpio::input_value>  motionDet([](slowcontrol::gpio::input_value * aThat) {
+		return aThat->fGetCurrentValue();
+	}, name.fGetValue() + "_motion" , motionPin);
 	slowcontrol::gpio::output_value lightSwitch(name.fGetValue() + "_light", lightPin);
 	slowcontrol::gpio::timediff_value darknessDet(name.fGetValue() + "_darkness", darknessInPin, darknessOutPin);
 
