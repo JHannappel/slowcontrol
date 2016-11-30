@@ -2,6 +2,7 @@
 #define __slowcontrolDaemon_h_
 
 #include <map>
+#include <set>
 #include <vector>
 #include <thread>
 #include <mutex>
@@ -62,12 +63,7 @@ namespace slowcontrol {
 		void fConfigChangeListener();
 		void fDaemonize();
 		std::chrono::system_clock::time_point fBeatHeart(bool aLastTime = false);
-		std::thread* lSignalCatcherThread;
-		std::thread* lReaderThread;
-		std::thread* lPollerThread;
-		std::thread* lScheduledWriterThread;
-		std::thread* lStorerThread;
-		std::thread* lConfigChangeListenerThread;
+		std::set<std::thread*, bool (*)(std::thread*, std::thread *)> lThreads;
 		std::mutex lStorerMutex;
 		std::condition_variable lStorerCondition;
 		void fFlushAllValues();

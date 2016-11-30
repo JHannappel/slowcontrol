@@ -32,7 +32,10 @@ namespace slowcontrol {
 
 	Option<const char*> gPidFileName('\0', "pidFile", "name of pid file", nullptr);
 
-	daemon::daemon(const char *aName) {
+	daemon::daemon(const char *aName) :
+		lThreads([](std::thread* a, std::thread *b) {
+		return a->get_id() < b->get_id();
+	}) {
 		gInstance = this;
 		if (!gDontDaemonize) {
 			fDaemonize();
@@ -488,22 +491,19 @@ namespace slowcontrol {
 	}
 
 	void daemon::fStartThreads() {
-		lSignalCatcherThread = new std::thread(&daemon::fSignalCatcherThread, this);
-		lReaderThread = new std::thread(&daemon::fReaderThread, this);
-		lPollerThread = new std::thread(&daemon::fPollerThread, this);
-		lStorerThread = new std::thread(&daemon::fStorerThread, this);
+		lThreads.insert(new std::thread(&daemon::fSignalCatcherThread, this));
+		lThreads.insert(new std::thread(&daemon::fReaderThread, this));
+		lThreads.insert(new std::thread(&daemon::fPollerThread, this));
+		lThreads.insert(new std::thread(&daemon::fStorerThread, this));
 		fClearOldPendingRequests();
 		fProcessPendingRequests();
-		lConfigChangeListenerThread = new std::thread(&daemon::fConfigChangeListener, this);
-		lScheduledWriterThread = new std::thread(&daemon::fScheduledWriterThread, this);
+		lThreads.insert(new std::thread(&daemon::fConfigChangeListener, this));
+		lThreads.insert(new std::thread(&daemon::fScheduledWriterThread, this));
 	}
 	void daemon::fWaitForThreads() {
-		lReaderThread->join();
-		lPollerThread->join();
-		lStorerThread->join();
-		lConfigChangeListenerThread->join();
-		lSignalCatcherThread->join();
-		lScheduledWriterThread->join();
+		for (auto thread : lThreads) {
+			thread->join();
+		}
 	}
 
 } // end of namespace slowcontrol
