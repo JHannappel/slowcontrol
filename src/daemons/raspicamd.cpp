@@ -47,6 +47,7 @@ class cameraRecording: public slowcontrol::measurement<bool> {
 		lCommand += std::to_string(lWidth);
 		lCommand += " -h ";
 		lCommand += std::to_string(lHeight);
+		lCommand += " -ae 10,0x00,0x8080FF -a 4 -a '%Y-%m-%d %H:%M:%S' ";
 		lCommand += " -o ";
 		lCommand += lFilePattern;
 	}
