@@ -1,7 +1,7 @@
 #include "measurement.h"
 #include "slowcontrolDaemon.h"
 #include "gpio.h"
-#include <fstream>
+#include <iostream>
 #include <Options.h>
 #include <deque>
 template <typename T> class messageQueue {
@@ -114,8 +114,8 @@ class cameraRecording: public slowcontrol::measurement<bool> {
 				unlink(command.c_str());
 			}
 		}
+		std::cout << "stopping post process thread\n";
 	}
-	std::cout << "stopping post process thread\n";
 };
 
 int main(int argc, const char *argv[]) {
