@@ -74,6 +74,7 @@ namespace slowcontrol {
 		static daemon* fGetInstance();
 		void fStartThreads();
 		void fWaitForThreads();
+		void fAddThread(std::thread *aThread);
 		void fSignalToStorer();
 		bool fGetStopRequested() const {
 			return lStopRequested;

@@ -500,6 +500,11 @@ namespace slowcontrol {
 		lThreads.insert(new std::thread(&daemon::fConfigChangeListener, this));
 		lThreads.insert(new std::thread(&daemon::fScheduledWriterThread, this));
 	}
+	void daemon::fAddThread(std::thread *aThread) {
+		lThreads.insert(aThread);
+	}
+
+
 	void daemon::fWaitForThreads() {
 		for (auto thread : lThreads) {
 			thread->join();

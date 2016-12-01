@@ -3,6 +3,35 @@
 #include "gpio.h"
 #include <fstream>
 #include <Options.h>
+#include <deque>
+template <typename T> class messageQueue {
+  protected:
+	std::deque <T> lQueue;
+	std::mutex lMutex;
+	std::condition_variable lWaitCondition;
+  public:
+	typedef T messageType;
+	void fEnqueue(const T& aItem) {
+		{
+			std::lock_guard<decltype(lMutex)> lock(lMutex);
+			lQueue.emplace_back(aItem);
+		}
+		lWaitCondition.notify_one();
+	};
+	bool fDequeue(T& aItem) {
+		std::unique_lock<decltype(lMutex)> lock(lMutex);
+		if (lWaitCondition.wait_for(lock, std::chrono::seconds(1)) == std::cv_status::timeout) {
+			return false;
+		};
+		if (lQueue.empty()) {
+			return false;
+		}
+		aItem = lQueue.front();
+		lQueue.pop_front();
+		return true;
+	};
+};
+
 
 
 class cameraRecording: public slowcontrol::measurement<bool> {
@@ -13,7 +42,12 @@ class cameraRecording: public slowcontrol::measurement<bool> {
 	configValue<unsigned int> lWidth;
 	configValue<unsigned int> lHeight;
 	configValue<std::string> lFilePattern;
+	configValue<std::string> lTmpDir;
+	configValue<std::string> lOutputDir;
 	std::string lCommand;
+	std::string lPostProcessCommand;
+
+	messageQueue<std::string> lMessageQueue;
   public:
 	virtual void fConfigure() {
 		measurement::fConfigure();
@@ -27,7 +61,11 @@ class cameraRecording: public slowcontrol::measurement<bool> {
 		lCommand += std::to_string(lHeight);
 		lCommand += " -ae 10,0x00,0x8080FF -a 4 -a '%Y-%m-%d %H:%M:%S' ";
 		lCommand += " -o ";
-		lCommand += lFilePattern;
+		lCommand += lTmpDir;
+		lPostProcessCommand = "MP4Box -fps ";
+		lPostProcessCommand += std::to_string(lFramesPerSecond);
+		lPostProcessCommand += " -add ";
+		lPostProcessCommand += lTmpDir;
 	}
 	float fGetMaxUnenlightenedDarkness() {
 		return lMaxUnenlightenedDarkness;
@@ -41,11 +79,43 @@ class cameraRecording: public slowcontrol::measurement<bool> {
 		lFramesPerSecond("framesPerSecond", lConfigValues, 25),
 		lWidth("with", lConfigValues, 1296),
 		lHeight("height", lConfigValues, 972),
-		lFilePattern("filePattern", lConfigValues, "/tmp/vid/$(date +%Y%m%d_%H%M%S).h264" ) {
+		lFilePattern("filePattern", lConfigValues, "%Y%m%d_%H%M%S"),
+		lTmpDir("tmpDir", lConfigValues, "/run/"), // that's a ramdisk
+		lOutputDir("outputDir", lConfigValues, "/video/") {
 		lClassName.fSetFromString(__func__);
 		fInitializeUid(aName);
 		fConfigure();
+		slowcontrol::daemon::fGetInstance()->fAddThread(new std::thread(&cameraRecording::fPostProcess, this));
 	}
+	void fRecord() {
+		char filename[1024];
+		std::time_t now = std::time(NULL);
+		std::strftime(filename, sizeof(filename), lFilePattern.fGetValue().c_str(), std::localtime(&now));
+		std::string command(lCommand);
+		command += filename;
+		command += ".h264";
+		system(command.c_str());
+		lMessageQueue.fEnqueue(filename);
+	}
+	void fPostProcess() {
+		while (!slowcontrol::daemon::fGetInstance()->fGetStopRequested()) {
+			std::string filename;
+			if (lMessageQueue.fDequeue(filename)) {
+				std::string command(lPostProcessCommand);
+				command += filename;
+				command += ".h264 ";
+				command += lOutputDir;
+				command += filename;
+				command += ".mp4";
+				system(command.c_str());
+				command = "/run/";
+				command += filename;
+				command += ".h264";
+				unlink(command.c_str());
+			}
+		}
+	}
+	std::cout << "stopping post process thread\n";
 };
 
 int main(int argc, const char *argv[]) {
@@ -80,7 +150,7 @@ int main(int argc, const char *argv[]) {
 			}
 			camera.fStore(true);
 			while (motionDet.fGetCurrentValue()) {
-				system(camera.fGetCommand());
+				camera.fRecord();
 			}
 			camera.fStore(false);
 			if (darkness > camera.fGetMaxUnenlightenedDarkness()) { // dark, switch off the light
