@@ -10,8 +10,12 @@ page_head($dbconn,"Slowcontrol");
 $video=$_GET['video'];
 $videodir=dirname($video);
 $filedir="/data".$videodir;
-
-$videos=scandir($filedir);//."/*.mp4");
+if (isset($_GET['unclassified'])) {
+  $uc="&unclassified";
+ } else {
+  $uc="";
+ }
+    $videos=scandir($filedir);//."/*.mp4");
 $index=array_search(basename($video),$videos);
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
    if (isset($_POST['newdir'])) {
@@ -31,7 +35,8 @@ echo "<video src=\"$video\" autoplay controls>$video</video>\n";
 $d = dir("/data/video/sort/");
 while(false !== ($e = $d->read())) {
   if ($e[0] != ".") {
-    echo "<form action=\"classify_video.php?video=$video\" method=\"post\">\n";
+    echo "<span>\n";
+    echo "<form action=\"classify_video.php?video=$video$uc\" method=\"post\">\n";
     if (file_exists("/data/video/sort/".$e."/".basename($video))) {
       $s = stat("/data/video/sort/".$e."/".basename($video));
       if ($s['nlink']==1) {
@@ -42,9 +47,10 @@ while(false !== ($e = $d->read())) {
       echo "Add to <input type=\"submit\" name=\"olddir\" value=\"$e\" >\n";
     }
     echo "</form>\n";
+    echo "</span>\n";
   }
 }
-echo "<form action=\"classify_video.php?video=$video\" method=\"post\">\n";
+echo "<form action=\"classify_video.php?video=$video$uc\" method=\"post\">\n";
 echo "<input type=\"text\" name=\"newdir\" value=\"noname\" width=30>\n";
  echo "<input type=\"submit\" value=\"new class\" >\n";
  echo "</form>\n";
@@ -52,9 +58,7 @@ echo "<input type=\"text\" name=\"newdir\" value=\"noname\" width=30>\n";
 for ($i=$index-1; $i>=0; $i--) {
   $file=$filedir."/".$videos[$i];
   if ($videos[$i][0] != "." && file_exists($file)) {
-    $uc="";
     if (isset($_GET['unclassified'])) {
-      $uc="&unclassified";
       $s=stat($file);
       if ($s['nlink']!=1) {
 	continue;
@@ -68,9 +72,7 @@ $nvids=count($videos);
 for ($i=$index+1; $i<$nvids; $i++) {
   $file=$filedir."/".$videos[$i];
   if ($videos[$i][0] != "." && file_exists($file)) {
-    $uc="";
     if (isset($_GET['unclassified'])) {
-      $uc="&unclassified";
       $s=stat($file);
       if ($s['nlink']!=1) {
 	continue;
