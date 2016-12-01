@@ -51,7 +51,7 @@ echo "<input type=\"text\" name=\"newdir\" value=\"noname\" width=30>\n";
 
 for ($i=$index-1; $i>=0; $i--) {
   $file=$filedir."/".$videos[$i];
-  if (file_exists($file)) {
+  if ($videos[$i][0] != "." && file_exists($file)) {
     $uc="";
     if (isset($_GET['unclassified'])) {
       $uc="&unclassified";
@@ -67,7 +67,7 @@ for ($i=$index-1; $i>=0; $i--) {
 $nvids=count($videos);
 for ($i=$index+1; $i<$nvids; $i++) {
   $file=$filedir."/".$videos[$i];
-  if (file_exists($file)) {
+  if ($videos[$i][0] != "." && file_exists($file)) {
     $uc="";
     if (isset($_GET['unclassified'])) {
       $uc="&unclassified";
