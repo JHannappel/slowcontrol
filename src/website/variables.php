@@ -74,6 +74,7 @@ function page_head($dbconn,$name,$refreshable=true) {
 	echo "<li><a href=\"compounds.php\">Compounds</a>\n";
 	echo "<li><a href=\"daemons.php\">Daemons</a>\n";
 	echo "<li><a href=\"valueconfig.php?unclaimed\">Unclaimed measurements</a>\n";
+	echo "<li><a href=\"videos.php\">Videos</a>\n";
 	echo "</ul>\n";
 	echo "</NAV>\n";
 	echo "<DIV id=\"content\">\n";
