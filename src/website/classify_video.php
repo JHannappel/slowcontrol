@@ -54,7 +54,6 @@ for ($i=$index-1; $i>=0; $i--) {
       }
     }
     $previous="$videodir/${videos[$i]}";
-    echo "<a href=\"classify_video.php?video=$previous$uc\">previous</a>\n";
     break;
   }
  }
@@ -69,12 +68,20 @@ for ($i=$index+1; $i<$nvids; $i++) {
       }
     }
     $next="$videodir/${videos[$i]}";
-    echo "<a href=\"classify_video.php?video=$next$uc\">next</a>\n";
     break;
   }
  }
 
 echo "<table>\n";
+echo "<tr>\n";
+if (isset($previous)) {
+    echo "<td><a href=\"classify_video.php?video=$previous$uc\">previous</a></td>\n";
+ }
+echo "<td></td>\n";
+if (isset($next)) {
+    echo "<td><a href=\"classify_video.php?video=$next$uc\">next</a></td>\n";
+ }
+echo "</tr>\n";
 
 $d = dir("/data/video/sort/");
 while(false !== ($e = $d->read())) {
