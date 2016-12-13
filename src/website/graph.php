@@ -204,10 +204,14 @@ if (is_resource($process)) {
   }
 	foreach ($values as $uid => $value) {
 		if ($value['is_write_value']=='t') {
-			$result = pg_query($dbconn,"SELECT comment, EXTRACT('epoch' from request_time - (request_time AT TIME ZONE 'UTC' - request_time AT TIME ZONE 'Europe/Berlin')) as request_time, (SELECT ${value['value_expression']} FROM ${value['data_table']} WHERE uid=$uid AND time > setvalue_requests.request_time ORDER BY TIME DESC LIMIT 1) AS value FROM setvalue_requests WHERE uid=$uid;");
-			while ($row=pg_fetch_assoc($result)) {
-				fwrite($pipes[0],"set label \"${row['comment']}\" at ${row['request_time']},${row['value']} rotate point points 1\n");
-			}
+		  $result = pg_query($dbconn,"SELECT comment, EXTRACT('epoch' from time - (time AT TIME ZONE 'UTC' - time AT TIME ZONE 'Europe/Berlin')) as time, (SELECT ${value['value_expression']} FROM ${value['data_table']} WHERE uid=$uid AND time > comments.time ORDER BY TIME DESC LIMIT 1) AS value FROM comments WHERE uid=$uid;");
+		  while ($row=pg_fetch_assoc($result)) {
+		    fwrite($pipes[0],"set label \"${row['comment']}\" at ${row['request_time']},${row['value']} rotate point points 1\n");
+		  }
+		}
+		$result = pg_query($dbconn,"SELECT comment, $timeexpr as time, (SELECT ${value['value_expression']} FROM ${value['data_table']} WHERE uid=$uid AND time < comments.time ORDER BY TIME ASC LIMIT 1) AS value FROM comments WHERE uid=$uid;");
+		while ($row=pg_fetch_assoc($result)) {
+		  fwrite($pipes[0],"set label \"${row['comment']}\" at ${row['time']},${row['value']} rotate point points 1\n");
 		}
 	}
 		
@@ -216,7 +220,7 @@ if (is_resource($process)) {
   foreach ($values as $uid => $value) {
     if ($need_comma) {fwrite($pipes[0],",");}
     $query="SELECT $timeexpr, ${value['value_expression']} FROM ${value['data_table']} WHERE uid=$uid AND $timeinterval ORDER BY time";
-    //        file_put_contents("/tmp/graphdebug.log",$query,FILE_APPEND);
+    // file_put_contents("/tmp/graphdebug.log",$query,FILE_APPEND);
     fwrite($pipes[0], "\"<  /bin/echo -e \\\"$query\\\" | psql \\\"$dbstring\\\"\" u 1:3 with ${value['plotstyle']} title \"${value['label']}${value['manipulation']}\"");
     $need_comma=1;
   }
