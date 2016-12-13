@@ -32,6 +32,17 @@ SET default_with_oids = false;
 --
 --
 
+CREATE TABLE comments (
+    uid integer,
+    comment text,
+    "time" timestamp with time zone DEFAULT now()
+);
+
+
+
+--
+--
+
 CREATE TABLE compound_families (
     parent_id integer NOT NULL,
     child_id integer NOT NULL,
