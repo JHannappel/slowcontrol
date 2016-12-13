@@ -1,7 +1,7 @@
 <?php
 session_start();
 if (isset($_GET["type"])) {$type=$_GET["type"];} else {$type=NULL;}
-
+$plotter='gnuplot';
 if ($type == "png") {
 	header("Content-Type: image/png");
 	header('Content-Disposition: inline; filename="graph.png"');
@@ -14,7 +14,9 @@ if ($type == "png") {
 } else if ($type == "pdf") {
 	header("Content-Type: application/pdf");
 	header('Content-Disposition: attachment; filename="graph.pdf"');
-} else if ($type == "canvas") {
+} else if ($type == "debug") {
+	$plotter='cat';
+ } else if ($type == "canvas") {
 	// Nothing, we provide a standalone HTML. 
 } else {
 	// Used for 'svg' and 'svginteractive'. 
@@ -158,7 +160,7 @@ $env = array('some_option' => 'aeiou',
 	
 	
 	
-$process = proc_open('gnuplot', $descriptorspec, $pipes, $cwd, $env);
+$process = proc_open($plotter, $descriptorspec, $pipes, $cwd, $env);
 	
 if (is_resource($process)) {
   // $pipes now looks like this:
@@ -206,12 +208,12 @@ if (is_resource($process)) {
 		if ($value['is_write_value']=='t') {
 		  $result = pg_query($dbconn,"SELECT comment, EXTRACT('epoch' from time - (time AT TIME ZONE 'UTC' - time AT TIME ZONE 'Europe/Berlin')) as time, (SELECT ${value['value_expression']} FROM ${value['data_table']} WHERE uid=$uid AND time > comments.time ORDER BY TIME DESC LIMIT 1) AS value FROM comments WHERE uid=$uid;");
 		  while ($row=pg_fetch_assoc($result)) {
-		    fwrite($pipes[0],"set label \"${row['comment']}\" at ${row['request_time']},${row['value']} rotate point points 1\n");
+		    fwrite($pipes[0],"set label \"${row['comment']}\" at \"${row['request_time']}\",${row['value']} rotate point points 1\n");
 		  }
 		}
 		$result = pg_query($dbconn,"SELECT comment, $timeexpr as time, (SELECT ${value['value_expression']} FROM ${value['data_table']} WHERE uid=$uid AND time < comments.time ORDER BY TIME ASC LIMIT 1) AS value FROM comments WHERE uid=$uid;");
 		while ($row=pg_fetch_assoc($result)) {
-		  fwrite($pipes[0],"set label \"${row['comment']}\" at ${row['time']},${row['value']} rotate point points 1\n");
+		  fwrite($pipes[0],"set label \"${row['comment']}\" at \"${row['time']}\",${row['value']} rotate point points 1\n");
 		}
 	}
 		
