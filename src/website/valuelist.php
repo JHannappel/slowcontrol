@@ -17,6 +17,11 @@ if (isset($_GET['uid'])) {
  }
 $result = pg_query($dbconn,"SELECT uid, data_table, description, is_write_value, (SELECT value FROM uid_configs WHERE uid_configs.uid=uid_list.uid AND name='name') AS name, (SELECT value FROM uid_configs WHERE uid_configs.uid=uid_list.uid AND name='unit') AS unit FROM uid_list $condition;");
 
+if (pg_num_rows($result) < 5) {
+  $checkstate=" checked ";
+}
+echo "<form action=dressed_graph.php method=get>\n";
+
 echo "<table>\n";
 echo "<thead>\n";
 echo "<tr>\n";
@@ -41,7 +46,8 @@ while ($row = pg_fetch_assoc($result)) {
 		echo $row['name'];
 	}
 	echo "</a></td>\n";
-	echo "<td class=\"${state['class']}\"> ${value['value']} $unit</td>";
+	echo "<td class=\"${state['class']}\"><a href=\"dressed_graph.php?uid=$uid\"> ${value['value']} $unit </a></td>";
+	echo "<td><input type=\"checkbox\" name=\"u$uid\" $checkstate></td>\n";
 	echo "<td class=\"${state['class']}\">${value['time']}</td>\n";
 	echo "<td class=\"${state['class']}\">${state['typename']}</td>\n";
 	echo "<td class=\"${state['class']}\">${state['reason']}</td>\n";
@@ -51,7 +57,7 @@ while ($row = pg_fetch_assoc($result)) {
  echo "</tr>\n";
  }
 echo "</table>\n";
-
-
+echo "<input type=\"submit\" value=\"yesterday\" name=\"start\">\n";
+echo "</form>\n";
 page_foot();
 ?>

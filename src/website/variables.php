@@ -34,7 +34,22 @@ function get_int_list($varname) {
 	}
 	return "";
 }
-
+function get_uid_list($initial_list="") {
+  $uidlist=$initial_list;
+  foreach (array_keys($_GET) as $key) {
+    if ($key[0]=='u') {
+      $numpart=substr($key,1);
+      if (strspn($numpart,"0123456789") != strlen($numpart)) {
+	continue;
+      }
+      if ($uidlist != "") {
+	$uidlist.=",";
+      }
+      $uidlist.=$numpart;
+    }
+  }
+  return $uidlist;
+}
 function page_head($dbconn,$name,$refreshable=true) {
 	if (!isset($_SESSION)) {
 		session_start();
