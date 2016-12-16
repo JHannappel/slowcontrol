@@ -257,6 +257,16 @@ ALTER SEQUENCE state_types_type_seq OWNED BY state_types.type;
 --
 --
 
+CREATE TABLE time_intervals (
+    tdiff interval,
+    name text
+);
+
+
+
+--
+--
+
 CREATE TABLE uid_config_history (
     uid integer,
     name text,
