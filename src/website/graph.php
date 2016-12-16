@@ -192,7 +192,7 @@ if (is_resource($process)) {
   fwrite($pipes[0], "set timefmt \"%s\"\n");
 		
   fwrite($pipes[0], "set xtics rotate\n");
-  fwrite($pipes[0], "set format x \"%y/%m/%d %H:%M\"\n");
+  fwrite($pipes[0], "set format x \"%d/%m/%y %H:%M\"\n");
 
   //fwrite($pipes[0], "set ylabel \"$unit\"\n");
 		
