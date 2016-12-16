@@ -227,6 +227,18 @@ ALTER SEQUENCE setvalue_requests_id_seq OWNED BY setvalue_requests.id;
 --
 --
 
+CREATE TABLE site_links (
+    url text,
+    name text,
+    context text,
+    number integer
+);
+
+
+
+--
+--
+
 CREATE TABLE state_types (
     typename text NOT NULL,
     explanation text,
