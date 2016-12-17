@@ -70,7 +70,7 @@ while ($row = pg_fetch_assoc($result)) {
 	while ($row2 = pg_fetch_assoc($result2)) {
 		echo "<a href=\"compound.php?id=${row2['id']}\">${row2['name']}";
 		if ($row2['description'] != $row2['name']) {
-			echo "${row2['description']}";
+			echo ": ${row2['description']}";
 		}
 		echo "</a></br>\n";
 	}
@@ -82,6 +82,7 @@ while ($row = pg_fetch_assoc($result)) {
 	echo "<a href=\"graph.php?uid=${row['uid']}&starttime='today'\">graph since today</a>\n";
 	echo "<a href=\"graph.php?uid=${row['uid']}&starttime='yesterday'\">graph since yesterday</a>\n";
 	
+	echo "<h3>States</h3>\n";
 	echo "<table>\n";
 	$result2 = pg_query($dbconn,"SELECT uid,type,valid_from,timestamp 'infinity' AS valid_to,reason,typename,explanation FROM uid_states INNER JOIN state_types USING (type) WHERE uid = $uid UNION SELECT uid,type,valid_from,valid_to,reason,typename,explanation FROM uid_state_history INNER JOIN state_types USING (type) WHERE uid = $uid ORDER BY valid_from DESC LIMIT 5;");
 	while ($row2=pg_fetch_assoc($result2)) {
@@ -113,6 +114,26 @@ while ($row = pg_fetch_assoc($result)) {
 		echo "<td>${row2['request_time']}</td>\n";
 		echo "<td>${row2['response_time']}</td>\n";
 		echo "<td>${row2['delay']}</td>\n";
+		echo "</tr>\n";
+	}
+	echo "</table>\n";
+
+	$result2 = pg_query($dbconn,"SELECT * FROM comments WHERE uid=$uid ORDER BY time DESC limit 5;");
+	echo "<h3>Comments</h3>\n";
+	echo "<table>\n";
+	echo "<tr><th>time</th><th>comment</th><th>action</th></tr>\n";
+	echo "<tr><form action=\"add_comment.php\" method=\"post\">";
+	echo "<input type=\"hidden\" name=\"uid\" value=\"$uid\">\n";
+	echo "<td><input type=\"text\" name=\"time\" value=\"now\"></td>\n";
+	echo "<td><input type=\"text\" name=\"comment\" value=\"\"></td>\n";
+	echo "<td><input type=\"submit\" value=\"Add comment\" ></td>\n";     
+	echo "</form></tr>\n";
+	
+	while ($row2=pg_fetch_assoc($result2)) {
+		echo "<tr>\n";
+		echo "<td>${row2['time']}</td>\n";
+		echo "<td>${row2['comment']}</td>\n";
+		echo "<td></td>\n";
 		echo "</tr>\n";
 	}
 	echo "</table>\n";

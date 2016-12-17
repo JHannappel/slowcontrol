@@ -48,21 +48,32 @@ echo "</table>\n";
 
 
 echo "<H2>Values</H2>";
+echo "<form action=dressed_graph.php method=get>\n";
 
-$result = pg_query($dbconn,"SELECT *, (SELECT value FROM uid_configs WHERE name='name' AND uid_configs.uid = compound_uids.uid) AS name FROM compound_uids INNER JOIN uid_list USING (uid) WHERE id = $id;"); 
+$result = pg_query($dbconn,"SELECT *, (SELECT value FROM uid_configs WHERE name='unit' AND uid_configs.uid = compound_uids.uid) AS unit FROM compound_uids INNER JOIN uid_list USING (uid) WHERE id = $id;"); 
 echo "<table>\n";
+
+if (pg_num_rows($result) < 5) {
+  $checkstate=" checked ";
+}
+
 while ($row = pg_fetch_assoc($result)) {
+	$uid=$row['uid'];
+	$result2 = pg_query($dbconn,"SELECT valid_from,reason,typename,explanation,class FROM uid_states INNER JOIN state_types USING (type) WHERE uid = $uid;");
+  $state=pg_fetch_assoc($result2);
   echo "<tr>\n";
   echo "<td> <a href=\"valueconfig.php?uid=${row['uid']}\">${row['child_name']} </a></td>\n";
-  echo "<td> ${row['description']} </td>\n";
-  echo "<td> ${row['name']} </td>\n";
   $r2 = pg_query($dbconn,"SELECT * FROM ${row['data_table']} WHERE uid=${row['uid']} ORDER BY time desc limit 1;");
   $v=pg_fetch_assoc($r2);
-  echo "<td> ${v['value']} </td>\n";
-  echo "<td> <a href=\"graph.php?uid=${row['uid']}\">${v['time']}</a> </td>\n";
+  echo "<td class=\"${state['class']}\"> ${v['value']}</td>";
+	echo "<td class=\"${state['class']}\"> ${row['unit']}</td>\n";
+  echo "<td class=\"${state['class']}\"> <a href=\"graph.php?uid=${row['uid']}\">${v['time']}</a> </td>\n";
+	echo "<td><input type=\"checkbox\" name=\"u$uid\" $checkstate></td>\n";
   echo "</tr>\n";
  }
 echo "</table>\n";
+echo "graph since <input type=\"submit\" value=\"yesterday\" name=\"starttime\">\n";
+echo "</form>\n";
 
 page_foot();
 

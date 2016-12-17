@@ -27,7 +27,10 @@ echo "<thead>\n";
 echo "<tr>\n";
 echo "<th> variable</th>\n";
 echo "<th> value </th>\n";
+echo "<th> gr? </th>\n";
 echo "<th> last measured </th>\n";
+echo "<th colspan=3> state </th>\n";
+echo "<th> since </th>\n";
 echo "</tr>\n";
 echo "<tbody>\n";
 
@@ -57,7 +60,7 @@ while ($row = pg_fetch_assoc($result)) {
  echo "</tr>\n";
  }
 echo "</table>\n";
-echo "<input type=\"submit\" value=\"yesterday\" name=\"start\">\n";
+echo "<input type=\"submit\" value=\"yesterday\" name=\"starttime\">\n";
 echo "</form>\n";
 page_foot();
 ?>
