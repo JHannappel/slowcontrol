@@ -33,7 +33,7 @@ namespace slowcontrol {
 	Option<const char*> gPidFileName('\0', "pidFile", "name of pid file", nullptr);
 
 	daemon::daemon(const char *aName) :
-		lThreads([](std::thread* a, std::thread *b) {
+		lThreads([](std::thread * a, std::thread * b) {
 		return a->get_id() < b->get_id();
 	}) {
 		gInstance = this;
