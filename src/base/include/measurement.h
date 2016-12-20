@@ -74,7 +74,7 @@ namespace slowcontrol {
 	};
 
 
-	class writeValue { ///< interface for mrewsurements that can be set, i.e. write values
+	class writeValue { ///< interface for measurements that can be set, i.e. write values
 	  public:
 		class request { ///< class to represent one write request, needs specialisation to do something
 		  public:
@@ -142,7 +142,9 @@ namespace slowcontrol {
 			return false;
 		};
 	};
+
 	typedef writeValue::request requestType;
+
 	class unitInterface {
 	  protected:
 		configValue<std::string> lUnit;
