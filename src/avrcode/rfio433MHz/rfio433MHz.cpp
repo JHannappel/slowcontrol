@@ -205,8 +205,8 @@ void sendPattern(const char *aPattern) {
 		}
 		aPattern++;
 	}
-	RFDataOut.fSet(true);
-	waitCounter0(period);
+	//RFDataOut.fSet(true);
+	//waitCounter0(period);
 	RFDataOut.fSet(false);
 	// gUSARTHandler.fTransmit('-');
 	// gUSARTHandler.fHexByte(pulsesSent);
