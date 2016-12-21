@@ -49,6 +49,7 @@ class koradSetValue: public koradValue,
 class koradPowerSupply {
   protected:
 	slowcontrol::serialLine lSerial;
+	std::mutex lSerialLineMutex;
 	koradSetValue lVSet;
 	koradSetValue lISet;
   public:
@@ -59,9 +60,14 @@ class koradPowerSupply {
 		lISet(*this, aName, aDevice, "ISET1:%05.2f", "ISET1?", "A") {
 
 	};
-	slowcontrol::serialLine* fGetSerialLine() {
-		return &lSerial;
-	};
+
+	void fUseSerialLine(const std::function<void(slowcontrol::serialLine&)> &aLineUser) {
+		// lock the serial line mutex to avoid inteference from other threads
+		std::lock_guard<decltype(lSerialLineMutex)> lock(lSerialLineMutex);
+		// wait until the last command is completely sent
+		std::this_thread::sleep_until(lSerial.fGetLastCommunicationTime());
+		aLineUser(lSerial);
+	}
 };
 
 bool koradSetValue::fProcessRequest(const request* aRequest, std::string& aResponse) {
@@ -69,7 +75,9 @@ bool koradSetValue::fProcessRequest(const request* aRequest, std::string& aRespo
 	if (req != nullptr) {
 		char buffer[128];
 		sprintf(buffer, lSetCommandFormat.c_str(), req->lGoalValue);
-		lSupply.fGetSerialLine()->fWrite(buffer);
+		lSupply.fUseSerialLine([buffer](slowcontrol::serialLine & aLine) {
+			aLine.fWrite(buffer);
+		});
 		fReadCurrentValue();
 		if (fGetCurrentValue() == req->lGoalValue) {
 			aResponse = "done.";
@@ -83,9 +91,11 @@ bool koradSetValue::fProcessRequest(const request* aRequest, std::string& aRespo
 	return false;
 }
 void koradSetValue::fReadCurrentValue() {
-	lSupply.fGetSerialLine()->fWrite(lReadBackCommand.c_str());
 	char buffer[16];
-	lSupply.fGetSerialLine()->fRead(buffer, 5, std::chrono::seconds(2));
+	lSupply.fUseSerialLine([&buffer, this](slowcontrol::serialLine & aLine) {
+		aLine.fWrite(this->lReadBackCommand.c_str());
+		aLine.fRead(buffer, 5, std::chrono::seconds(2));
+	});
 	fStore(std::stof(buffer));
 }
 
