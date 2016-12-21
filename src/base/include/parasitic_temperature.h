@@ -5,10 +5,10 @@ namespace slowcontrol {
 		        public unitInterface {
 	  public:
 		parasitic_temperature(const char *aName,
-		                      float aDeadBand = 0.5,
 		                      float aMinAllowed = -40,
-		                      float aMaxAllowed = 100):
-			boundCheckerInterface(aDeadBand, aMinAllowed, aMaxAllowed),
+		                      float aMaxAllowed = 100,
+		                      float aDeadBand = 0.5):
+			boundCheckerInterface(aMinAllowed, aMaxAllowed, aDeadBand),
 			unitInterface(lConfigValues, "deg C") {
 			lClassName.fSetFromString(__func__);
 			fInitializeUid(aName);

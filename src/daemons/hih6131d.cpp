@@ -35,7 +35,7 @@ class hih6131moisture: public slowcontrol::boundCheckerInterface<slowcontrol::me
 	slowcontrol::parasitic_temperature *lTemperature;
   public:
 	hih6131moisture(const char *aPath, const char *aNameBase):
-		boundCheckerInterface(0.5, 40, 60),
+		boundCheckerInterface(40, 60, 0.5),
 		defaultReaderInterface(lConfigValues, std::chrono::seconds(30)),
 		unitInterface(lConfigValues, " %") {
 		lClassName.fSetFromString(__func__);

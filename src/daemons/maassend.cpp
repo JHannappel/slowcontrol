@@ -16,7 +16,7 @@ class cpuTemperature: public boundCheckerInterface<measurement<float>, false, tr
 	std::string lPath;
   public:
 	cpuTemperature(const char *aPath):
-		boundCheckerInterface(2, 10, 90),
+		boundCheckerInterface(10, 90, 2),
 		defaultReaderInterface(lConfigValues, std::chrono::seconds(30)),
 		lPath(aPath) {
 		lClassName.fSetFromString(__func__);
@@ -43,7 +43,7 @@ class diskValue: public boundCheckerInterface<measurement<float>> {
 	          int aId,
 	          const char *aName,
 	          int aDiskCompound) :
-		boundCheckerInterface(1, std::numeric_limits<valueType>::lowest(), std::numeric_limits<valueType>::max()) {
+		boundCheckerInterface(std::numeric_limits<valueType>::lowest(), std::numeric_limits<valueType>::max(), 1) {
 		lClassName.fSetFromString(__func__);
 		std::string description("disk");
 		description += aSerial;
@@ -67,7 +67,7 @@ class freeMemory: public boundCheckerInterface<measurement<float>, true, false>,
 	public defaultReaderInterface {
   public:
 	freeMemory(int aHostCompound):
-		boundCheckerInterface(1000, 2000, 0),
+		boundCheckerInterface(2000, 0, 1000),
 		defaultReaderInterface(lConfigValues, std::chrono::seconds(10)) {
 		lClassName.fSetFromString(__func__);
 		std::string description;
@@ -105,7 +105,7 @@ class fsSize: public boundCheckerInterface<measurement<float>, true, false>,
 	fsSize(int aHostCompound,
 	       const std::string& aDevice,
 	       const std::string& aMountPoint):
-		boundCheckerInterface(0.001, 10, 0),
+		boundCheckerInterface(10, 0, 0.001),
 		defaultReaderInterface(lConfigValues, std::chrono::seconds(10)),
 		lName("name", lConfigValues),
 		lMountPoint(aMountPoint) {

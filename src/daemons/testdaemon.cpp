@@ -9,7 +9,7 @@ class testvalue: public slowcontrol::boundCheckerInterface<slowcontrol::measurem
 	        public slowcontrol::writeValueWithType<short> {
   public:
 	testvalue(const char *aName):
-		boundCheckerInterface(0, 0, 100) {
+		boundCheckerInterface(0, 100, 0) {
 		lClassName.fSetFromString(__func__);
 		fInitializeUid(aName);
 		fConfigure();

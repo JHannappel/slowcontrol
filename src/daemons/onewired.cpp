@@ -17,7 +17,7 @@ class owTemperature: public slowcontrol::boundCheckerInterface<slowcontrol::meas
 	measurement_state::stateType lBadFileType = 0;
   public:
 	owTemperature(const char *aPath):
-		boundCheckerInterface(0.5, -55, 125),
+		boundCheckerInterface(-55, 125, 0.5),
 		defaultReaderInterface(lConfigValues, std::chrono::seconds(30)),
 		unitInterface(lConfigValues, "deg C") {
 		lClassName.fSetFromString(__func__);

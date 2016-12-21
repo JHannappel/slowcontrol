@@ -98,7 +98,7 @@ namespace slowcontrol {
 
 
 		timediff_value::timediff_value(const std::string& aName, unsigned int aInPin, unsigned int aOutPin):
-			boundCheckerInterface(0.5, 0, 125),
+			boundCheckerInterface(0, 125, 0.5),
 			defaultReaderInterface(lConfigValues, std::chrono::seconds(30)),
 			lInPin(aInPin),
 			lOutPin(aOutPin) {

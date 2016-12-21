@@ -402,10 +402,12 @@ namespace slowcontrol {
 		measurement_state::stateType lLowValueType = 0;
 		measurement_state::stateType lHighValueType = 0;
 	  public:
-		boundCheckerInterface(decltype(baseClass::lDeadBand.fGetValue()) aDefaultDeadBand,
-		                      decltype(lLowerBound.fGetValue()) aLowerBound,
-		                      decltype(lUpperBound.fGetValue()) aUpperBound) :
-			baseClass(aDefaultDeadBand),
+		template <class ... Types> boundCheckerInterface(
+		    decltype(lLowerBound.fGetValue()) aLowerBound,
+		    decltype(lUpperBound.fGetValue()) aUpperBound,
+		    Types ... args
+		) :
+			baseClass(args ...),
 			lLowerBound("lowerBound", this->lConfigValues, aLowerBound),
 			lUpperBound("upperBound", this->lConfigValues, aUpperBound) {
 		};
