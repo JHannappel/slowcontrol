@@ -20,13 +20,29 @@ class koradValue : public slowcontrol::measurement<float> {
 
 	};
 };
-class koradSetValue: public koradValue,
+class koradReadValue: public koradValue,
 	public slowcontrol::defaultReaderInterface,
-	public slowcontrol::writeValueWithType<float>,
 	public slowcontrol::unitInterface {
   protected:
-	std::string lSetCommandFormat;
 	std::string lReadBackCommand;
+  public:
+	koradReadValue(koradPowerSupply& aSupply,
+	               const std::string& aPsName,
+	               const std::string& aValueName,
+	               const std::string& aReadBackCommand,
+	               const char *aUnit):
+		koradValue(aSupply, aPsName, aValueName),
+		defaultReaderInterface(lConfigValues, std::chrono::seconds(10)),
+		unitInterface(lConfigValues, aUnit),
+		lReadBackCommand(aReadBackCommand) {
+	};
+	virtual void fReadCurrentValue();
+};
+
+class koradSetValue: public koradReadValue,
+	public slowcontrol::writeValueWithType<float> {
+  protected:
+	std::string lSetCommandFormat;
   public:
 	koradSetValue(koradPowerSupply& aSupply,
 	              const std::string& aPsName,
@@ -34,16 +50,11 @@ class koradSetValue: public koradValue,
 	              const std::string& aSetCommandFormat,
 	              const std::string& aReadBackCommand,
 	              const char *aUnit):
-		koradValue(aSupply, aPsName, aValueName),
-		defaultReaderInterface(lConfigValues, std::chrono::seconds(10)),
-		unitInterface(lConfigValues, aUnit),
-		lSetCommandFormat(aSetCommandFormat),
-		lReadBackCommand(aReadBackCommand) {
+		koradReadValue(aSupply, aPsName, aValueName, aReadBackCommand, aUnit),
+		lSetCommandFormat(aSetCommandFormat) {
 	};
 	virtual bool fProcessRequest(const request* aRequest, std::string& aResponse);
-	virtual void fReadCurrentValue();
 };
-
 
 
 class koradPowerSupply {
@@ -52,13 +63,16 @@ class koradPowerSupply {
 	std::mutex lSerialLineMutex;
 	koradSetValue lVSet;
 	koradSetValue lISet;
+	koradReadValue lVRead;
+	koradReadValue lIRead;
   public:
 	koradPowerSupply(const std::string& aName,
 	                 const std::string& aDevice) :
 		lSerial(aDevice, 9600),
-		lVSet(*this, aName, aDevice, "VSET1:%05.2f", "VSET1?", "V"),
-		lISet(*this, aName, aDevice, "ISET1:%05.2f", "ISET1?", "A") {
-
+		lVSet(*this, aName, "VSet", "VSET1:%05.2f", "VSET1?", "V"),
+		lISet(*this, aName, "ISet", "ISET1:%05.3f", "ISET1?", "A"),
+		lVRead(*this, aName, "VRead", "VOUT1?", "V"),
+		lIRead(*this, aName, "IRead", "IOUT1?", "A") {
 	};
 
 	void fUseSerialLine(const std::function<void(slowcontrol::serialLine&)> &aLineUser) {
@@ -90,7 +104,7 @@ bool koradSetValue::fProcessRequest(const request* aRequest, std::string& aRespo
 	aResponse = "can't cast request";
 	return false;
 }
-void koradSetValue::fReadCurrentValue() {
+void koradReadValue::fReadCurrentValue() {
 	char buffer[16];
 	lSupply.fUseSerialLine([&buffer, this](slowcontrol::serialLine & aLine) {
 		aLine.fWrite(this->lReadBackCommand.c_str());
