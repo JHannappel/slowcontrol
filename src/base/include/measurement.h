@@ -458,41 +458,51 @@ namespace slowcontrol {
 	};
 
 
-	template <typename T> class watched_base {
-	  protected:
-		bool (*lWatchCondition)(T *aThat) ;
+	class watch_pack {
+	  public:
 		std::condition_variable lWaitCondition;
 		std::mutex lWaitMutex;
-	  public:
 		virtual bool fWaitForChange() {
 			std::unique_lock < decltype(lWaitMutex) > lock(lWaitMutex);
 			auto waitResult = lWaitCondition.wait_for(lock, std::chrono::seconds(1));
 			return waitResult == std::cv_status::no_timeout;
 		}
 	};
+
+	template <typename T> class watched_base {
+	  protected:
+		bool (*lWatchCondition)(T *aThat) ;
+		watch_pack& lWatchPack;
+	  public:
+		watched_base(watch_pack& aWatchPack) :
+			lWatchPack(aWatchPack) {
+		};
+	};
 	template <typename T> class watched_poller: public T, public watched_base<T> {
 	  public:
-		template<class ... Types> watched_poller (Types ... args) :
-			T(args...) {
+		template<class ... Types> watched_poller (watch_pack& aWatchPack, Types ... args) :
+			T(args...),
+			watched_base<T>(aWatchPack) {
 		};
 		virtual void fProcessData(short aRevents) override {
 			std::cout << __FILE__ << __LINE__ << "\n";
 			T::fProcessData(aRevents);
 			if (this->lWatchCondition(this)) {
-				this->lWaitCondition.notify_all();
+				this->lWatchPack.lWaitCondition.notify_all();
 			}
 		};
 	};
 	template <typename T> class watched_reader: public T, public watched_base<T> {
 	  public:
-		template<class ... Types> watched_reader (Types ... args) :
-			T(args...) {
+		template<class ... Types> watched_reader (watch_pack& aWatchPack, Types ... args) :
+			T(args...),
+			watched_base<T>(aWatchPack) {
 		};
 		virtual void fReadCurrentValue() override {
 			std::cout << __FILE__ << __LINE__ << "\n";
 			T::fReadCurrentValue();
 			if (this->lWatchCondition(this)) {
-				this->lWaitCondition.notify_all();
+				this->lWatchPack.lWaitCondition.notify_all();
 			}
 		};
 	};
@@ -503,13 +513,14 @@ namespace slowcontrol {
 		watched_reader<T>,
 		T>::type>::type {
 	  public:
-		template<class ... Types> watched_measurement (bool (*aWatchCondition)(T* aThat),
+		template<class ... Types> watched_measurement (watch_pack& aWatchPack,
+		        bool (*aWatchCondition)(T* aThat),
 		        Types ... args) :
 			std::conditional<std::is_base_of<pollReaderInterface, T>::value,
 			watched_poller<T>,
 			typename std::conditional<std::is_base_of<defaultReaderInterface, T>::value,
 			watched_reader<T>,
-			T>::type>::type (args...) {
+			T>::type>::type (aWatchPack, args...) {
 			this->lWatchCondition = aWatchCondition;
 		};
 	};

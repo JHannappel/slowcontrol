@@ -132,17 +132,19 @@ int main(int argc, const char *argv[]) {
 
 	cameraRecording camera(name);
 
-	//	motionWatch motionDet(name.fGetValue() + "_motion" , motionPin);
-	slowcontrol::watched_measurement<slowcontrol::gpio::input_value>  motionDet([](slowcontrol::gpio::input_value * aThat) {
+	slowcontrol::watch_pack watchPack;
+	slowcontrol::watched_measurement<slowcontrol::gpio::input_value>  motionDet(watchPack,
+	[](slowcontrol::gpio::input_value * aThat) {
 		return aThat->fGetCurrentValue();
-	}, name.fGetValue() + "_motion" , motionPin);
+	},
+	name.fGetValue() + "_motion", motionPin);
 	slowcontrol::gpio::output_value lightSwitch(name.fGetValue() + "_light", lightPin);
 	slowcontrol::gpio::timediff_value darknessDet(name.fGetValue() + "_darkness", darknessInPin, darknessOutPin);
 
 	daemon->fStartThreads();
 
 	while (!daemon->fGetStopRequested()) {
-		if (motionDet.fWaitForChange()) {
+		if (watchPack.fWaitForChange()) {
 			auto darkness = darknessDet.fGetCurrentValue();
 
 			if (darkness > camera.fGetMaxUnenlightenedDarkness()) { // dark, switch on the light
