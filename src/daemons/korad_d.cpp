@@ -11,13 +11,15 @@ class koradValue : public slowcontrol::measurement<float> {
   public:
 	koradValue(koradPowerSupply& aSupply,
 	           const std::string& aPsName,
-	           const std::string& aValueName	     ):
+	           const std::string& aValueName):
 		measurement(0.001),
 		lSupply(aSupply) {
+		lClassName.fSetFromString(__func__);
 		std::string name(aPsName);
 		name += "_";
 		name += aValueName;
-
+		fInitializeUid(aName);
+		fConfigure();
 	};
 };
 class koradReadValue: public koradValue,
@@ -73,6 +75,11 @@ class koradPowerSupply {
 		lISet(*this, aName, "ISet", "ISET1:%05.3f", "ISET1?", "A"),
 		lVRead(*this, aName, "VRead", "VOUT1?", "V"),
 		lIRead(*this, aName, "IRead", "IOUT1?", "A") {
+		auto compound = slowcontrol::base::fGetCompoundId(aName.c_str(), aName.c_str());
+		slowcontrol::base::fAddToCompound(compound, lVSet.fGetUid(), "VSet");
+		slowcontrol::base::fAddToCompound(compound, lISet.fGetUid(), "ISet");
+		slowcontrol::base::fAddToCompound(compound, lVRead.fGetUid(), "VRead");
+		slowcontrol::base::fAddToCompound(compound, lIRead.fGetUid(), "IRead");
 	};
 
 	void fUseSerialLine(const std::function<void(slowcontrol::serialLine&)> &aLineUser) {

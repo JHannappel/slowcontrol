@@ -128,7 +128,7 @@ class dvmReadout: public slowcontrol::measurement<float>,
 				}
 				if (lUnit.fGetValue().compare(unit) != 0) {
 					lUnit.fSetValue(unit);
-					fSaveOption(lUnit, "change from readout");
+					fUpdateOption(lUnit, "change from readout");
 				}
 			}
 		}
