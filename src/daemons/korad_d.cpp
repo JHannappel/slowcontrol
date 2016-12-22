@@ -18,7 +18,7 @@ class koradValue : public slowcontrol::measurement<float> {
 		std::string name(aPsName);
 		name += "_";
 		name += aValueName;
-		fInitializeUid(aName);
+		fInitializeUid(name);
 		fConfigure();
 	};
 };
