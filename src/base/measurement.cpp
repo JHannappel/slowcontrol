@@ -75,7 +75,7 @@ namespace slowcontrol {
 		base::fAddEscapedStringToQuery(valueRaw, query);
 		query += ", comment=";
 		base::fAddEscapedStringToQuery(aComment, query);
-		query += " WHERE uid=";
+		query += ", last_change=now() WHERE uid=";
 		query += std::to_string(fGetUid());
 		query += " AND name=";
 		base::fAddEscapedStringToQuery(aCfgValue.fGetName(), query);
