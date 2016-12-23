@@ -20,15 +20,14 @@ class koradValue {
 	};
 };
 
-template <typename T> class koradTypedValue:  public slowcontrol::measurement<float>,
+template <typename T> class koradTypedValue:  public slowcontrol::measurement<T>,
 	public koradValue {
   public:
 	koradTypedValue(koradPowerSupply* aSupply,
 	                const std::string& aPsName,
 	                const std::string& aValueName) :
-		measurement(0.001),
 		koradValue(aSupply, aPsName, aValueName) {
-		lClassName.fSetFromString(__func__);
+		this->lClassName.fSetFromString(__func__);
 	};
 	virtual void fInit() {
 		this->fInitializeUid(lName);

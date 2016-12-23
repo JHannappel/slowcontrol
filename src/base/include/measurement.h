@@ -206,6 +206,12 @@ namespace slowcontrol {
 			lMinValueIndex = 0;
 			lMaxValueIndex = 0;
 		};
+		measurement() :
+			measurementBase(),
+			lDeadBand("DeadBand", lConfigValues, 0) {
+			lMinValueIndex = 0;
+			lMaxValueIndex = 0;
+		};
 		T fGetCurrentValue() {
 			return lCurrentValue.load();
 		};
