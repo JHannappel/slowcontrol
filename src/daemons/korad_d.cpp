@@ -5,26 +5,43 @@
 #include <Options.h>
 class koradPowerSupply;
 
-class koradValue : public slowcontrol::measurement<float>,
-	public slowcontrol::unitInterface {
+class koradValue {
   protected:
 	std::string lName;
 	std::string lValueName;
   public:
 	koradValue(koradPowerSupply* aSupply,
 	           const std::string& aPsName,
-	           const std::string& aValueName,
-	           const char *aUnit);
-	void fInit() {
-		fInitializeUid(lName);
-		fConfigure();
-	};
+	           const std::string& aValueName);
+	virtual void fInit() = 0;
+	virtual slowcontrol::base::uidType fDoGetUid() = 0;
 	const std::string& fGetValueName() const {
 		return lValueName;
-	}
+	};
 };
-class koradReadValue: public koradValue,
-	public slowcontrol::defaultReaderInterface {
+
+template <typename T> class koradTypedValue:  public slowcontrol::measurement<float>,
+	public koradValue {
+  public:
+	koradTypedValue(koradPowerSupply* aSupply,
+	                const std::string& aPsName,
+	                const std::string& aValueName) :
+		measurement(0.001),
+		koradValue(aSupply, aPsName, aValueName) {
+		lClassName.fSetFromString(__func__);
+	};
+	virtual void fInit() {
+		this->fInitializeUid(lName);
+		this->fConfigure();
+	};
+	virtual slowcontrol::base::uidType fDoGetUid() {
+		return this->fGetUid();
+	};
+};
+
+class koradReadValue: public koradTypedValue<float>,
+	public slowcontrol::defaultReaderInterface,
+	public slowcontrol::unitInterface {
   protected:
 	koradPowerSupply* lSupply;
 	std::string lReadBackCommand;
@@ -34,8 +51,9 @@ class koradReadValue: public koradValue,
 	               const std::string& aValueName,
 	               const std::string& aReadBackCommand,
 	               const char *aUnit):
-		koradValue(aSupply, aPsName, aValueName, aUnit),
+		koradTypedValue(aSupply, aPsName, aValueName),
 		defaultReaderInterface(lConfigValues, std::chrono::seconds(10)),
+		unitInterface(lConfigValues, aUnit),
 		lSupply(aSupply),
 		lReadBackCommand(aReadBackCommand) {
 	};
@@ -59,6 +77,17 @@ class koradSetValue: public koradReadValue,
 	virtual bool fProcessRequest(const request* aRequest, std::string& aResponse);
 };
 
+class koradDerivedValue: public koradTypedValue<float>,
+	public slowcontrol::unitInterface {
+  public:
+	koradDerivedValue(koradPowerSupply* aSupply,
+	                  const std::string& aPsName,
+	                  const std::string& aValueName,
+	                  const char *aUnit) :
+		koradTypedValue(aSupply, aPsName, aValueName),
+		unitInterface(lConfigValues, aUnit) {
+	}
+};
 
 class koradPowerSupply {
   protected:
@@ -70,8 +99,8 @@ class koradPowerSupply {
   public:
 	slowcontrol::watched_measurement<koradReadValue> lVRead;
 	slowcontrol::watched_measurement<koradReadValue> lIRead;
-	koradValue lPower;
-	koradValue lLoad;
+	koradDerivedValue lPower;
+	koradDerivedValue lLoad;
 	koradPowerSupply(const std::string& aName,
 	                 const std::string& aDevice,
 	                 slowcontrol::watch_pack& aWatchPack) :
@@ -85,7 +114,7 @@ class koradPowerSupply {
 		auto compound = slowcontrol::base::fGetCompoundId(aName.c_str(), aName.c_str());
 		for (auto value : lValues) {
 			value->fInit();
-			slowcontrol::base::fAddToCompound(compound, value->fGetUid(), value->fGetValueName());
+			slowcontrol::base::fAddToCompound(compound, value->fDoGetUid(), value->fGetValueName());
 		}
 	};
 
@@ -137,12 +166,8 @@ bool koradReadValue::fReadCurrentValue() {
 
 koradValue::koradValue(koradPowerSupply* aSupply,
                        const std::string& aPsName,
-                       const std::string& aValueName,
-                       const char *aUnit):
-	measurement(0.001),
-	unitInterface(lConfigValues, aUnit),
+                       const std::string& aValueName):
 	lValueName(aValueName) {
-	lClassName.fSetFromString(__func__);
 	aSupply->fRegister(this);
 	lName = aPsName;
 	lName += "_";
