@@ -65,7 +65,8 @@ class dvmReadout: public slowcontrol::measurement<float>,
 		aPollfd->fd = fGetFd();
 		aPollfd->events = POLLIN;
 	}
-	virtual void fProcessData(short /*aRevents*/) {
+	virtual bool fProcessData(short /*aRevents*/) {
+		bool valueHasChanged = false;
 		unsigned char c;
 		if (read(fGetFd(), &c, 1) == 1) {
 			auto position = (c >> 4) & 0x0fu;
@@ -75,7 +76,7 @@ class dvmReadout: public slowcontrol::measurement<float>,
 			} else {
 				lNibbleIndex++;
 				if (lNibbleIndex != position) { // bad datagram
-					return;
+					return false;
 				}
 			}
 			if (position & 1) { // odd part
@@ -109,7 +110,7 @@ class dvmReadout: public slowcontrol::measurement<float>,
 				} else if (lBuffer[5] & 0x20) { // prefix: kilo
 					value *= 1000;
 				}
-				fStore(value);
+				valueHasChanged = fStore(value);
 				const char *unit = "";
 				if (lBuffer[6] & 0x08) {
 					unit = "A";
@@ -132,6 +133,7 @@ class dvmReadout: public slowcontrol::measurement<float>,
 				}
 			}
 		}
+		return valueHasChanged;
 	}
 };
 

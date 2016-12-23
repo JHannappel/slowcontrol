@@ -66,14 +66,14 @@ namespace slowcontrol {
 		virtual decltype(lReadoutInterval.fGetValue()) fGetReadoutInterval() const {
 			return lReadoutInterval.fGetValue();
 		}
-		virtual void fReadCurrentValue() = 0;
+		virtual bool fReadCurrentValue() = 0; ///< return true if value has changed
 	};
 
 	class pollReaderInterface { ///< interface for measurements that depend on a poll() able fd
 	  public:
 		virtual int fGetFd() = 0;
 		virtual void fSetPollFd(struct pollfd *aPollfd) = 0;
-		virtual void fProcessData(short aRevents) = 0;
+		virtual bool fProcessData(short aRevents) = 0; ///< return true if value has changed
 	};
 
 
@@ -235,15 +235,17 @@ namespace slowcontrol {
 			}
 		};
 
-		virtual void fStore(const T& aValue) {
-			fStore(aValue, std::chrono::system_clock::now());
+		virtual bool fStore(const T& aValue) {
+			return fStore(aValue, std::chrono::system_clock::now());
 		};
-		virtual void fStore(const T& aValue, timeType aTime) {
+		virtual bool fStore(const T& aValue, timeType aTime) {
+			bool valueHasChanged = true;
 			lCurrentValue = aValue;
 			if ((lValues.size() > 2)
 			        && lValues.at(lValues.size() - 1).lValue == aValue
 			        && lValues.at(lValues.size() - 2).lValue == aValue) { // no change
 				lValues.at(lValues.size() - 1).lTime = aTime;
+				valueHasChanged = false;
 			} else {
 				fCheckValue(aTime, aValue);
 				lValues.emplace_back(aTime, aValue);
@@ -259,6 +261,7 @@ namespace slowcontrol {
 			        lValues.size() == 1) {
 				fFlush(lValues.size() == 1);
 			}
+			return valueHasChanged;
 		};
 
 		virtual bool fValuesToSend() {
@@ -330,10 +333,11 @@ namespace slowcontrol {
 				lOldValueUnsent = false;
 			}
 		};
-		virtual void fStore(bool aValue) {
-			fStore(aValue, std::chrono::system_clock::now());
+		virtual bool fStore(bool aValue) {
+			return fStore(aValue, std::chrono::system_clock::now());
 		};
-		virtual void fStore(bool aValue, timeType aTime) {
+		virtual bool fStore(bool aValue, timeType aTime) {
+			bool valueHasChanged = aValue != lOldValue;
 			lCurrentValue = aValue;
 			if (lNoValueYet || aValue != lOldValue) {
 				{
@@ -353,6 +357,7 @@ namespace slowcontrol {
 				lOldValueUnsent = true;
 			}
 			lOldTime = aTime;
+			return valueHasChanged;
 		};
 
 		virtual bool fValuesToSend() {
@@ -484,12 +489,15 @@ namespace slowcontrol {
 			T(args...),
 			watched_base<T>(aWatchPack) {
 		};
-		virtual void fProcessData(short aRevents) override {
+		virtual bool fProcessData(short aRevents) override {
 			std::cout << __FILE__ << __LINE__ << "\n";
-			T::fProcessData(aRevents);
-			if (this->lWatchCondition(this)) {
-				this->lWatchPack.lWaitCondition.notify_all();
+			if (T::fProcessData(aRevents)) {
+				if (this->lWatchCondition(this)) {
+					this->lWatchPack.lWaitCondition.notify_all();
+				}
+				return true;
 			}
+			return false;
 		};
 	};
 	template <typename T> class watched_reader: public T, public watched_base<T> {
@@ -498,12 +506,15 @@ namespace slowcontrol {
 			T(args...),
 			watched_base<T>(aWatchPack) {
 		};
-		virtual void fReadCurrentValue() override {
+		virtual bool fReadCurrentValue() override {
 			std::cout << __FILE__ << __LINE__ << "\n";
-			T::fReadCurrentValue();
-			if (this->lWatchCondition(this)) {
-				this->lWatchPack.lWaitCondition.notify_all();
+			if (T::fReadCurrentValue()) {
+				if (this->lWatchCondition(this)) {
+					this->lWatchPack.lWaitCondition.notify_all();
+				}
+				return true;
 			}
+			return false;
 		};
 	};
 

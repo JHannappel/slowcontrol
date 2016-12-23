@@ -40,7 +40,7 @@ namespace slowcontrol {
 				return lInPin.fGetFd();
 			}
 			virtual void fSetPollFd(struct pollfd *aPollfd);
-			virtual void fProcessData(short /*aRevents*/);
+			virtual bool fProcessData(short /*aRevents*/);
 
 		};
 		class output_value: public measurement<bool>,
@@ -62,7 +62,7 @@ namespace slowcontrol {
 			output lOutPin;
 		  public:
 			timediff_value(const std::string& aName, unsigned int aInPin, unsigned int aOutPin);
-			virtual void fReadCurrentValue();
+			virtual bool fReadCurrentValue();
 		};
 	} // end of namespace gpio
 } // end of namespace slowcontrol

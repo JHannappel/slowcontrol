@@ -69,8 +69,8 @@ namespace slowcontrol {
 			aPollfd->fd = lInPin.fGetFd();
 			aPollfd->events = POLLPRI | POLLERR;
 		}
-		void input_value:: fProcessData(short /*aRevents*/) {
-			fStore(lInPin.fRead());
+		bool input_value:: fProcessData(short /*aRevents*/) {
+			return fStore(lInPin.fRead());
 		}
 		output_value::output_value(const std::string &aName,
 		                           unsigned int aPinNumber):
@@ -106,7 +106,7 @@ namespace slowcontrol {
 			fInitializeUid(aName);
 			fConfigure();
 		}
-		void timediff_value::fReadCurrentValue() {
+		bool timediff_value::fReadCurrentValue() {
 			struct pollfd pfd;
 			pfd.fd = lInPin.fGetFd();
 			pfd.events = POLLPRI | POLLERR;
@@ -119,8 +119,9 @@ namespace slowcontrol {
 			if (poll(&pfd, 1, 1000) > 0) {
 				auto stopTime = std::chrono::system_clock::now();
 				auto timeDiff = stopTime - startTime;
-				fStore(std::chrono::duration_cast<std::chrono::nanoseconds>(timeDiff).count() * 1.0e-9, startTime);
+				return fStore(std::chrono::duration_cast<std::chrono::nanoseconds>(timeDiff).count() * 1.0e-9, startTime);
 			}
+			return false;
 		}
 	} // end namespace gpio
 } // end namespace slowcontrol

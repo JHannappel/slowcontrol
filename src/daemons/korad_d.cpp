@@ -38,7 +38,7 @@ class koradReadValue: public koradValue,
 		unitInterface(lConfigValues, aUnit),
 		lReadBackCommand(aReadBackCommand) {
 	};
-	virtual void fReadCurrentValue();
+	virtual bool fReadCurrentValue();
 };
 
 class koradSetValue: public koradReadValue,
@@ -111,13 +111,13 @@ bool koradSetValue::fProcessRequest(const request* aRequest, std::string& aRespo
 	aResponse = "can't cast request";
 	return false;
 }
-void koradReadValue::fReadCurrentValue() {
+bool koradReadValue::fReadCurrentValue() {
 	char buffer[16];
 	lSupply.fUseSerialLine([&buffer, this](slowcontrol::serialLine & aLine) {
 		aLine.fWrite(this->lReadBackCommand.c_str());
 		aLine.fRead(buffer, 5, std::chrono::seconds(2));
 	});
-	fStore(std::stof(buffer));
+	return fStore(std::stof(buffer));
 }
 
 

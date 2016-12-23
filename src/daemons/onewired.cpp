@@ -30,7 +30,8 @@ class owTemperature: public slowcontrol::boundCheckerInterface<slowcontrol::meas
 		fInitializeUid(aPath);
 		fConfigure();
 	};
-	virtual void fReadCurrentValue() {
+	virtual bool fReadCurrentValue() {
+		bool valueHasChanged = false;
 		std::ifstream thermometer(lPath.c_str());
 		if (thermometer.fail() && lState != lBadFileType) {
 			lBadFileType = fSetState("unreadable", "can't open file" + lPath);
@@ -38,7 +39,7 @@ class owTemperature: public slowcontrol::boundCheckerInterface<slowcontrol::meas
 			float temperature;
 			thermometer >> temperature;
 			if (-55 <= temperature || temperature <= 125) { // limits according to DS18B20 data sheet
-				fStore(temperature);
+				valueHasChanged = fStore(temperature);
 			} else {
 				std::cerr << "bad temperature " << temperature << " on " << lPath << std::endl;
 			}
@@ -48,6 +49,7 @@ class owTemperature: public slowcontrol::boundCheckerInterface<slowcontrol::meas
 				populateThermometers();
 			}
 		}
+		return valueHasChanged;
 	};
 };
 

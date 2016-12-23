@@ -53,7 +53,7 @@ class hih6131moisture: public slowcontrol::boundCheckerInterface<slowcontrol::me
 		}
 		fConfigure();
 	};
-	virtual void fReadCurrentValue() {
+	virtual bool fReadCurrentValue() {
 		unsigned char buf[4];
 		buf[0] = 0;
 		write(fd, buf, 0);
@@ -62,11 +62,12 @@ class hih6131moisture: public slowcontrol::boundCheckerInterface<slowcontrol::me
 		unsigned int hum;
 		hum = buf[1];
 		hum |= (buf[0] & 0x3F) << 8;
-		fStore((100.0 * hum) / (0x4000 - 2));
+		auto valueHasChanged = fStore((100.0 * hum) / (0x4000 - 2));
 		unsigned int temp;
 		temp = buf[3] >> 2;
 		temp |= static_cast<unsigned int>(buf[2]) << 6;
-		lTemperature->fStore((165. * temp) / (0x4000 - 2) - 40.);
+		valueHasChanged != lTemperature->fStore((165. * temp) / (0x4000 - 2) - 40.);
+		return valueHasChanged;
 	};
 };
 

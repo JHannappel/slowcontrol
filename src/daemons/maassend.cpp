@@ -29,11 +29,11 @@ class cpuTemperature: public boundCheckerInterface<measurement<float>, false, tr
 		fConfigure();
 		std::cerr << __func__ << " size is " << sizeof(*this) << std::endl;
 	};
-	virtual void fReadCurrentValue() {
+	virtual bool fReadCurrentValue() {
 		std::ifstream thermometer(lPath.c_str());
 		float temperature;
 		thermometer >> temperature;
-		fStore(temperature * 0.001);
+		return fStore(temperature * 0.001);
 	};
 };
 
@@ -78,7 +78,8 @@ class freeMemory: public boundCheckerInterface<measurement<float>, true, false>,
 		slowcontrol::base::fAddToCompound(aHostCompound, fGetUid(), "freeMemory");
 		std::cerr << __func__ << " size is " << sizeof(*this) << std::endl;
 	}
-	virtual void fReadCurrentValue() {
+	virtual bool fReadCurrentValue() {
+		bool valueHasChanged = false;
 		FILE *f;
 		double v = 0;
 		f = fopen("/proc/meminfo", "r");
@@ -87,11 +88,12 @@ class freeMemory: public boundCheckerInterface<measurement<float>, true, false>,
 				//FIXME
 				// Newer meminfo contain an additional line "MemAvailable" here.
 				if (fscanf(f, "MemAvailable: %lf kB\n", &v) == 1) {
-					fStore(v);
+					valueHasChanged = fStore(v);
 				}
 			}
 		}
 		fclose(f);
+		return valueHasChanged;
 	};
 };
 
@@ -122,11 +124,12 @@ class fsSize: public boundCheckerInterface<measurement<float>, true, false>,
 		slowcontrol::base::fAddToCompound(aHostCompound, fGetUid(), description);
 		std::cerr << __func__ << " size is " << sizeof(*this) << std::endl;
 	};
-	virtual void fReadCurrentValue() {
+	virtual bool fReadCurrentValue() {
 		struct statfs buf;
 		if (statfs(lMountPoint.c_str(), &buf) == 0) {
-			fStore((double)buf.f_bavail * (double)buf.f_bsize / (1024. * 1024. * 1024.));
+			return fStore((double)buf.f_bavail * (double)buf.f_bsize / (1024. * 1024. * 1024.));
 		};
+		return false;
 	};
 };
 
