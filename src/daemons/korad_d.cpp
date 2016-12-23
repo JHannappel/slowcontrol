@@ -88,6 +88,33 @@ class koradDerivedValue: public koradTypedValue<float>,
 	}
 };
 
+class koradStateValue: public koradTypedValue<bool> {
+  public:
+	koradStateValue(koradPowerSupply* aSupply,
+	                const std::string& aPsName,
+	                const std::string& aValueName):
+		koradTypedValue(aSupply, aPsName, aValueName) {
+	}
+};
+
+class koradOutValue: public koradTypedValue<bool>,
+	public slowcontrol::writeValueWithType<bool>,
+	public slowcontrol::defaultReaderInterface {
+  protected:
+	koradPowerSupply *lSupply;
+	koradStateValue lCVMode;
+  public:
+	koradOutValue(koradPowerSupply* aSupply,
+	              const std::string& aPsName):
+		koradTypedValue(aSupply, aPsName, "Output"),
+		defaultReaderInterface(lConfigValues, std::chrono::milliseconds(500)),
+		lSupply(aSupply),
+		lCVMode(aSupply, aPsName, "CVMode") {
+	};
+	virtual bool fProcessRequest(const request* aRequest, std::string& aResponse);
+	virtual bool fReadCurrentValue();
+};
+
 class koradPowerSupply {
   protected:
 	slowcontrol::serialLine lSerial;
@@ -95,6 +122,7 @@ class koradPowerSupply {
 	std::vector<koradValue*> lValues;
 	koradSetValue lVSet;
 	koradSetValue lISet;
+	koradOutValue lOutputSwitch;
   public:
 	slowcontrol::watched_measurement<koradReadValue> lVRead;
 	slowcontrol::watched_measurement<koradReadValue> lIRead;
@@ -106,6 +134,7 @@ class koradPowerSupply {
 		lSerial(aDevice, 9600),
 		lVSet(this, aName, "VSet", "VSET1:%05.2f", "VSET1?", "V"),
 		lISet(this, aName, "ISet", "ISET1:%05.3f", "ISET1?", "A"),
+		lOutputSwitch(this, aName),
 		lVRead(aWatchPack, [](koradReadValue*) -> bool {return true;}, this, aName, "VRead", "VOUT1?", "V"),
 		lIRead(aWatchPack, [](koradReadValue*) -> bool {return true;}, this, aName, "IRead", "IOUT1?", "A"),
 		lPower(this, aName, "Power", "W"),
@@ -137,7 +166,6 @@ bool koradSetValue::fProcessRequest(const request* aRequest, std::string& aRespo
 		sprintf(buffer, lSetCommandFormat.c_str(), req->lGoalValue);
 		lSupply->fUseSerialLine([buffer](slowcontrol::serialLine & aLine) {
 			aLine.fWrite(buffer);
-			std::cout << buffer << "\n";
 		});
 		fReadCurrentValue();
 		if (fGetCurrentValue() == req->lGoalValue) {
@@ -156,10 +184,8 @@ bool koradReadValue::fReadCurrentValue() {
 	lSupply->fUseSerialLine([&buffer, this](slowcontrol::serialLine & aLine) {
 		aLine.fFlushReceiveBuffer();
 		aLine.fWrite(this->lReadBackCommand.c_str());
-		std::cout << this->lReadBackCommand << "\n";
 		aLine.fRead(buffer, 7, std::chrono::seconds(2));
 	});
-	std::cout << buffer << "\n";
 	return fStore(std::stof(buffer));
 }
 
@@ -171,7 +197,37 @@ koradValue::koradValue(koradPowerSupply* aSupply,
 	lName = aPsName;
 	lName += "_";
 	lName += aValueName;
-};
+}
+
+bool koradOutValue::fProcessRequest(const request* aRequest, std::string& aResponse) {
+	auto req = dynamic_cast<const requestWithType*>(aRequest);
+	if (req != nullptr) {
+		auto command = req->lGoalValue ? "OUT1" : "OUT0";
+		lSupply->fUseSerialLine([command](slowcontrol::serialLine & aLine) {
+			aLine.fWrite(command);
+		});
+		fReadCurrentValue();
+		if (fGetCurrentValue() == req->lGoalValue) {
+			aResponse = "done.";
+		} else {
+			aResponse = "failed, got ";
+			aResponse += std::to_string(fGetCurrentValue());
+		}
+		return true;
+	}
+	aResponse = "can't cast request";
+	return false;
+}
+bool koradOutValue::fReadCurrentValue() {
+	char buffer[16];
+	lSupply->fUseSerialLine([&buffer, this](slowcontrol::serialLine & aLine) {
+		aLine.fFlushReceiveBuffer();
+		aLine.fWrite("STATUS?");
+		aLine.fRead(buffer, 3, std::chrono::seconds(2));
+	});
+	lCVMode.fStore(buffer[0] & 0x01);
+	return fStore(buffer[0] & 0x40);
+}
 
 
 int main(int argc, const char *argv[]) {
