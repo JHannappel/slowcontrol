@@ -94,10 +94,10 @@ class koradPowerSupply {
 	};
 
 	void fUseSerialLine(const std::function<void(slowcontrol::serialLine&)> &aLineUser) {
-		// lock the serial line mutex to avoid inteference from other threads
+		// lock the serial line mutex to avoid interference from other threads
 		std::lock_guard<decltype(lSerialLineMutex)> lock(lSerialLineMutex);
-		// wait until the last command is completely sent
-		std::this_thread::sleep_until(lSerial.fGetLastCommunicationTime());
+		// wait until the last command is completely sent and allow for 50ms troedel time
+		std::this_thread::sleep_until(lSerial.fGetLastCommunicationTime() + std::chrono::milliseconds(50));
 		aLineUser(lSerial);
 	}
 };
@@ -126,9 +126,10 @@ bool koradSetValue::fProcessRequest(const request* aRequest, std::string& aRespo
 bool koradReadValue::fReadCurrentValue() {
 	char buffer[16];
 	lSupply->fUseSerialLine([&buffer, this](slowcontrol::serialLine & aLine) {
+		aLine.fFlushReceiveBuffer();
 		aLine.fWrite(this->lReadBackCommand.c_str());
 		std::cout << this->lReadBackCommand << "\n";
-		aLine.fRead(buffer, 5, std::chrono::seconds(2));
+		aLine.fRead(buffer, 7, std::chrono::seconds(2));
 	});
 	std::cout << buffer << "\n";
 	return fStore(std::stof(buffer));
