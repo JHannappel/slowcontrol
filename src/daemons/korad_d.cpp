@@ -5,15 +5,14 @@
 #include <Options.h>
 class koradPowerSupply;
 
-class koradValue : public slowcontrol::measurement<float> {
-  protected:
-	koradPowerSupply& lSupply;
+class koradValue : public slowcontrol::measurement<float>,
+	public slowcontrol::unitInterface {
   public:
-	koradValue(koradPowerSupply& aSupply,
-	           const std::string& aPsName,
-	           const std::string& aValueName):
+	koradValue(const std::string& aPsName,
+	           const std::string& aValueName,
+	           const char *aUnit):
 		measurement(0.001),
-		lSupply(aSupply) {
+		unitInterface(lConfigValues, aUnit) {
 		lClassName.fSetFromString(__func__);
 		std::string name(aPsName);
 		name += "_";
@@ -23,19 +22,19 @@ class koradValue : public slowcontrol::measurement<float> {
 	};
 };
 class koradReadValue: public koradValue,
-	public slowcontrol::defaultReaderInterface,
-	public slowcontrol::unitInterface {
+	public slowcontrol::defaultReaderInterface {
   protected:
+	koradPowerSupply* lSupply;
 	std::string lReadBackCommand;
   public:
-	koradReadValue(koradPowerSupply& aSupply,
+	koradReadValue(koradPowerSupply* aSupply,
 	               const std::string& aPsName,
 	               const std::string& aValueName,
 	               const std::string& aReadBackCommand,
 	               const char *aUnit):
-		koradValue(aSupply, aPsName, aValueName),
+		koradValue(aPsName, aValueName, aUnit),
 		defaultReaderInterface(lConfigValues, std::chrono::seconds(10)),
-		unitInterface(lConfigValues, aUnit),
+		lSupply(aSupply),
 		lReadBackCommand(aReadBackCommand) {
 	};
 	virtual bool fReadCurrentValue();
@@ -46,7 +45,7 @@ class koradSetValue: public koradReadValue,
   protected:
 	std::string lSetCommandFormat;
   public:
-	koradSetValue(koradPowerSupply& aSupply,
+	koradSetValue(koradPowerSupply* aSupply,
 	              const std::string& aPsName,
 	              const std::string& aValueName,
 	              const std::string& aSetCommandFormat,
@@ -65,21 +64,28 @@ class koradPowerSupply {
 	std::mutex lSerialLineMutex;
 	koradSetValue lVSet;
 	koradSetValue lISet;
-	koradReadValue lVRead;
-	koradReadValue lIRead;
   public:
+	slowcontrol::watched_measurement<koradReadValue> lVRead;
+	slowcontrol::watched_measurement<koradReadValue> lIRead;
+	koradValue lPower;
+	koradValue lLoad;
 	koradPowerSupply(const std::string& aName,
-	                 const std::string& aDevice) :
+	                 const std::string& aDevice,
+	                 slowcontrol::watch_pack& aWatchPack) :
 		lSerial(aDevice, 9600),
-		lVSet(*this, aName, "VSet", "VSET1:%05.2f", "VSET1?", "V"),
-		lISet(*this, aName, "ISet", "ISET1:%05.3f", "ISET1?", "A"),
-		lVRead(*this, aName, "VRead", "VOUT1?", "V"),
-		lIRead(*this, aName, "IRead", "IOUT1?", "A") {
+		lVSet(this, aName, "VSet", "VSET1:%05.2f", "VSET1?", "V"),
+		lISet(this, aName, "ISet", "ISET1:%05.3f", "ISET1?", "A"),
+		lVRead(aWatchPack, [](koradReadValue*) -> bool {return true;}, this, aName, "VRead", "VOUT1?", "V"),
+		lIRead(aWatchPack, [](koradReadValue*) -> bool {return true;}, this, aName, "IRead", "IOUT1?", "A"),
+		lPower(aName, "Power", "W"),
+		lLoad(aName, "Load", "Ohm") {
 		auto compound = slowcontrol::base::fGetCompoundId(aName.c_str(), aName.c_str());
 		slowcontrol::base::fAddToCompound(compound, lVSet.fGetUid(), "VSet");
 		slowcontrol::base::fAddToCompound(compound, lISet.fGetUid(), "ISet");
 		slowcontrol::base::fAddToCompound(compound, lVRead.fGetUid(), "VRead");
 		slowcontrol::base::fAddToCompound(compound, lIRead.fGetUid(), "IRead");
+		slowcontrol::base::fAddToCompound(compound, lPower.fGetUid(), "Power");
+		slowcontrol::base::fAddToCompound(compound, lLoad.fGetUid(), "Load");
 	};
 
 	void fUseSerialLine(const std::function<void(slowcontrol::serialLine&)> &aLineUser) {
@@ -96,7 +102,7 @@ bool koradSetValue::fProcessRequest(const request* aRequest, std::string& aRespo
 	if (req != nullptr) {
 		char buffer[128];
 		sprintf(buffer, lSetCommandFormat.c_str(), req->lGoalValue);
-		lSupply.fUseSerialLine([buffer](slowcontrol::serialLine & aLine) {
+		lSupply->fUseSerialLine([buffer](slowcontrol::serialLine & aLine) {
 			aLine.fWrite(buffer);
 		});
 		fReadCurrentValue();
@@ -113,7 +119,7 @@ bool koradSetValue::fProcessRequest(const request* aRequest, std::string& aRespo
 }
 bool koradReadValue::fReadCurrentValue() {
 	char buffer[16];
-	lSupply.fUseSerialLine([&buffer, this](slowcontrol::serialLine & aLine) {
+	lSupply->fUseSerialLine([&buffer, this](slowcontrol::serialLine & aLine) {
 		aLine.fWrite(this->lReadBackCommand.c_str());
 		aLine.fRead(buffer, 5, std::chrono::seconds(2));
 	});
@@ -128,10 +134,23 @@ int main(int argc, const char *argv[]) {
 	parser.fParse(argc, argv);
 	auto daemon = new slowcontrol::daemon("korad_d");
 
+	slowcontrol::watch_pack watchPack;
+
+	std::vector<koradPowerSupply*> powerSupplies;
 	for (auto it : supplyDevices) {
-		new koradPowerSupply(it.first, it.second);
+		powerSupplies.emplace_back(new koradPowerSupply(it.first, it.second, watchPack));
 	}
 
+	while (!daemon->fGetStopRequested()) {
+		if (watchPack.fWaitForChange()) {
+			for (auto powerSupply : powerSupplies) {
+				auto voltage = powerSupply->lVRead.fGetCurrentValue();
+				auto current = powerSupply->lIRead.fGetCurrentValue();
+				powerSupply->lPower.fStore(voltage * current);
+				powerSupply->lLoad.fStore(voltage / current);
+			}
+		}
+	}
 	daemon->fStartThreads();
 	daemon->fWaitForThreads();
 }
