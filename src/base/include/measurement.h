@@ -490,7 +490,6 @@ namespace slowcontrol {
 			watched_base<T>(aWatchPack) {
 		};
 		virtual bool fProcessData(short aRevents) override {
-			std::cout << __FILE__ << __LINE__ << "\n";
 			if (T::fProcessData(aRevents)) {
 				if (this->lWatchCondition(this)) {
 					this->lWatchPack.lWaitCondition.notify_all();
@@ -507,7 +506,6 @@ namespace slowcontrol {
 			watched_base<T>(aWatchPack) {
 		};
 		virtual bool fReadCurrentValue() override {
-			std::cout << __FILE__ << __LINE__ << "\n";
 			if (T::fReadCurrentValue()) {
 				if (this->lWatchCondition(this)) {
 					this->lWatchPack.lWaitCondition.notify_all();
