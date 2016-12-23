@@ -12,7 +12,7 @@ class dvmReadout: public slowcontrol::measurement<float>,
   protected:
 	slowcontrol::serialLine lSerial;
 	unsigned char lBuffer[9];
-	int lNibbleIndex;
+	unsigned int lNibbleIndex;
   public:
 	dvmReadout(const std::string& aName, const std::string& aDevice):
 		measurement(0),
