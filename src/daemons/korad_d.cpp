@@ -180,13 +180,15 @@ bool koradSetValue::fProcessRequest(const request* aRequest, std::string& aRespo
 	return false;
 }
 bool koradReadValue::fReadCurrentValue() {
-	char buffer[16];
-	lSupply->fUseSerialLine([&buffer, this](slowcontrol::serialLine & aLine) {
+	bool retval;
+	lSupply->fUseSerialLine([&retval, this](slowcontrol::serialLine & aLine) {
+		char buffer[16];
 		aLine.fFlushReceiveBuffer();
 		aLine.fWrite(this->lReadBackCommand.c_str());
 		aLine.fRead(buffer, 7, std::chrono::seconds(2));
+		retval = fStore(std::stof(buffer));
 	});
-	return fStore(std::stof(buffer));
+	return retval;
 }
 
 koradValue::koradValue(koradPowerSupply* aSupply,
@@ -219,14 +221,16 @@ bool koradOutValue::fProcessRequest(const request* aRequest, std::string& aRespo
 	return false;
 }
 bool koradOutValue::fReadCurrentValue() {
-	char buffer[16];
-	lSupply->fUseSerialLine([&buffer, this](slowcontrol::serialLine & aLine) {
+	bool retval;
+	lSupply->fUseSerialLine([&retval, this](slowcontrol::serialLine & aLine) {
+		char buffer[16];
 		aLine.fFlushReceiveBuffer();
 		aLine.fWrite("STATUS?");
 		aLine.fRead(buffer, 3, std::chrono::seconds(2));
+		this->lCVMode.fStore(buffer[0] & 0x01);
+		retval = this->fStore(buffer[0] & 0x40);
 	});
-	lCVMode.fStore(buffer[0] & 0x01);
-	return fStore(buffer[0] & 0x40);
+	return retval;
 }
 
 
