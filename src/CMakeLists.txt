@@ -1,4 +1,4 @@
-include_directories("base/include")
+include_directories("base/include" ${PostgreSQL_INCLUDE_DIR})
 set(CMAKE_EXE_LINKER_FLAGS "-lpq -lrt")
 ADD_SUBDIRECTORY(base)
 ADD_SUBDIRECTORY(daemons)

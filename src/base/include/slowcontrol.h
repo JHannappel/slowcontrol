@@ -4,7 +4,7 @@
 
 #include <thread>
 #include <map>
-#include <pgsql/libpq-fe.h>
+#include <libpq-fe.h>
 #include <unistd.h>
 
 namespace slowcontrol {
