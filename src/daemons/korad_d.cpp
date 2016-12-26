@@ -181,13 +181,17 @@ bool koradSetValue::fProcessRequest(const request* aRequest, std::string& aRespo
 }
 bool koradReadValue::fReadCurrentValue() {
 	bool retval;
-	lSupply->fUseSerialLine([&retval, this](slowcontrol::serialLine & aLine) {
-		char buffer[16];
-		aLine.fFlushReceiveBuffer();
-		aLine.fWrite(this->lReadBackCommand.c_str());
-		aLine.fRead(buffer, 7, std::chrono::seconds(2));
-		retval = fStore(std::stof(buffer));
-	});
+	try {
+		lSupply->fUseSerialLine([&retval, this](slowcontrol::serialLine & aLine) {
+			char buffer[16];
+			aLine.fFlushReceiveBuffer();
+			aLine.fWrite(this->lReadBackCommand.c_str());
+			aLine.fRead(buffer, 7, std::chrono::seconds(2));
+			retval = fStore(std::stof(buffer));
+		});
+	} catch (std::invalid_argument) {
+		retval = false;
+	}
 	return retval;
 }
 
@@ -254,7 +258,10 @@ int main(int argc, const char *argv[]) {
 				auto voltage = powerSupply->lVRead.fGetCurrentValue();
 				auto current = powerSupply->lIRead.fGetCurrentValue();
 				powerSupply->lPower.fStore(voltage * current);
-				powerSupply->lLoad.fStore(voltage / current);
+				auto load = voltage / current;
+				if (load >= 0 && load < 30 / 0.001) { // limits defined by hardware
+					powerSupply->lLoad.fStore(load);
+				}
 			}
 		}
 	}
