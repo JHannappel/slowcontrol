@@ -151,7 +151,7 @@ int main(int argc, const char *argv[]) {
 				lightSwitch.fSet(true);
 			}
 			camera.fStore(true);
-			while (motionDet.fGetCurrentValue()) {
+			while (motionDet.fGetCurrentValue() && !daemon->fGetStopRequested()) {
 				camera.fRecord();
 			}
 			camera.fStore(false);
