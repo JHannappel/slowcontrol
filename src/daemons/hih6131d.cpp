@@ -66,7 +66,7 @@ class hih6131moisture: public slowcontrol::boundCheckerInterface<slowcontrol::me
 		unsigned int temp;
 		temp = buf[3] >> 2;
 		temp |= static_cast<unsigned int>(buf[2]) << 6;
-		valueHasChanged != lTemperature->fStore((165. * temp) / (0x4000 - 2) - 40.);
+		valueHasChanged |= lTemperature->fStore((165. * temp) / (0x4000 - 2) - 40.);
 		return valueHasChanged;
 	};
 };
