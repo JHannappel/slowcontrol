@@ -9,7 +9,7 @@ class pulseBuffer {
   public:
 	enum : unsigned char {
 		kSize =  70,
-		kNBuffers = 6,
+		kNBuffers = 12,
 		kMinEdges = 0x40
 	};
 	enum : unsigned short {
@@ -68,7 +68,7 @@ IOPin(C, 4) Capture(true);
 
 IOPin(B, 1) RFDataOut(true);
 
-USARTHandler(0, 125000, 6, 64, 0) gUSARTHandler;
+USARTHandler(0, 500000, 7, 64, 0) gUSARTHandler;
 
 
 ISR(USART_RX_vect) {
@@ -168,11 +168,8 @@ void sendPattern(const char *aPattern) {
 	auto period = HexToShort(&aPattern);
 	auto syncPulse = HexToShort(&aPattern);
 	auto syncPause = HexToShort(&aPattern);
+	auto endPulse = HexToShort(&aPattern);
 	auto afterPause = HexToShort(&aPattern);
-	// gUSARTHandler.fHexShort(period);
-	// gUSARTHandler.fTransmit(' ');
-	// gUSARTHandler.fString(aPattern);
-	// gUSARTHandler.fTransmit(' ');
 	RFDataOut.fSet(true);
 	waitCounter0(syncPulse * period);
 	RFDataOut.fSet(false);
@@ -205,12 +202,11 @@ void sendPattern(const char *aPattern) {
 		}
 		aPattern++;
 	}
-	//RFDataOut.fSet(true);
-	//waitCounter0(period);
+	if (endPulse) {
+		RFDataOut.fSet(true);
+		waitCounter0(period * endPulse);
+	}
 	RFDataOut.fSet(false);
-	// gUSARTHandler.fTransmit('-');
-	// gUSARTHandler.fHexByte(pulsesSent);
-	// gUSARTHandler.fTransmit('\n');
 	waitCounter0(period * afterPause);
 }
 
@@ -300,8 +296,10 @@ int main(void) {
 			} else if (strcmp_P(line, PSTR("sparse")) == 0) {
 				gFullOutput = false;
 			} else if (strncmp_P(line, PSTR("send "), 5) == 0) {
-				for (int i = 0; i < 6; i++) {
-					sendPattern(line + 5);
+				line += 5;
+				auto repeat = HexToByte(&line);
+				for (int i = 0; i < repeat; i++) {
+					sendPattern(line);
 				}
 			}
 		}
