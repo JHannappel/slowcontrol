@@ -1,5 +1,5 @@
-#ifndef __SlowcontrolMeasuerement_h__
-#define __SlowcontrolMeasuerement_h__
+#ifndef __SlowcontrolMeasurement_h__
+#define __SlowcontrolMeasurement_h__
 
 #include <vector>
 #include <set>
