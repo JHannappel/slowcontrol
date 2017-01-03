@@ -66,12 +66,12 @@ IOPin(C, 2) ProcessingPulseTrain(true);
 IOPin(C, 3) TimeOut(true);
 IOPin(C, 4) Capture(true);
 
-IOPin(D, 7) RFDataOut(true);
+IOPin(B, 1) RFDataOut(true);
 
-USARTHandler(, 125000, 6, 64) gUSARTHandler;
+USARTHandler(0, 125000, 6, 64, 0) gUSARTHandler;
 
 
-ISR(USARTRXC_vect) {
+ISR(USART_RX_vect) {
 	gUSARTHandler.fAddByteToBuffer();
 }
 
@@ -81,7 +81,7 @@ ISR(TIMER1_CAPT_vect) { // an edge was detected and captured
 	Capture.fSet(true);
 	unsigned short interval = ICR1;
 	TCCR1B ^= _BV(ICES1); // change edge
-	TIFR = _BV(ICF1); // reset interrupt flag
+	TIFR1 = _BV(ICF1); // reset interrupt flag
 	TCNT1 = 0;
 	bool isHigh = bit_is_set(ACSR, ACO);
 	ACOmonitor.fSet(isHigh);
@@ -116,18 +116,18 @@ ISR(TIMER1_COMPA_vect) { // an edge timeout happened
 }
 
 void waitCounter0(unsigned short aMicroSeconds) {
-	TCCR0 = _BV(CS02); // use normal mode with 1/256 sysclk, i.e. 16us
+	TCCR0B = _BV(CS02); // use normal mode with 1/256 sysclk, i.e. 16us
 	auto clockTicks = aMicroSeconds >> 4;
 	unsigned char highPart = clockTicks >> 8;
 	for (; highPart > 0; highPart--) {
 		TCNT0 = 0;
-		while ((TIFR & _BV(TOV0)) == 0) {}; // wait until overflow happened
-		TIFR = _BV(TOV0); // clear overflow
+		while ((TIFR0 & _BV(TOV0)) == 0) {}; // wait until overflow happened
+		TIFR0 = _BV(TOV0); // clear overflow
 	}
 	unsigned char lowPart = clockTicks & 0x00FFu;
 	TCNT0 = 0xffu - lowPart;
-	while ((TIFR & _BV(TOV0)) == 0) {}; // wait until overflow happened
-	TIFR = _BV(TOV0); // clear overflow
+	while ((TIFR0 & _BV(TOV0)) == 0) {}; // wait until overflow happened
+	TIFR0 = _BV(TOV0); // clear overflow
 }
 
 unsigned char HexToNibble(char code) {
@@ -280,8 +280,8 @@ int main(void) {
 	         | _BV(ICES1) // capture on positive edge
 	         | _BV(WGM12) // use CTC mode with TOP at OCR1A
 	         | _BV(CS11) | _BV(CS10); // use sysclck/64 as counting freq, i.e. 250hKz or 4us ticks.
-	TIMSK = _BV(TICIE1) // enable capture interrupt
-	        | _BV(OCIE1A); // enable compare interruppt
+	TIMSK1 = _BV(ICIE1) // enable capture interrupt
+	         | _BV(OCIE1A); // enable compare interruppt
 	OCR1A = pulseBuffer::kMaxCountValue; // set max counter value to 15 bits
 
 	gUSARTHandler.fString_P(PSTR("hello world by " __FILE__ "\n"));

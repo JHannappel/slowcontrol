@@ -8,6 +8,13 @@ template <
     unsigned short brlAddr,
     unsigned short brhAddr,
     unsigned short udrAddr,
+    unsigned char bvU2X,
+    unsigned char bvRXEN,
+    unsigned char bvTXEN,
+    unsigned char bvRXCIE,
+    unsigned char bvURSEL,
+    unsigned char bitUCSZ0,
+    unsigned char bvUDRE,
     unsigned long BAUD,
     unsigned long BAUD_TOL = 2
     > class usartHandler {
@@ -19,7 +26,7 @@ template <
 		static_assert(BAUD <= 1000000, "baud rate too high");
 		if (100 * (F_CPU) > (16 * (UBRR_VALUE16 + 1)) * (100 * BAUD + BAUD * BAUD_TOL)
 		        || 100 * (F_CPU) < (16 * (UBRR_VALUE16 + 1)) * (100 * BAUD - BAUD * BAUD_TOL)) { // we need USE_2X
-			_MMIO_BYTE(csraAddr) |= _BV(U2X);
+			_MMIO_BYTE(csraAddr) |= bvU2X;
 			constexpr unsigned long UBRR_VALUE8 = (((F_CPU) + 4UL * BAUD)
 			                                       / (8UL * BAUD) - 1UL);
 			static_assert(UBRR_VALUE8 < 4096UL, "UBRR value too high");
@@ -27,17 +34,17 @@ template <
 		} else {
 			static_assert(UBRR_VALUE16 < 4096UL, "UBRR value too high");
 			UBRR_VALUE = UBRR_VALUE16 & 0x0FFF;
-			_MMIO_BYTE(csraAddr) &= ~_BV(U2X);
+			_MMIO_BYTE(csraAddr) &= ~bvU2X;
 		}
 		_MMIO_BYTE(brhAddr) = UBRR_VALUE >> 8;
 		_MMIO_BYTE(brlAddr) = UBRR_VALUE & 0xff;
-		_MMIO_BYTE(csrbAddr) = _BV(RXEN) | _BV(TXEN) | _BV(RXCIE);
-		_MMIO_BYTE(csrcAddr) = _BV(URSEL) | (3 << UCSZ0);
+		_MMIO_BYTE(csrbAddr) = bvRXEN | bvTXEN | bvRXCIE;
+		_MMIO_BYTE(csrcAddr) = bvURSEL | (3 << bitUCSZ0);
 	};
 
 	void fTransmit( unsigned char data ) {
 		/* Wait for empty transmit buffer */
-		while ( !( _MMIO_BYTE(csraAddr) & (1 << UDRE)) );
+		while ( !( _MMIO_BYTE(csraAddr) & bvUDRE) );
 		/* Put data into buffer, sends the data */
 		_MMIO_BYTE(udrAddr) = data;
 	};
@@ -79,11 +86,18 @@ template <
     unsigned short brlAddr,
     unsigned short brhAddr,
     unsigned short udrAddr,
+    unsigned char bvU2X,
+    unsigned char bvRXEN,
+    unsigned char bvTXEN,
+    unsigned char bvRXCIE,
+    unsigned char bvURSEL,
+    unsigned char bitUCSZ0,
+    unsigned char bvUDRE,
     unsigned long BAUD,
     unsigned long BAUD_TOL,
     unsigned char ringBufferSize,
     unsigned char lineBufferSize
-    > class usartHandlerWithBuffer: public usartHandler<csraAddr, csrbAddr, csrcAddr, brlAddr, brhAddr,  udrAddr, BAUD, BAUD_TOL> {
+    > class usartHandlerWithBuffer: public usartHandler<csraAddr, csrbAddr, csrcAddr, brlAddr, brhAddr,  udrAddr, bvU2X, bvRXEN, bvTXEN, bvRXCIE, bvURSEL, bitUCSZ0, bvUDRE, BAUD, BAUD_TOL> {
   public:
 	enum : unsigned char { kRingBuferSize = 1 << ringBufferSize,
 	                       kLineBufferSize = lineBufferSize
@@ -132,7 +146,7 @@ template <
 };
 
 
-#define USARTHandler(UartIndex, BaudRate, BS, LS)								 \
+#define USARTHandler(UartIndex, BaudRate, BS, LS, bvURSEL)	  \
 	usartHandlerWithBuffer<																			 \
 	(unsigned short)(&UCSR##UartIndex##A),											 \
 	(unsigned short)(&UCSR##UartIndex##B),										 \
@@ -140,6 +154,13 @@ template <
 	(unsigned short)(&UBRR##UartIndex##L),										 \
 	(unsigned short)(&UBRR##UartIndex##H),										 \
 	(unsigned short)(&UDR##UartIndex),												 \
+	(unsigned char)(_BV(U2X##UartIndex)), \
+	(unsigned char)(_BV(RXEN##UartIndex)), \
+	(unsigned char)(_BV(TXEN##UartIndex)), \
+	(unsigned char)(_BV(RXCIE##UartIndex)), \
+	(unsigned char)(bvURSEL), \
+	(unsigned char)(UCSZ##UartIndex##0),   \
+	(unsigned char)(_BV(UDRE##UartIndex)), \
 	BaudRate,																									 \
 	2,																												 \
 	BS,																												 \
