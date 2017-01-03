@@ -119,15 +119,6 @@ template <
 			lReadIndex = (lReadIndex + 1) & (kRingBuferSize - 1);
 			if (value == '\n') {
 				lLine[lLineIndex] = '\0';
-				this->fTransmit('w');
-				this->fHexByte(lWriteIndex);
-				this->fTransmit('r');
-				this->fHexByte(lReadIndex);
-				this->fTransmit('b');
-				this->fHexByte(bytesInBuffer);
-				this->fTransmit('l');
-				this->fHexByte(lLineIndex);
-				this->fTransmit('\n');
 				lLineIndex = 0;
 				return lLine;
 			}

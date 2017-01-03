@@ -59,6 +59,7 @@ class pulseBuffer {
 pulseBuffer gBuffer[pulseBuffer::kNBuffers];
 volatile unsigned char gWriteBufferIndex;
 bool gFullOutput = false;
+bool gSparseOutput = false;
 
 IOPin(C, 0) ACOmonitor(true);
 IOPin(C, 1) AquiringPulseTrain(true);
@@ -236,11 +237,15 @@ void decodePulses(pulseBuffer *aBuffer) {
 		if (firstpulse < secondpulse) {
 			pulse += firstpulse;
 			nPulses++;
-			gUSARTHandler.fTransmit('0');
+			if (!gSparseOutput) {
+				gUSARTHandler.fTransmit('0');
+			}
 		} else {
 			pulse += secondpulse;;
 			nPulses++;
-			gUSARTHandler.fTransmit('1');
+			if (!gSparseOutput) {
+				gUSARTHandler.fTransmit('1');
+			}
 			code[byte] |= 0x01;
 		}
 		bit--;
@@ -249,12 +254,15 @@ void decodePulses(pulseBuffer *aBuffer) {
 			bit = 8;
 		}
 	}
-	pulse /= nPulses;
-	gUSARTHandler.fTransmit(' ');
-	gUSARTHandler.fHexByte(nPulses);
-	gUSARTHandler.fTransmit(' ');
-	gUSARTHandler.fHexShort(pulse << 2);
-	gUSARTHandler.fTransmit(' ');
+	if (!gSparseOutput) {
+		pulse /= nPulses;
+		gUSARTHandler.fTransmit(' ');
+		gUSARTHandler.fHexByte(nPulses);
+		gUSARTHandler.fTransmit(' ');
+		gUSARTHandler.fHexShort(pulse << 2);
+		gUSARTHandler.fTransmit('\n');
+	}
+	gUSARTHandler.fString_P(PSTR("found "));
 	for (int b = 0; b < byte; b++) {
 		gUSARTHandler.fHexByte(code[b]);
 	}
@@ -263,7 +271,7 @@ void decodePulses(pulseBuffer *aBuffer) {
 	if (aBuffer->fIsValid()) {
 		aBuffer->fClear(); // clear buffer after reading
 	} else {
-		gUSARTHandler.fString_P(PSTR("pulse buffer overrun"));
+		gUSARTHandler.fString_P(PSTR("pulse buffer overrun\n"));
 	}
 }
 
@@ -287,14 +295,20 @@ int main(void) {
 	while (true) {
 		auto line = gUSARTHandler.fNextLine();
 		if (line != nullptr) {
-			gUSARTHandler.fString_P(PSTR("received '"));
-			gUSARTHandler.fString(line);
-			gUSARTHandler.fString_P(PSTR("'\n"));
-
+			if (!gSparseOutput) {
+				gUSARTHandler.fString_P(PSTR("received '"));
+				gUSARTHandler.fString(line);
+				gUSARTHandler.fString_P(PSTR("'\n"));
+			}
 			if (strcmp_P(line, PSTR("full")) == 0) {
 				gFullOutput = true;
+				gSparseOutput = false;
+			} else if (strcmp_P(line, PSTR("normal")) == 0) {
+				gFullOutput = false;
+				gSparseOutput = false;
 			} else if (strcmp_P(line, PSTR("sparse")) == 0) {
 				gFullOutput = false;
+				gSparseOutput = true;
 			} else if (strncmp_P(line, PSTR("send "), 5) == 0) {
 				line += 5;
 				auto repeat = HexToByte(&line);
@@ -304,12 +318,6 @@ int main(void) {
 			}
 		}
 		if (gBuffer[readBufferIndex].fIsValid()) {
-			gUSARTHandler.fHexByte(readBufferIndex);
-			gUSARTHandler.fTransmit(' ');
-			gUSARTHandler.fHexByte(gWriteBufferIndex);
-			gUSARTHandler.fTransmit(' ');
-			gUSARTHandler.fHexByte(gBuffer[readBufferIndex].fGetNEntries());
-			gUSARTHandler.fTransmit(' ');
 			decodePulses(&(gBuffer[readBufferIndex]));
 
 			readBufferIndex = (readBufferIndex + 1) % pulseBuffer::kNBuffers;
