@@ -192,6 +192,16 @@ CREATE TABLE measurements_int8 (
 --
 --
 
+CREATE TABLE measurements_trigger (
+    uid integer NOT NULL,
+    "time" timestamp with time zone NOT NULL
+);
+
+
+
+--
+--
+
 CREATE TABLE setvalue_requests (
     uid integer,
     request text NOT NULL,
@@ -531,6 +541,12 @@ CREATE INDEX measurements_int4_uid_time_idx ON measurements_int4 USING btree (ui
 --
 
 CREATE INDEX measurements_int8_uid_time_idx ON measurements_int8 USING btree (uid, "time");
+
+
+--
+--
+
+CREATE INDEX measurements_trigger_uid_time_idx ON measurements_trigger USING btree (uid, "time");
 
 
 --
