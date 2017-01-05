@@ -202,6 +202,35 @@ CREATE TABLE measurements_trigger (
 --
 --
 
+CREATE TABLE rule_nodes (
+    nodetype text NOT NULL,
+    nodename text NOT NULL,
+    nodeid integer NOT NULL
+);
+
+
+
+--
+--
+
+CREATE SEQUENCE rule_nodes_nodeid_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+
+--
+--
+
+ALTER SEQUENCE rule_nodes_nodeid_seq OWNED BY rule_nodes.nodeid;
+
+
+--
+--
+
 CREATE TABLE setvalue_requests (
     uid integer,
     request text NOT NULL,
@@ -393,6 +422,12 @@ ALTER TABLE ONLY daemon_list ALTER COLUMN daemonid SET DEFAULT nextval('daemon_l
 --
 --
 
+ALTER TABLE ONLY rule_nodes ALTER COLUMN nodeid SET DEFAULT nextval('rule_nodes_nodeid_seq'::regclass);
+
+
+--
+--
+
 ALTER TABLE ONLY setvalue_requests ALTER COLUMN id SET DEFAULT nextval('setvalue_requests_id_seq'::regclass);
 
 
@@ -455,6 +490,13 @@ ALTER TABLE ONLY daemon_list
 
 ALTER TABLE ONLY daemon_list
     ADD CONSTRAINT daemon_list_pkey PRIMARY KEY (description);
+
+
+--
+--
+
+ALTER TABLE ONLY rule_nodes
+    ADD CONSTRAINT rule_nodes_pkey PRIMARY KEY (nodetype, nodename);
 
 
 --
@@ -567,6 +609,14 @@ CREATE INDEX uid_daemon_connection_daemonid_index ON uid_daemon_connection USING
 CREATE RULE daemon_list_to_heartbeart AS
     ON INSERT TO daemon_list DO  INSERT INTO daemon_heartbeat (daemonid)
   VALUES (new.daemonid);
+
+
+--
+--
+
+CREATE RULE ruleprocessornotify AS
+    ON INSERT TO measurements_trigger DO
+ NOTIFY ruleprocessor_measurements_trigger;
 
 
 --
