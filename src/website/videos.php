@@ -8,32 +8,26 @@ if (!$dbconn) {
 page_head($dbconn,"Slowcontrol");
 
 if (isset($_GET['dir'])) {
-   $videodir=$_GET['dir'];
+	$videodirs=array($_GET['dir']);
 } else {
-  $videodir="/video/camera1/";
+  $videodirs=array("/video/camera1/", "/video/camera2/");
 }
 
-$videos=scandir("/data".$videodir);
+foreach ($videodirs as $videodir) {
 
-echo "<h1>Unclassified Videos in $videodir</h1>\n";
-foreach ($videos as $video) {
-  if ($video[0] == ".") {
-    continue;
-  }	
-  $s=stat("/data".$videodir."/".$video);
-  if ($s['nlink']==1) {
-    echo "<a href=\"classify_video.php?video=$videodir/$video&unclassified\">$video<a><br>\n";
-  }
+	$videos=scandir("/data".$videodir);
+
+	echo "<h1>Unclassified Videos in $videodir</h1>\n";
+	foreach ($videos as $video) {
+		if ($video[0] == ".") {
+			continue;
+		}	
+		$s=stat("/data".$videodir."/".$video);
+		if ($s['nlink']==1) {
+			echo "<a href=\"classify_video.php?video=$videodir/$video&unclassified\">$video<a><br>\n";
+		}
+	}
 }
-
-echo "<h1>Videos in $videodir</h1>\n";
-foreach ($videos as $video) {
-  if ($video[0] == ".") {
-    continue;
-  }	
-  echo "<a href=\"classify_video.php?video=$videodir/$video\">$video<a>  \n";
-}
-
 
 echo "<h1>Sorted Videos</h1>\n";
 $d = dir("/data/video/sort/");
@@ -42,5 +36,18 @@ while(false !== ($e = $d->read())) {
      echo "<a href=\"videos.php?dir=/video/sort/$e\">$e<a><br>\n";
   }
 }
+
+foreach ($videodirs as $videodir) {
+	echo "<h1>Videos in $videodir</h1>\n";
+	$videos=scandir("/data".$videodir);
+	foreach ($videos as $video) {
+		if ($video[0] == ".") {
+			continue;
+		}	
+		echo "<a href=\"classify_video.php?video=$videodir/$video\">$video<a>  \n";
+	}
+}
+
+
 page_foot();
 ?>
