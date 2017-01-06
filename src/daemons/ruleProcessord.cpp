@@ -11,7 +11,13 @@ class ruleNode {
 		static std::map<std::string, ruleNode* (*)(const std::string&)> gNodeCreators;
 		return gNodeCreators;
 	};
+	static std::map<std::string, ruleNode*> fGetNodeMap() {
+		static std::map<std::string, ruleNode*> gNodeMap;
+		return gNodeMap;
+	};
 
+
+	slowcontrol::configValueBase::mapType lConfigValues; ///< map of config values, needed also as parameter for the config value constructors
 	slowcontrol::measurementBase::timeType lTime;
 	std::string lName;
 	std::set<ruleNode*> lDependentNodes;
@@ -32,8 +38,17 @@ class ruleNode {
 		throw std::string("can;t find node creator");
 	};
 
+	static ruleNode* fGetNodeByName(const std::string& aName) {
+		auto it = fGetNodeMap().find(aName);
+		if (it != fGetNodeMap().end()) {
+			return it->second;
+		}
+		return nullptr;
+	};
+
 	ruleNode(const std::string& aName):
 		lName(aName) {
+		fGetNodeMap().emplace(aName, this);
 	};
 	virtual void fRegisterDependentNode(ruleNode* aNode) {
 		lDependentNodes.insert(aNode);
@@ -218,7 +233,6 @@ int main(int argc, const char *argv[]) {
 
 	auto daemon = new slowcontrol::daemon("ruleProcessord");
 
-	std::map<std::string, ruleNode*> nodes;
 
 	std::map<std::string, dataTable*> dataTables;
 	{
@@ -242,11 +256,9 @@ int main(int argc, const char *argv[]) {
 						it = res.first;
 					}
 					it->second->fAddMeasurement(uid, measurement, table, measurement->fGetValueExpression());
-					nodes.emplace(name, node);
 				}
 			} else { // non-measurement nodes
-				auto node = ruleNode::fCreateNode(type, name);
-				nodes.emplace(name, node);
+				ruleNode::fCreateNode(type, name);
 			}
 		}
 		PQclear(result);
@@ -279,7 +291,7 @@ int main(int argc, const char *argv[]) {
 				}
 				std::cout << "got notification '" << notification->relname << "'" << std::endl;
 				std::string table(notification->relname + strlen("ruleProcessor_"));
-				std::cout << "ckecking table '" << table << "'\n";
+				std::cout << "checking table '" << table << "'\n";
 				auto it = dataTables.find(table);
 				if (it != dataTables.end()) {
 					it->second->fProcess();
