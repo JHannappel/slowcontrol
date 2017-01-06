@@ -52,71 +52,16 @@ namespace slowcontrol {
 
 	void measurementBase::fSaveOption(const configValueBase& aCfgValue,
 	                                  const char *aComment) {
-		std::string query("INSERT INTO uid_configs (uid,name,value,comment) VALUES (");
-		query += std::to_string(fGetUid());
-		query += ",";
-		base::fAddEscapedStringToQuery(aCfgValue.fGetName(), query);
-		query += ",";
-		std::string valueRaw;
-		aCfgValue.fAsString(valueRaw);
-		base::fAddEscapedStringToQuery(valueRaw, query);
-		query += ",";
-		base::fAddEscapedStringToQuery(aComment, query);
-		query += ");";
-		auto result = PQexec(base::fGetDbconn(), query.c_str());
-		PQclear(result);
+		aCfgValue.fSave("uid_configs", "uid", fGetUid(), aComment);
 	}
 
 	void measurementBase::fUpdateOption(const configValueBase& aCfgValue,
 	                                    const char *aComment) {
-		std::string query = "UPDATE uid_configs SET value=";
-		std::string valueRaw;
-		aCfgValue.fAsString(valueRaw);
-		base::fAddEscapedStringToQuery(valueRaw, query);
-		query += ", comment=";
-		base::fAddEscapedStringToQuery(aComment, query);
-		query += ", last_change=now() WHERE uid=";
-		query += std::to_string(fGetUid());
-		query += " AND name=";
-		base::fAddEscapedStringToQuery(aCfgValue.fGetName(), query);
-		query += ";";
-		auto result = PQexec(base::fGetDbconn(), query.c_str());
-		PQclear(result);
+		aCfgValue.fUpdate("uid_configs", "uid", fGetUid(), aComment);
 	}
 
 	void measurementBase::fConfigure() {
-		std::string query("SELECT name,value,comment FROM uid_configs WHERE uid=");
-		query += std::to_string(fGetUid());
-		query += ";";
-		std::set<std::string> optionsInDb;
-		auto result = PQexec(base::fGetDbconn(), query.c_str());
-		for (int i = 0; i < PQntuples(result); ++i) {
-			std::string name(PQgetvalue(result, i, PQfnumber(result, "name")));
-			auto it = lConfigValues.find(name);
-			if (it != lConfigValues.end()) {
-				auto cfgVal = it->second;
-				std::string valueRaw;
-				auto valueInDb = PQgetvalue(result, i, PQfnumber(result, "value"));
-				cfgVal->fAsString(valueRaw);
-				std::string comment(PQgetvalue(result, i, PQfnumber(result, "comment")));
-				if (comment.rfind("default") == comment.size() - 7
-				        && valueRaw.compare(valueInDb) != 0) {
-					fUpdateOption(*cfgVal, "changed default");
-				} else {
-					cfgVal->fSetFromString(valueInDb);
-				}
-				optionsInDb.emplace(name);
-			} else {
-				std::cerr << "unknown cfg option '" << name << "' with value '" << PQgetvalue(result, i, PQfnumber(result, "value")) << "' encountered for uid " << fGetUid() << std::endl;
-			}
-		}
-		PQclear(result);
-		for (auto it : lConfigValues) {
-			auto name = it.first;
-			if (optionsInDb.find(name) == optionsInDb.end()) {
-				fSaveOption(*(it.second), "later default");
-			}
-		}
+		configValueBase::fConfigure("uid_configs", "uid", fGetUid(), lConfigValues);
 	};
 
 	measurement_state::stateType measurementBase::fSetState(const std::string& aStateName,
