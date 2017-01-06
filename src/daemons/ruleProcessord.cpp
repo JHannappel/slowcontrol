@@ -68,7 +68,7 @@ class ruleNode {
 			dependentNode->fProcess();
 		}
 	};
-	virtual double fGetValueAsDouble() = 0;
+	virtual double fGetValueAsDouble() const = 0;
 	virtual slowcontrol::measurementBase::timeType fGetTime() const {
 		return lTime;
 	};
@@ -77,11 +77,15 @@ class ruleNode {
 	}
 };
 
-
+class timeableRuleNodeInterface {
+  public:
+	virtual void fResumeAt(slowcontrol::measurementBase::timeType aThen);
+	virtual void fProcessTimed() = 0;
+};
 
 class timedActionsClass {
   protected:
-	std::multimap<slowcontrol::measurementBase::timeType, ruleNode*> lTimes;
+	std::multimap<slowcontrol::measurementBase::timeType, timeableRuleNodeInterface*> lTimes;
 	timedActionsClass() {
 	};
   public:
@@ -93,7 +97,7 @@ class timedActionsClass {
 		return gInstance;
 	};
 
-	void fRegisterAction(ruleNode *aNode,
+	void fRegisterAction(timeableRuleNodeInterface *aNode,
 	                     slowcontrol::measurementBase::timeType aTime,
 	                     bool aDoUpdate = true) {
 		if (aDoUpdate) {
@@ -113,14 +117,60 @@ class timedActionsClass {
 			if (timeDiff > slowcontrol::measurementBase::durationType::zero()) { // the rest comes maybe next time
 				return std::chrono::duration_cast<std::chrono::milliseconds>(timeDiff).count();
 			}
-			it->second->fProcess();
+			it->second->fProcessTimed();
 			it = lTimes.erase(it);
 		}
 		return 1000;
 	};
 };
 
+void timeableRuleNodeInterface::fResumeAt(slowcontrol::measurementBase::timeType aThen) {
+	timedActionsClass::fGetInstance()->fRegisterAction(this, aThen);
+}
 
+
+class ruleNodeSingleParent: public ruleNode {
+  protected:
+	slowcontrol::configValue<std::string> lParentName;
+	ruleNode* lParent;
+  public:
+	ruleNodeSingleParent(const std::string& aName, int aNodeId):
+		ruleNode(aName, aNodeId),
+		lParentName("parent", lConfigValues, "") {
+	};
+	virtual void fInit() {
+		ruleNode::fInit();
+		lParent = fGetNodeByName(lParentName);
+		lParent->fRegisterDependentNode(this);
+	}
+};
+
+class ruleNodeDelay: public ruleNodeSingleParent,
+	public timeableRuleNodeInterface {
+  protected:
+	slowcontrol::configValue<std::chrono::system_clock::duration> lDelay;
+	double lValue;
+  public:
+	ruleNodeDelay(const std::string& aName, int aNodeId):
+		ruleNodeSingleParent(aName, aNodeId),
+		lDelay("delay", lConfigValues, std::chrono::seconds(1)) {
+	}
+	static ruleNode* ruleNodeCreator(const std::string& aName, int aId) {
+		return new ruleNodeDelay(aName, aId);
+	};
+
+	virtual double fGetValueAsDouble() const {
+		return lValue;
+	}
+	virtual void fProcess() {
+		auto then = lParent->fGetTime() + lDelay.fGetValue();
+		lValue = lParent->fGetValueAsDouble();
+		fResumeAt(then);
+	}
+	virtual void fProcessTimed() {
+		ruleNode::fProcess();
+	}
+};
 
 
 class ruleNodeMeasurement: public ruleNode {
@@ -142,7 +192,7 @@ template <typename T> class ruleNodeTypedMeasurement: public ruleNodeMeasurement
 	static ruleNode* ruleNodeCreator(const std::string& aName, int aId) {
 		return new ruleNodeTypedMeasurement(aName, aId);
 	};
-	virtual double fGetValueAsDouble() {
+	virtual double fGetValueAsDouble() const {
 		return lCurrentValue.load();
 	};
 	virtual void fSetFromString(const char* aString) {
@@ -173,7 +223,7 @@ class ruleNodeTriggerMeasurement: public ruleNodeMeasurement {
 	static ruleNode* ruleNodeCreator(const std::string& aName, int aId) {
 		return new ruleNodeTriggerMeasurement(aName, aId);
 	};
-	virtual double fGetValueAsDouble() {
+	virtual double fGetValueAsDouble() const {
 		return 1.0;
 	};
 	virtual void fSetFromString(const char* /*aString*/) {
@@ -250,6 +300,9 @@ class dataTable {
 int main(int argc, const char *argv[]) {
 	OptionParser parser("slowcontrol program for processing rules");
 	parser.fParse(argc, argv);
+
+	ruleNode::fRegisterNodeTypecreator("delay", ruleNodeDelay::ruleNodeCreator);
+
 
 	ruleNode::fRegisterNodeTypecreator("measurements_float", ruleNodeFloatMeasurement::ruleNodeCreator);
 	ruleNode::fRegisterNodeTypecreator("measurements_bool", ruleNodeBoolMeasurement::ruleNodeCreator);
