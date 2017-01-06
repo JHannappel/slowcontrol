@@ -23,7 +23,7 @@ namespace slowcontrol {
 		PQclear(result);
 	}
 	void configValueBase::fUpdate(const char *aTable, const char *aIdColumn, int aId, const char *aComment) const {
-		std::string query = "UPDATE";
+		std::string query = "UPDATE ";
 		query += aTable;
 		query += " SET value=";
 		std::string valueRaw;
@@ -50,6 +50,7 @@ namespace slowcontrol {
 		query += std::to_string(aId);
 		query += ";";
 		std::set<std::string> optionsInDb;
+		std::cout << query << "\n";
 		auto result = PQexec(base::fGetDbconn(), query.c_str());
 		for (int i = 0; i < PQntuples(result); ++i) {
 			std::string name(PQgetvalue(result, i, PQfnumber(result, "name")));

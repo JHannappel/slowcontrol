@@ -11,7 +11,7 @@ class ruleNode {
 		static std::map<std::string, ruleNode* (*)(const std::string&, int)> gNodeCreators;
 		return gNodeCreators;
 	};
-	static std::map<std::string, ruleNode*> fGetNodeMap() {
+	static std::map<std::string, ruleNode*>& fGetNodeMap() {
 		static std::map<std::string, ruleNode*> gNodeMap;
 		return gNodeMap;
 	};
@@ -56,15 +56,19 @@ class ruleNode {
 		lName(aName),
 		lNodeId(aNodeId) {
 		fGetNodeMap().emplace(aName, this);
+		std::cout << "constructed " << aName << " as " << fGetNodeMap().size() << "th \n";
 	};
 	virtual void fInit() {
+		std::cout << "initializing " << lName << " with " << lConfigValues.size() << "cfgvalues.\n";
 		slowcontrol::configValueBase::fConfigure("rule_configs", "nodeid", lNodeId, lConfigValues);
 	};
 	virtual void fRegisterDependentNode(ruleNode* aNode) {
 		lDependentNodes.insert(aNode);
 	};
 	virtual void fProcess() {
+		std::cout << " processing " << lName << "\n";
 		for (auto dependentNode : lDependentNodes) {
+			std::cout << " going ti a child of " << lName << "\n";
 			dependentNode->fProcess();
 		}
 	};
@@ -140,8 +144,11 @@ class ruleNodeSingleParent: public ruleNode {
 	};
 	virtual void fInit() {
 		ruleNode::fInit();
-		lParent = fGetNodeByName(lParentName);
-		lParent->fRegisterDependentNode(this);
+		lParent = fGetNodeByName(lParentName.fGetValue());
+		std::cout << "found parent " << lParentName.fGetValue() << " at " << lParent << "\n";
+		if (lParent) {
+			lParent->fRegisterDependentNode(this);
+		}
 	}
 };
 
@@ -163,6 +170,7 @@ class ruleNodeDelay: public ruleNodeSingleParent,
 		return lValue;
 	}
 	virtual void fProcess() {
+		std::cout << " processing undelayed " << lName << "\n";
 		auto then = lParent->fGetTime() + lDelay.fGetValue();
 		lValue = lParent->fGetValueAsDouble();
 		fResumeAt(then);
@@ -171,7 +179,6 @@ class ruleNodeDelay: public ruleNodeSingleParent,
 		ruleNode::fProcess();
 	}
 };
-
 
 class ruleNodeMeasurement: public ruleNode {
   public:
@@ -234,7 +241,65 @@ class ruleNodeTriggerMeasurement: public ruleNodeMeasurement {
 };
 
 
-
+class ruleNodeAction: public ruleNodeSingleParent {
+  protected:
+	slowcontrol::base::uidType lUid;
+  public:
+	ruleNodeAction(const std::string& aName, int aId) :
+		ruleNodeSingleParent(aName, aId) {
+	};
+	void fSetUid(slowcontrol::base::uidType aUid) {
+		lUid = aUid;
+	};
+};
+template <typename T> class ruleNodeTypedAction: public ruleNodeAction {
+  public:
+	ruleNodeTypedAction(const std::string& aName, int aId) :
+		ruleNodeAction(aName, aId) {
+	}
+	static ruleNode* ruleNodeCreator(const std::string& aName, int aId) {
+		return new ruleNodeTypedAction(aName, aId);
+	};
+	virtual double fGetValueAsDouble() const {
+		return lParent->fGetValueAsDouble();
+	};
+	virtual void fProcess() {
+		std::string query("INSERT INTO setvalue_requests (uid,request,comment) VALUES (");
+		query += std::to_string(lUid);
+		query += ",";
+		std::string request("set ");
+		request += std::to_string(static_cast<T>(fGetValueAsDouble()));
+		slowcontrol::base::fAddEscapedStringToQuery(request, query);
+		query += ",'by rule processor');";
+		auto result = PQexec(slowcontrol::base::fGetDbconn(), query.c_str());
+		PQclear(result);
+		ruleNodeAction::fProcess();
+	};
+};
+class ruleNodeFloatAction: public ruleNodeTypedAction<float> {
+};
+class ruleNodeBoolAction: public ruleNodeTypedAction<bool> {
+};
+class ruleNodeTriggerAction: ruleNodeAction {
+  public:
+	ruleNodeTriggerAction(const std::string& aName, int aId) :
+		ruleNodeAction(aName, aId) {
+	}
+	static ruleNode* ruleNodeCreator(const std::string& aName, int aId) {
+		return new ruleNodeTriggerAction(aName, aId);
+	};
+	virtual double fGetValueAsDouble() const {
+		return lParent->fGetValueAsDouble();
+	};
+	virtual void fProcess() {
+		std::string query("INSERT INTO setvalue_requests (uid,request,comment) VALUES (");
+		query += std::to_string(lUid);
+		query += ",'set','by rule processor');";
+		auto result = PQexec(slowcontrol::base::fGetDbconn(), query.c_str());
+		PQclear(result);
+		ruleNodeAction::fProcess();
+	};
+};
 class dataTable {
   protected:
 	std::map<slowcontrol::base::uidType, ruleNodeMeasurement*> lMeasurements;
@@ -307,6 +372,9 @@ int main(int argc, const char *argv[]) {
 	ruleNode::fRegisterNodeTypecreator("measurements_float", ruleNodeFloatMeasurement::ruleNodeCreator);
 	ruleNode::fRegisterNodeTypecreator("measurements_bool", ruleNodeBoolMeasurement::ruleNodeCreator);
 	ruleNode::fRegisterNodeTypecreator("measurements_trigger", ruleNodeTriggerMeasurement::ruleNodeCreator);
+	ruleNode::fRegisterNodeTypecreator("actions_float", ruleNodeFloatAction::ruleNodeCreator);
+	ruleNode::fRegisterNodeTypecreator("actions_bool", ruleNodeBoolAction::ruleNodeCreator);
+	ruleNode::fRegisterNodeTypecreator("actions_trigger", ruleNodeTriggerAction::ruleNodeCreator);
 
 	auto daemon = new slowcontrol::daemon("ruleProcessord");
 
@@ -318,22 +386,33 @@ int main(int argc, const char *argv[]) {
 			std::string type(PQgetvalue(result, i, PQfnumber(result, "nodetype")));
 			std::string name(PQgetvalue(result, i, PQfnumber(result, "nodename")));
 			auto id = std::stoi(PQgetvalue(result, i, PQfnumber(result, "nodeid")));
-			if (type.compare("measurement") == 0) { // special treatment for measurements
+			bool isMeasurement = type.compare("measurement") == 0;
+			bool isAction = type.compare("action") == 0;
+			if (isMeasurement || isAction) { // special treatment for measurements
+
 				std::string query("SELECT uid, data_table, is_write_value FROM uid_list WHERE description = ");
 				slowcontrol::base::fAddEscapedStringToQuery(name, query);
 				query += ";";
 				auto res2 = PQexec(slowcontrol::base::fGetDbconn(), query.c_str());
 				if (PQntuples(res2) == 1) {
 					auto table = PQgetvalue(res2, 0, PQfnumber(res2, "data_table"));
-					auto node = ruleNode::fCreateNode(table, name, id);
-					auto measurement = dynamic_cast<ruleNodeMeasurement*>(node);
 					auto uid = std::stoi(PQgetvalue(res2, 0, PQfnumber(res2, "uid")));
-					auto it = dataTables.find(table);
-					if (it == dataTables.end()) {
-						auto res = dataTables.emplace(table, new dataTable);
-						it = res.first;
+					if (isMeasurement) {
+						auto node = ruleNode::fCreateNode(table, name, id);
+						auto measurement = dynamic_cast<ruleNodeMeasurement*>(node);
+						auto it = dataTables.find(table);
+						if (it == dataTables.end()) {
+							auto res = dataTables.emplace(table, new dataTable);
+							it = res.first;
+						}
+						it->second->fAddMeasurement(uid, measurement, table, measurement->fGetValueExpression());
+					} else { // it must be an action
+						std::string detailled_type(table);
+						detailled_type.replace(0, strlen("measurements"), "actions");
+						auto node = ruleNode::fCreateNode(detailled_type, name, id);
+						auto action = dynamic_cast<ruleNodeAction*>(node);
+						action->fSetUid(uid);
 					}
-					it->second->fAddMeasurement(uid, measurement, table, measurement->fGetValueExpression());
 				}
 			} else { // non-measurement nodes
 				ruleNode::fCreateNode(type, name, id);
