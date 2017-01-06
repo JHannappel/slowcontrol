@@ -36,14 +36,14 @@ template <typename T> class messageQueue {
 
 class cameraRecording: public slowcontrol::measurement<bool> {
   protected:
-	configValue<unsigned int> lChunkLength;
-	configValue<float> lMaxUnenlightenedDarkness;
-	configValue<unsigned int> lFramesPerSecond;
-	configValue<unsigned int> lWidth;
-	configValue<unsigned int> lHeight;
-	configValue<std::string> lFilePattern;
-	configValue<std::string> lTmpDir;
-	configValue<std::string> lOutputDir;
+	slowcontrol::configValue<unsigned int> lChunkLength;
+	slowcontrol::configValue<float> lMaxUnenlightenedDarkness;
+	slowcontrol::configValue<unsigned int> lFramesPerSecond;
+	slowcontrol::configValue<unsigned int> lWidth;
+	slowcontrol::configValue<unsigned int> lHeight;
+	slowcontrol::configValue<std::string> lFilePattern;
+	slowcontrol::configValue<std::string> lTmpDir;
+	slowcontrol::configValue<std::string> lOutputDir;
 	std::string lCommand;
 	std::string lPostProcessCommand;
 

@@ -6,7 +6,7 @@
 class presence: public slowcontrol::measurement<bool>,
 	public slowcontrol::defaultReaderInterface {
   protected:
-	configValue<measurementBase::durationType> lQuickReadoutInterval;
+	slowcontrol::configValue<measurementBase::durationType> lQuickReadoutInterval;
 	std::string lCommand;
   public:
 	presence(const std::string& aAddress):

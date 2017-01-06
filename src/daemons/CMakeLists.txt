@@ -1,7 +1,7 @@
 add_executable(testdaemon testdaemon.cpp)
 target_link_libraries(testdaemon slowcontrol_static ${OptionParser_LIBRARIES})
 
-set(daemons maassend onewired bluetoothPresenced hih6131d gpiod raspicamd korad_d vc820d rfio433d)
+set(daemons maassend onewired bluetoothPresenced hih6131d gpiod raspicamd korad_d vc820d rfio433d ruleProcessord)
 set(daemons ${daemons} PARENT_SCOPE)
 foreach (DAEMON ${daemons})
 	add_executable(${DAEMON} ${DAEMON}.cpp)
