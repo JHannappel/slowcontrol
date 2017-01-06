@@ -143,6 +143,7 @@ int main(int argc, const char *argv[]) {
 
 	daemon->fStartThreads();
 
+	camera.fStore(false);
 	while (!daemon->fGetStopRequested()) {
 		if (watchPack.fWaitForChange()) {
 			auto darkness = darknessDet.fGetCurrentValue();
