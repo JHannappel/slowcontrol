@@ -8,6 +8,7 @@ namespace slowcontrol {
 	/// i.e. for things that happen but do not have a value associated
 	class trigger: public measurementBase {
 	  protected:
+		std::deque<timeType> lSendQueue;
 		virtual const char *fGetDefaultTableName() const;
 	  public:
 		trigger();

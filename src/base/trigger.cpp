@@ -9,19 +9,31 @@ namespace slowcontrol {
 	void trigger::fFlush(bool /* aFlushSingleValue */) {
 	}
 	void trigger::fSendValues() {
+		while (! lSendQueue.empty()) { // empty() is thread safe by itself
+			timeType value;
+			{
+				// scope for send queue locking
+				std::lock_guard<std::mutex> SendQueueLock(lSendQueueMutex);
+				value = lSendQueue.front();
+				lSendQueue.pop_front();
+			}
+			std::string  query("INSERT INTO ");
+			query += fGetDefaultTableName();
+			query += " (uid,time) VALUES (";
+			query += std::to_string(fGetUid());
+			query += ", (SELECT TIMESTAMP WITH TIME ZONE 'epoch' + ";
+			query += std::to_string(std::chrono::duration<double, std::nano>(value.time_since_epoch()).count() / 1E9);
+			query += " * INTERVAL '1 second'));";
+			auto result = PQexec(base::fGetDbconn(), query.c_str());
+			PQclear(result);
+		}
 	}
 	bool trigger::fValuesToSend() {
-		return false;
+		return ! lSendQueue.empty();
 	}
 	void trigger::fTrigger(timeType aTime) { ///< register trigger event in database
-		std::string  query("INSERT INTO ");
-		query += fGetDefaultTableName();
-		query += " (uid,time) VALUES (";
-		query += std::to_string(fGetUid());
-		query += ", (SELECT TIMESTAMP WITH TIME ZONE 'epoch' + ";
-		query += std::to_string(std::chrono::duration<double, std::nano>(aTime.time_since_epoch()).count() / 1E9);
-		query += " * INTERVAL '1 second'));";
-		auto result = PQexec(base::fGetDbconn(), query.c_str());
-		PQclear(result);
+		std::lock_guard<decltype(lSendQueueMutex)> SendQueueLock(lSendQueueMutex);
+		lSendQueue.push_back(aTime);
+		daemon::fGetInstance()->fSignalToStorer();
 	}
 } // namespace slowcontrol
