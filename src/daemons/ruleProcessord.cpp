@@ -388,6 +388,7 @@ class dataTable {
 	std::string lTableName;
 	std::string lValueExpression;
 	std::string lQuery;
+	slowcontrol::measurementBase::timeType lLastQueryTime;
   public:
 	void fAddMeasurement(slowcontrol::base::uidType aUid,
 	                     ruleNodeMeasurement *aMeasurement,
@@ -407,39 +408,46 @@ class dataTable {
 		query += ";";
 		auto result = PQexec(slowcontrol::base::fGetDbconn(), query.c_str());
 		PQclear(result);
-	};
-	void fProcess() {
-		std::string query;
+
+		lQuery = "SELECT uid, EXTRACT('epoch' from time AT TIME ZONE 'UTC') AS time, ";
+		lQuery += lValueExpression;
+		lQuery += " FROM ";
+		lQuery += lTableName;
+		lQuery += " WHERE uid in (";
 		for (auto it = lMeasurements.begin(); it != lMeasurements.end(); ++it) {
 			if (it != lMeasurements.begin()) {
-				query += " UNION ";
+				lQuery += ",";
 			}
-			auto measurement = it->second;
-			query += " (SELECT uid, EXTRACT('epoch' from time AT TIME ZONE 'UTC') AS time, ";
-			query += measurement->fGetValueExpression();
-			query += " FROM ";
-			query += lTableName;
-			query += " WHERE uid = ";
-			query += std::to_string(it->first);
-			query += " AND time AT TIME ZONE 'UTC' > (SELECT TIMESTAMP WITH TIME ZONE 'epoch' + ";
-			query += std::to_string((std::chrono::duration<double, std::milli>(measurement->fGetTime().time_since_epoch()).count() + 1) / 1000.);
-			query += " * INTERVAL '1 second') AT TIME ZONE 'UTC' ORDER BY time DESC limit 1)";
-		};
+			lQuery += std::to_string(it->first);
+		}
+		lQuery += ") AND EXTRACT('epoch' from time AT TIME ZONE 'UTC') > ";
+		fProcess(false);
+	};
+	void fProcess(bool aCallProcess=true) {
+		std::string query= lQuery;
+		query += std::to_string((std::chrono::duration<double, std::milli>(lLastQueryTime.time_since_epoch()).count() + 1) / 1000.);
 		query += ";";
 		std::cout << query << "\n";
 		auto result = PQexec(slowcontrol::base::fGetDbconn(), query.c_str());
+
 		for (int i = 0; i < PQntuples(result); i++) {
 			auto uid = std::stoi(PQgetvalue(result, i, PQfnumber(result, "uid")));
 			auto seconds = std::stod(PQgetvalue(result, i, PQfnumber(result, "time")));
 			slowcontrol::measurementBase::timeType time(std::chrono::microseconds(static_cast<long long>(seconds * 1000000)));
+			if (time > lLastQueryTime ) {
+				lLastQueryTime = time;
+			}
 			auto it = lMeasurements.find(uid);
 			if (it != lMeasurements.end()) {
 				auto measurement = it->second;
 				measurement->fSetTime(time);
 				measurement->fSetFromString(PQgetvalue(result, i, PQfnumber(result, "value")));
-				measurement->fProcess();
+				if (aCallProcess) {
+					measurement->fProcess();
+				}
 			}
 		}
+		PQclear(result);
 	};
 };
 
