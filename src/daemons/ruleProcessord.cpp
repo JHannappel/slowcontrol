@@ -170,11 +170,11 @@ class ruleNodeManyParents: public ruleNode {
 		size_t startPosition = 0;
 		std::string names(lParentNames.fGetValue());
 		while (true) {
-			auto delimiterPosition = names.find(",",startPosition);
+			auto delimiterPosition = names.find(",", startPosition);
 			if (delimiterPosition == std::string::npos) {
 				delimiterPosition = names.size();
 			}
-			auto parentName =  names.substr(startPosition,delimiterPosition-startPosition);
+			auto parentName =  names.substr(startPosition, delimiterPosition - startPosition);
 			auto parent = fGetNodeByName(parentName);
 			std::cout << "found parent " << parentName << " at " << parent << "\n";
 			if (parent != nullptr) {
@@ -190,11 +190,11 @@ class ruleNodeManyParents: public ruleNode {
 };
 
 class ruleNodeOr: public ruleNodeManyParents {
-protected:
+  protected:
 	bool lValue;
-public:
+  public:
 	ruleNodeOr(const std::string& aName, int aNodeId):
-		ruleNodeManyParents(aName, aNodeId){
+		ruleNodeManyParents(aName, aNodeId) {
 	}
 	static ruleNode* ruleNodeCreator(const std::string& aName, int aId) {
 		return new ruleNodeOr(aName, aId);
@@ -207,7 +207,7 @@ public:
 	}
 	virtual void fProcess() {
 		lValue = false;
-		for (auto parent: lParents) {
+		for (auto parent : lParents) {
 			lValue |= parent->fGetValueAsBool();
 			if (lTime < parent->fGetTime()) {
 				fSetTime(parent->fGetTime());
@@ -449,7 +449,7 @@ int main(int argc, const char *argv[]) {
 	OptionParser parser("slowcontrol program for processing rules");
 	parser.fParse(argc, argv);
 
-	ruleNode::fRegisterNodeTypecreator("or",ruleNodeOr::ruleNodeCreator);
+	ruleNode::fRegisterNodeTypecreator("or", ruleNodeOr::ruleNodeCreator);
 	ruleNode::fRegisterNodeTypecreator("delay", ruleNodeDelay::ruleNodeCreator);
 
 	ruleNode::fRegisterNodeTypecreator("measurements_float", ruleNodeFloatMeasurement::ruleNodeCreator);
@@ -513,7 +513,7 @@ int main(int argc, const char *argv[]) {
 	}
 
 	timedActionsClass& timedActions(*timedActionsClass::fGetInstance());
-	
+
 	daemon->fStartThreads();
 
 	while (!daemon->fGetStopRequested()) {
