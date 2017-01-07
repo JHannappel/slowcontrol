@@ -137,6 +137,71 @@ ALTER SEQUENCE daemon_list_daemonid_seq OWNED BY daemon_list.daemonid;
 --
 --
 
+CREATE TABLE latest_measurements_bool (
+    uid integer NOT NULL,
+    "time" timestamp with time zone,
+    value boolean
+);
+
+
+
+--
+--
+
+CREATE TABLE latest_measurements_float (
+    uid integer NOT NULL,
+    "time" timestamp with time zone,
+    value real
+);
+
+
+
+--
+--
+
+CREATE TABLE latest_measurements_int2 (
+    uid integer NOT NULL,
+    "time" timestamp with time zone,
+    value smallint
+);
+
+
+
+--
+--
+
+CREATE TABLE latest_measurements_int4 (
+    uid integer NOT NULL,
+    "time" timestamp with time zone,
+    value integer
+);
+
+
+
+--
+--
+
+CREATE TABLE latest_measurements_int8 (
+    uid integer NOT NULL,
+    "time" timestamp with time zone,
+    value bigint
+);
+
+
+
+--
+--
+
+CREATE TABLE latest_measurements_trigger (
+    uid integer NOT NULL,
+    "time" timestamp with time zone
+);
+
+
+
+--
+--
+
 CREATE TABLE measurements_bool (
     uid integer NOT NULL,
     "time" timestamp with time zone NOT NULL,
@@ -522,6 +587,48 @@ ALTER TABLE ONLY daemon_list
 --
 --
 
+ALTER TABLE ONLY latest_measurements_bool
+    ADD CONSTRAINT latest_measurements_bool_pkey PRIMARY KEY (uid);
+
+
+--
+--
+
+ALTER TABLE ONLY latest_measurements_float
+    ADD CONSTRAINT latest_measurements_float_pkey PRIMARY KEY (uid);
+
+
+--
+--
+
+ALTER TABLE ONLY latest_measurements_int2
+    ADD CONSTRAINT latest_measurements_int2_pkey PRIMARY KEY (uid);
+
+
+--
+--
+
+ALTER TABLE ONLY latest_measurements_int4
+    ADD CONSTRAINT latest_measurements_int4_pkey PRIMARY KEY (uid);
+
+
+--
+--
+
+ALTER TABLE ONLY latest_measurements_int8
+    ADD CONSTRAINT latest_measurements_int8_pkey PRIMARY KEY (uid);
+
+
+--
+--
+
+ALTER TABLE ONLY latest_measurements_trigger
+    ADD CONSTRAINT latest_measurements_trigger_pkey PRIMARY KEY (uid);
+
+
+--
+--
+
 ALTER TABLE ONLY rule_configs
     ADD CONSTRAINT rule_configs_pkey PRIMARY KEY (nodeid, name);
 
@@ -643,6 +750,54 @@ CREATE INDEX uid_daemon_connection_daemonid_index ON uid_daemon_connection USING
 CREATE RULE daemon_list_to_heartbeart AS
     ON INSERT TO daemon_list DO  INSERT INTO daemon_heartbeat (daemonid)
   VALUES (new.daemonid);
+
+
+--
+--
+
+CREATE RULE lastest_measurements_bool_updater AS
+    ON INSERT TO measurements_bool DO  UPDATE latest_measurements_bool SET "time" = new."time", value = new.value
+  WHERE (latest_measurements_bool.uid = new.uid);
+
+
+--
+--
+
+CREATE RULE lastest_measurements_float_updater AS
+    ON INSERT TO measurements_float DO  UPDATE latest_measurements_float SET "time" = new."time", value = new.value
+  WHERE (latest_measurements_float.uid = new.uid);
+
+
+--
+--
+
+CREATE RULE lastest_measurements_int2_updater AS
+    ON INSERT TO measurements_int2 DO  UPDATE latest_measurements_int2 SET "time" = new."time", value = new.value
+  WHERE (latest_measurements_int2.uid = new.uid);
+
+
+--
+--
+
+CREATE RULE lastest_measurements_int4_updater AS
+    ON INSERT TO measurements_int4 DO  UPDATE latest_measurements_int4 SET "time" = new."time", value = new.value
+  WHERE (latest_measurements_int4.uid = new.uid);
+
+
+--
+--
+
+CREATE RULE lastest_measurements_int8_updater AS
+    ON INSERT TO measurements_int8 DO  UPDATE latest_measurements_int8 SET "time" = new."time", value = new.value
+  WHERE (latest_measurements_int8.uid = new.uid);
+
+
+--
+--
+
+CREATE RULE lastest_measurements_trigger_updater AS
+    ON INSERT TO measurements_trigger DO  UPDATE latest_measurements_trigger SET "time" = new."time"
+  WHERE (latest_measurements_trigger.uid = new.uid);
 
 
 --
