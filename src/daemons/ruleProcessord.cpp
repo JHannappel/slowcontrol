@@ -423,8 +423,8 @@ class dataTable {
 		lQuery += ") AND EXTRACT('epoch' from time AT TIME ZONE 'UTC') > ";
 		fProcess(false);
 	};
-	void fProcess(bool aCallProcess=true) {
-		std::string query= lQuery;
+	void fProcess(bool aCallProcess = true) {
+		std::string query = lQuery;
 		query += std::to_string((std::chrono::duration<double, std::milli>(lLastQueryTime.time_since_epoch()).count() + 1) / 1000.);
 		query += ";";
 		std::cout << query << "\n";
