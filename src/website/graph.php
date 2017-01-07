@@ -113,6 +113,9 @@ while ($row = pg_fetch_assoc($result)) {
 	if ($item['data_table']=='measurements_bool') {
 		$value_expression='cast(value as integer)';
 		$plotstyle="filledcurves x1";
+	} else if ($item['data_table']=='measurements_trigger') {
+		$value_expression="$i as value";
+		$plotstyle="points";
 	} else {
 		$value_expression='value';
 		$plotstyle="lines";
