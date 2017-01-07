@@ -42,6 +42,7 @@ class rslSender: public rslTrigger, public slowcontrol::writeValue {
 		char buffer[128];
 		sprintf(buffer, "send 6 20 240 0 6 1 5 %X\n", lPattern);
 		lSerial->fWrite(buffer);
+		fTrigger();
 		aResponse = "done.";
 		return true;
 	};
