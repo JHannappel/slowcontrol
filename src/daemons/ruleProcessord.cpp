@@ -1,9 +1,13 @@
 #include "measurement.h"
 #include "slowcontrolDaemon.h"
+//#include "date.h"
+//#include "chrono_io.h"
 #include <fstream>
 #include <Options.h>
 #include <stdio.h>
 #include <typeinfo>
+
+//using namespace date;
 
 class ruleNode {
   protected:
@@ -68,11 +72,12 @@ class ruleNode {
 	virtual void fProcess() {
 		std::cout << " processing " << lName << "\n";
 		for (auto dependentNode : lDependentNodes) {
-			std::cout << " going ti a child of " << lName << "\n";
+			std::cout << " going to a child of " << lName << "\n";
 			dependentNode->fProcess();
 		}
 	};
 	virtual double fGetValueAsDouble() const = 0;
+	virtual bool fGetValueAsBool() const = 0;
 	virtual slowcontrol::measurementBase::timeType fGetTime() const {
 		return lTime;
 	};
@@ -151,6 +156,68 @@ class ruleNodeSingleParent: public ruleNode {
 		}
 	}
 };
+class ruleNodeManyParents: public ruleNode {
+  protected:
+	slowcontrol::configValue<std::string> lParentNames;
+	std::vector<ruleNode*> lParents;
+  public:
+	ruleNodeManyParents(const std::string& aName, int aNodeId):
+		ruleNode(aName, aNodeId),
+		lParentNames("parents", lConfigValues, "") {
+	};
+	virtual void fInit() {
+		ruleNode::fInit();
+		size_t startPosition = 0;
+		std::string names(lParentNames.fGetValue());
+		while (true) {
+			auto delimiterPosition = names.find(",",startPosition);
+			if (delimiterPosition == std::string::npos) {
+				delimiterPosition = names.size();
+			}
+			auto parentName =  names.substr(startPosition,delimiterPosition-startPosition);
+			auto parent = fGetNodeByName(parentName);
+			std::cout << "found parent " << parentName << " at " << parent << "\n";
+			if (parent != nullptr) {
+				lParents.push_back(parent);
+				parent->fRegisterDependentNode(this);
+			}
+			if (delimiterPosition == names.size()) {
+				break;
+			}
+			startPosition = delimiterPosition + 1;
+		}
+	}
+};
+
+class ruleNodeOr: public ruleNodeManyParents {
+protected:
+	bool lValue;
+public:
+	ruleNodeOr(const std::string& aName, int aNodeId):
+		ruleNodeManyParents(aName, aNodeId){
+	}
+	static ruleNode* ruleNodeCreator(const std::string& aName, int aId) {
+		return new ruleNodeOr(aName, aId);
+	};
+	virtual double fGetValueAsDouble() const {
+		return lValue ? 1.0 : 0.0;
+	}
+	virtual bool fGetValueAsBool() const {
+		return lValue;
+	}
+	virtual void fProcess() {
+		lValue = false;
+		for (auto parent: lParents) {
+			lValue |= parent->fGetValueAsBool();
+			if (lTime < parent->fGetTime()) {
+				fSetTime(parent->fGetTime());
+			}
+		}
+		if (lValue) {
+			ruleNode::fProcess();
+		}
+	}
+};
 
 class ruleNodeDelay: public ruleNodeSingleParent,
 	public timeableRuleNodeInterface {
@@ -168,6 +235,9 @@ class ruleNodeDelay: public ruleNodeSingleParent,
 
 	virtual double fGetValueAsDouble() const {
 		return lValue;
+	}
+	virtual bool fGetValueAsBool() const {
+		return lValue != 0.0;
 	}
 	virtual void fProcess() {
 		std::cout << " processing undelayed " << lName << "\n";
@@ -202,6 +272,9 @@ template <typename T> class ruleNodeTypedMeasurement: public ruleNodeMeasurement
 	virtual double fGetValueAsDouble() const {
 		return lCurrentValue.load();
 	};
+	virtual bool fGetValueAsBool() const {
+		return lCurrentValue.load() != 0;
+	};
 	virtual void fSetFromString(const char* aString) {
 		std::stringstream buf(aString);
 		T value;
@@ -233,6 +306,9 @@ class ruleNodeTriggerMeasurement: public ruleNodeMeasurement {
 	virtual double fGetValueAsDouble() const {
 		return 1.0;
 	};
+	virtual bool fGetValueAsBool() const {
+		return true;
+	};
 	virtual void fSetFromString(const char* /*aString*/) {
 	};
 	virtual const char *fGetValueExpression() {
@@ -263,6 +339,9 @@ template <typename T> class ruleNodeTypedAction: public ruleNodeAction {
 	virtual double fGetValueAsDouble() const {
 		return lParent->fGetValueAsDouble();
 	};
+	virtual bool fGetValueAsBool() const {
+		return lParent->fGetValueAsBool();
+	};
 	virtual void fProcess() {
 		std::string query("INSERT INTO setvalue_requests (uid,request,comment) VALUES (");
 		query += std::to_string(lUid);
@@ -290,6 +369,9 @@ class ruleNodeTriggerAction: ruleNodeAction {
 	};
 	virtual double fGetValueAsDouble() const {
 		return lParent->fGetValueAsDouble();
+	};
+	virtual bool fGetValueAsBool() const {
+		return lParent->fGetValueAsBool();
 	};
 	virtual void fProcess() {
 		std::string query("INSERT INTO setvalue_requests (uid,request,comment) VALUES (");
@@ -339,16 +421,17 @@ class dataTable {
 			query += lTableName;
 			query += " WHERE uid = ";
 			query += std::to_string(it->first);
-			query += " AND time > (SELECT TIMESTAMP WITH TIME ZONE 'epoch' + ";
-			query += std::to_string(std::chrono::duration<double, std::nano>(measurement->fGetTime().time_since_epoch()).count() / 1E9);
-			query += " * INTERVAL '1 second') ORDER BY time DESC limit 1)";
+			query += " AND time AT TIME ZONE 'UTC' > (SELECT TIMESTAMP WITH TIME ZONE 'epoch' + ";
+			query += std::to_string((std::chrono::duration<double, std::milli>(measurement->fGetTime().time_since_epoch()).count() + 1) / 1000.);
+			query += " * INTERVAL '1 second') AT TIME ZONE 'UTC' ORDER BY time DESC limit 1)";
 		};
 		query += ";";
+		std::cout << query << "\n";
 		auto result = PQexec(slowcontrol::base::fGetDbconn(), query.c_str());
 		for (int i = 0; i < PQntuples(result); i++) {
 			auto uid = std::stoi(PQgetvalue(result, i, PQfnumber(result, "uid")));
 			auto seconds = std::stod(PQgetvalue(result, i, PQfnumber(result, "time")));
-			slowcontrol::measurementBase::timeType time(std::chrono::microseconds(static_cast<long int>(seconds * 1000000)));
+			slowcontrol::measurementBase::timeType time(std::chrono::microseconds(static_cast<long long>(seconds * 1000000)));
 			auto it = lMeasurements.find(uid);
 			if (it != lMeasurements.end()) {
 				auto measurement = it->second;
@@ -366,8 +449,8 @@ int main(int argc, const char *argv[]) {
 	OptionParser parser("slowcontrol program for processing rules");
 	parser.fParse(argc, argv);
 
+	ruleNode::fRegisterNodeTypecreator("or",ruleNodeOr::ruleNodeCreator);
 	ruleNode::fRegisterNodeTypecreator("delay", ruleNodeDelay::ruleNodeCreator);
-
 
 	ruleNode::fRegisterNodeTypecreator("measurements_float", ruleNodeFloatMeasurement::ruleNodeCreator);
 	ruleNode::fRegisterNodeTypecreator("measurements_bool", ruleNodeBoolMeasurement::ruleNodeCreator);
@@ -413,6 +496,9 @@ int main(int argc, const char *argv[]) {
 						auto action = dynamic_cast<ruleNodeAction*>(node);
 						action->fSetUid(uid);
 					}
+				} else { // did not find measurement
+					std::cout << "no result from " << query << "\n";
+					throw "mist";
 				}
 			} else { // non-measurement nodes
 				ruleNode::fCreateNode(type, name, id);
@@ -427,7 +513,7 @@ int main(int argc, const char *argv[]) {
 	}
 
 	timedActionsClass& timedActions(*timedActionsClass::fGetInstance());
-
+	
 	daemon->fStartThreads();
 
 	while (!daemon->fGetStopRequested()) {
