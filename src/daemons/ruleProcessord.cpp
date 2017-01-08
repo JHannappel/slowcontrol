@@ -19,6 +19,10 @@ class ruleNode {
 		static std::map<std::string, ruleNode*> gNodeMap;
 		return gNodeMap;
 	};
+	static std::map<int, ruleNode*>& fGetNodeByIdMap() {
+		static std::map<int, ruleNode*> gNodeMap;
+		return gNodeMap;
+	};
 
 
 	slowcontrol::configValueBase::mapType lConfigValues; ///< map of config values, needed also as parameter for the config value constructors
@@ -50,6 +54,13 @@ class ruleNode {
 		}
 		return nullptr;
 	};
+	static ruleNode* fGetNodeById(int aId) {
+		auto it = fGetNodeByIdMap().find(aId);
+		if (it != fGetNodeByIdMap().end()) {
+			return it->second;
+		}
+		return nullptr;
+	};
 	static void fInitAll() {
 		for (auto& it : fGetNodeMap()) {
 			it.second->fInit();
@@ -60,6 +71,7 @@ class ruleNode {
 		lName(aName),
 		lNodeId(aNodeId) {
 		fGetNodeMap().emplace(aName, this);
+		fGetNodeByIdMap().emplace(aNodeId, this);
 		std::cout << "constructed " << aName << " as " << fGetNodeMap().size() << "th \n";
 	};
 	virtual void fInit() {
@@ -136,65 +148,73 @@ class timedActionsClass {
 void timeableRuleNodeInterface::fResumeAt(slowcontrol::measurementBase::timeType aThen) {
 	timedActionsClass::fGetInstance()->fRegisterAction(this, aThen);
 }
+template <typename parentContainer> void fRegisterParent(parentContainer& where, ruleNode* parent, const std::string& slot);
+template <> void fRegisterParent<std::multimap<std::string, ruleNode*>>(std::multimap<std::string, ruleNode*>& where, ruleNode* parent, const std::string& slot) {
+	where.emplace(slot, parent);
+};
+template <> void fRegisterParent<std::set<ruleNode*>>(std::set<ruleNode*>& where, ruleNode* parent, const std::string&) {
+	where.emplace(parent);
+};
+template <> void fRegisterParent<ruleNode*>(ruleNode* &where, ruleNode* parent, const std::string&) {
+	where = parent;
+};
 
-
-class ruleNodeSingleParent: public ruleNode {
+template <unsigned nParents = 0, bool namedSlots = false> class ruleNodeWithParents: public ruleNode {
+	class mapDummy {
+	  public:
+		void emplace(std::string&, ruleNode*) {};
+	};
+	class setDummy {
+	  public:
+		void emplace(ruleNode*) {};
+	};
   protected:
-	slowcontrol::configValue<std::string> lParentName;
-	ruleNode* lParent;
+	typename std::conditional<nParents == 0,
+	         typename std::conditional<namedSlots,
+	         std::multimap<std::string, ruleNode*>,
+	         std::set<ruleNode*>
+	         >::type,
+	         mapDummy
+	         >::type lParents;
+	typename std::conditional < nParents != 0,
+	         ruleNode*,
+	         void* >::type lParent;
+  private:
+
   public:
-	ruleNodeSingleParent(const std::string& aName, int aNodeId):
-		ruleNode(aName, aNodeId),
-		lParentName("parent", lConfigValues, "") {
+	ruleNodeWithParents(const std::string& aName, int aNodeId) :
+		ruleNode(aName, aNodeId) {
 	};
 	virtual void fInit() {
 		ruleNode::fInit();
-		lParent = fGetNodeByName(lParentName.fGetValue());
-		std::cout << "found parent " << lParentName.fGetValue() << " at " << lParent << "\n";
-		if (lParent) {
-			lParent->fRegisterDependentNode(this);
+		std::string query("SELECT parent,slot FROM rule_node_parents WHERE nodeid=");
+		query += std::to_string(lNodeId);
+		auto result = PQexec(slowcontrol::base::fGetDbconn(), query.c_str());
+		if (nParents != 0 && nParents != PQntuples(result)) {
+			throw "wrong number of parents.";
+		};
+		for (int i = 0; i < PQntuples(result); ++i) {
+			auto parentId = std::stoi(PQgetvalue(result, i, PQfnumber(result, "parent")));
+			std::string slot = PQgetvalue(result, i, PQfnumber(result, "slot"));
+			auto parent = fGetNodeById(parentId);
+			parent->fRegisterDependentNode(this);
+			if (nParents == 0) {
+				fRegisterParent(lParents, parent, slot);
+			} else {
+				fRegisterParent(lParent, parent, slot);
+			}
 		}
-	}
-};
-class ruleNodeManyParents: public ruleNode {
-  protected:
-	slowcontrol::configValue<std::string> lParentNames;
-	std::vector<ruleNode*> lParents;
-  public:
-	ruleNodeManyParents(const std::string& aName, int aNodeId):
-		ruleNode(aName, aNodeId),
-		lParentNames("parents", lConfigValues, "") {
+		PQclear(result);
 	};
-	virtual void fInit() {
-		ruleNode::fInit();
-		size_t startPosition = 0;
-		std::string names(lParentNames.fGetValue());
-		while (true) {
-			auto delimiterPosition = names.find(",", startPosition);
-			if (delimiterPosition == std::string::npos) {
-				delimiterPosition = names.size();
-			}
-			auto parentName =  names.substr(startPosition, delimiterPosition - startPosition);
-			auto parent = fGetNodeByName(parentName);
-			std::cout << "found parent " << parentName << " at " << parent << "\n";
-			if (parent != nullptr) {
-				lParents.push_back(parent);
-				parent->fRegisterDependentNode(this);
-			}
-			if (delimiterPosition == names.size()) {
-				break;
-			}
-			startPosition = delimiterPosition + 1;
-		}
-	}
 };
 
-class ruleNodeOr: public ruleNodeManyParents {
+
+class ruleNodeOr: public ruleNodeWithParents<> {
   protected:
 	bool lValue;
   public:
 	ruleNodeOr(const std::string& aName, int aNodeId):
-		ruleNodeManyParents(aName, aNodeId) {
+		ruleNodeWithParents(aName, aNodeId) {
 	}
 	static ruleNode* ruleNodeCreator(const std::string& aName, int aId) {
 		return new ruleNodeOr(aName, aId);
@@ -219,14 +239,14 @@ class ruleNodeOr: public ruleNodeManyParents {
 	}
 };
 
-class ruleNodeDelay: public ruleNodeSingleParent,
+class ruleNodeDelay: public ruleNodeWithParents<1>,
 	public timeableRuleNodeInterface {
   protected:
 	slowcontrol::configValue<std::chrono::system_clock::duration> lDelay;
 	double lValue;
   public:
 	ruleNodeDelay(const std::string& aName, int aNodeId):
-		ruleNodeSingleParent(aName, aNodeId),
+		ruleNodeWithParents(aName, aNodeId),
 		lDelay("delay", lConfigValues, std::chrono::seconds(1)) {
 	}
 	static ruleNode* ruleNodeCreator(const std::string& aName, int aId) {
@@ -317,12 +337,12 @@ class ruleNodeTriggerMeasurement: public ruleNodeMeasurement {
 };
 
 
-class ruleNodeAction: public ruleNodeSingleParent {
+class ruleNodeAction: public ruleNodeWithParents<1> {
   protected:
 	slowcontrol::base::uidType lUid;
   public:
 	ruleNodeAction(const std::string& aName, int aId) :
-		ruleNodeSingleParent(aName, aId) {
+		ruleNodeWithParents(aName, aId) {
 	};
 	void fSetUid(slowcontrol::base::uidType aUid) {
 		lUid = aUid;
