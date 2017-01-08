@@ -294,6 +294,17 @@ CREATE TABLE rule_configs (
 --
 --
 
+CREATE TABLE rule_node_parents (
+    nodeid integer NOT NULL,
+    parent integer NOT NULL,
+    slot text
+);
+
+
+
+--
+--
+
 CREATE TABLE rule_nodes (
     nodetype text NOT NULL,
     nodename text NOT NULL,
@@ -631,6 +642,13 @@ ALTER TABLE ONLY latest_measurements_trigger
 
 ALTER TABLE ONLY rule_configs
     ADD CONSTRAINT rule_configs_pkey PRIMARY KEY (nodeid, name);
+
+
+--
+--
+
+ALTER TABLE ONLY rule_node_parents
+    ADD CONSTRAINT rule_node_parents_pkey PRIMARY KEY (nodeid, parent);
 
 
 --

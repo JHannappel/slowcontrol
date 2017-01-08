@@ -136,9 +136,9 @@ class koradPowerSupply {
 		lISet(this, aName, "ISet", "ISET1:%05.3f", "ISET1?", "A"),
 		lOutputSwitch(this, aName),
 		lVRead(aWatchPack, [](koradReadValue*) -> bool {return true;}, this, aName, "VRead", "VOUT1?", "V"),
-	       lIRead(aWatchPack, [](koradReadValue*) -> bool {return true;}, this, aName, "IRead", "IOUT1?", "A"),
-	       lPower(this, aName, "Power", "W"),
-	lLoad(this, aName, "Load", "Ohm") {
+		lIRead(aWatchPack, [](koradReadValue*) -> bool {return true;}, this, aName, "IRead", "IOUT1?", "A"),
+		lPower(this, aName, "Power", "W"),
+		lLoad(this, aName, "Load", "Ohm") {
 		auto compound = slowcontrol::base::fGetCompoundId(aName.c_str(), aName.c_str());
 		for (auto value : lValues) {
 			value->fInit();
