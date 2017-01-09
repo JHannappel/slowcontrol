@@ -90,6 +90,7 @@ function page_head($dbconn,$name,$refreshable=true) {
 	echo "<li><a href=\"daemons.php\">Daemons</a>\n";
 	echo "<li><a href=\"valueconfig.php?unclaimed\">Unclaimed measurements</a>\n";
 	echo "<li><a href=\"videos.php\">Videos</a>\n";
+	echo "<li><a href=\"ruless.php\">Rules</a>\n";
 	$result = pg_query($dbconn,"SELECT * FROM site_links WHERE context='navigation' ORDER BY number;");
 	while ($row = pg_fetch_assoc($result)) {
 	  echo "<li><a href=\"${row['url']}\">${row['name']}</a>\n";
