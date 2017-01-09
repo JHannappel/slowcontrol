@@ -148,6 +148,9 @@ class timedActionsClass {
 void timeableRuleNodeInterface::fResumeAt(slowcontrol::measurementBase::timeType aThen) {
 	timedActionsClass::fGetInstance()->fRegisterAction(this, aThen);
 }
+
+
+
 template <typename parentContainer> void fRegisterParent(parentContainer& where, ruleNode* parent, const std::string& slot);
 template <> void fRegisterParent<std::multimap<std::string, ruleNode*>>(std::multimap<std::string, ruleNode*>& where, ruleNode* parent, const std::string& slot) {
 	where.emplace(slot, parent);
@@ -158,6 +161,12 @@ template <> void fRegisterParent<std::set<ruleNode*>>(std::set<ruleNode*>& where
 template <> void fRegisterParent<ruleNode*>(ruleNode* &where, ruleNode* parent, const std::string&) {
 	where = parent;
 };
+
+
+/// templated base class for rule nodes with parents.
+/// the first template parameter gives the number of parents,
+/// with the special value 0 for arbitrarily many
+
 
 template <unsigned nParents = 0, bool namedSlots = false> class ruleNodeWithParents: public ruleNode {
 	class mapDummy {
@@ -233,9 +242,7 @@ class ruleNodeOr: public ruleNodeWithParents<> {
 				fSetTime(parent->fGetTime());
 			}
 		}
-		if (lValue) {
-			ruleNode::fProcess();
-		}
+		ruleNode::fProcess();
 	}
 };
 
