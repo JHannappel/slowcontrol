@@ -54,7 +54,7 @@ if (is_resource($process)) {
 	fwrite($pipes[0], "digraph g{\n");
 	fwrite($pipes[0], "node [shape=record];\n");
 
-	$result = pg_query($dbconn,"SELECT * FROM rule_nodes;");
+	$result = pg_query($dbconn,"SELECT *, (SELECT value FROM uid_list INNER JOIN uid_configs USING (uid) WHERE description = rule_nodes.nodename AND name = 'name') AS name FROM rule_nodes;");
 	while ($row = pg_fetch_assoc($result)) {
 		fwrite($pipes[0], "n${row['nodeid']} [");
 		fwrite($pipes[0], ' label="{');
@@ -71,7 +71,7 @@ if (is_resource($process)) {
 			}
 			fwrite($pipes[0], '}|');
 		}
-		fwrite($pipes[0], "${row['nodename']}");
+		fwrite($pipes[0], "${row['nodename']} ${row['name']}");
 		fwrite($pipes[0], "|${row['nodetype']}");
 		$result2 = pg_query($dbconn,"SELECT * from rule_configs WHERE nodeid=${row['nodeid']};");
 		while ($row2 = pg_fetch_assoc($result2)) {

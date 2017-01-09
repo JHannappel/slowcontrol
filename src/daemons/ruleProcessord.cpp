@@ -375,6 +375,30 @@ public:
 	};
 };
 
+class ruleNodeDifference: public ruleNodeArithmetic<2> {
+protected:
+	ruleNode* lSubtrahend;
+	ruleNode* lMinuend;
+	ruleNodeDifference(const std::string& aName, int aNodeId):
+		ruleNodeArithmetic(aName, aNodeId) {
+	};
+public:
+	static ruleNode* ruleNodeCreator(const std::string& aName, int aId) {
+		return new ruleNodeDifference(aName, aId);
+	};
+	virtual void fInit() {
+		ruleNodeArithmetic::fInit();
+		lSubtrahend = fSetNamedParent("subtrahend");
+		lMinuend = fSetNamedParent("minuend");
+	}
+
+	virtual void fProcess() {
+		lValue = lSubtrahend->fGetValueAsDouble() - lMinuend->fGetValueAsDouble();
+		fSetTimeFromParents();
+		ruleNode::fProcess();
+	};
+};
+
 
 class ruleNodeDelay: public ruleNodeWithParents<1>,
 	public timeableRuleNodeInterface {
@@ -696,6 +720,7 @@ int main(int argc, const char *argv[]) {
 	ruleNode::fRegisterNodeTypecreator("sum", ruleNodeSum::ruleNodeCreator);
 	ruleNode::fRegisterNodeTypecreator("product", ruleNodeProduct::ruleNodeCreator);
 	ruleNode::fRegisterNodeTypecreator("quotient", ruleNodeQuotient::ruleNodeCreator);
+	ruleNode::fRegisterNodeTypecreator("difference", ruleNodeDifference::ruleNodeCreator);
 
 	ruleNode::fRegisterNodeTypecreator("delay", ruleNodeDelay::ruleNodeCreator);
 	
@@ -706,6 +731,12 @@ int main(int argc, const char *argv[]) {
 	ruleNode::fRegisterNodeTypecreator("actions_bool", ruleNodeBoolAction::ruleNodeCreator);
 	ruleNode::fRegisterNodeTypecreator("actions_trigger", ruleNodeTriggerAction::ruleNodeCreator);
 
+	ruleNode::fRegisterNodeTypecreator("derived_float", ruleNodeDerivedFloat::ruleNodeCreator);
+	ruleNode::fRegisterNodeTypecreator("derived_bool", ruleNodeDerivedBool::ruleNodeCreator);
+
+
+
+	
 	auto daemon = new slowcontrol::daemon("ruleProcessord");
 
 
