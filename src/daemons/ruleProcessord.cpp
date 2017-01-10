@@ -292,6 +292,107 @@ public:
 	}
 };
 
+class ruleNodeOddNTrue: public ruleNodeLogical<> {
+protected:
+	ruleNodeOddNTrue(const std::string& aName, int aNodeId):
+		ruleNodeLogical(aName, aNodeId) {
+	};
+public:
+	static ruleNode* ruleNodeCreator(const std::string& aName, int aId) {
+		return new ruleNodeOddNTrue(aName, aId);
+	};
+	virtual void fProcess() {
+		lValue = false;
+		for (auto parent : lParents) {
+			lValue ^= parent->fGetValueAsBool();
+			if (lTime < parent->fGetTime()) {
+				fSetTime(parent->fGetTime());
+			}
+		}
+		ruleNode::fProcess();
+	}
+};
+class ruleNodeEvenNTrue: public ruleNodeLogical<> {
+protected:
+	ruleNodeEvenNTrue(const std::string& aName, int aNodeId):
+		ruleNodeLogical(aName, aNodeId) {
+	};
+public:
+	static ruleNode* ruleNodeCreator(const std::string& aName, int aId) {
+		return new ruleNodeEvenNTrue(aName, aId);
+	};
+	virtual void fProcess() {
+		lValue = true;
+		for (auto parent : lParents) {
+			lValue ^= parent->fGetValueAsBool();
+			if (lTime < parent->fGetTime()) {
+				fSetTime(parent->fGetTime());
+			}
+		}
+		ruleNode::fProcess();
+	}
+};
+
+
+class ruleNodeGreater: public ruleNodeLogical<2> {
+protected:
+	ruleNode* lLeft;
+	ruleNode* lRight;
+	ruleNodeGreater(const std::string& aName, int aNodeId):
+		ruleNodeLogical(aName, aNodeId) {
+	};
+public:
+	static ruleNode* ruleNodeCreator(const std::string& aName, int aId) {
+		return new ruleNodeGreater(aName, aId);
+	};
+	virtual void fInit() {
+		ruleNodeLogical::fInit();
+		lLeft = fSetNamedParent("left");
+		lRight = fSetNamedParent("right");
+	}
+	virtual void fProcess() {
+		lValue = lLeft->fGetValueAsDouble() > lRight->fGetValueAsDouble();
+		fSetTimeFromParents();
+		ruleNode::fProcess();
+	}
+};
+
+class ruleNodeEqual: public ruleNodeLogical<> {
+protected:
+	slowcontrol::configValue<double> lMaxSigma;
+	ruleNodeEqual(const std::string& aName, int aNodeId):
+		ruleNodeLogical(aName, aNodeId),
+		lMaxSigma("maxsigma", lConfigValues, 0.0) {
+	};
+public:
+	static ruleNode* ruleNodeCreator(const std::string& aName, int aId) {
+		return new ruleNodeEqual(aName, aId);
+	};
+	virtual void fProcess() {
+		lValue = true;
+		// algorithm from https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
+		size_t n=0;
+		double mean = 0.0;
+		double M2 = 0.0;
+		for (auto parent : lParents) {
+			n++;
+			auto x = parent->fGetValueAsDouble();
+			auto delta = x - mean;
+			mean += delta/n;
+			auto delta2 = x - mean;
+			M2 += delta*delta2;
+			if (lTime < parent->fGetTime()) {
+				fSetTime(parent->fGetTime());
+			}
+		}
+		lValue = M2 / (n - 1) < lMaxSigma;
+		ruleNode::fProcess();
+	}
+};
+
+
+
+
 template <unsigned nParents=0> class ruleNodeArithmetic: public ruleNodeWithParents<nParents> {
   protected:
 	double lValue;
@@ -428,6 +529,28 @@ class ruleNodeDelay: public ruleNodeWithParents<1>,
 	}
 	virtual void fProcessTimed() {
 		ruleNode::fProcess();
+	}
+};
+
+class ruleNodeConstant: public ruleNode {
+protected:
+	slowcontrol::configValue<double> lValue;
+	ruleNodeConstant(const std::string& aName, int aNodeId):
+		ruleNode(aName, aNodeId),
+		lValue("value", lConfigValues, 1.0) {
+	};
+public:
+	static ruleNode* ruleNodeCreator(const std::string& aName, int aId) {
+		return new ruleNodeConstant(aName, aId);
+	};
+	
+	virtual double fGetValueAsDouble() const {
+		return lValue;
+	}
+	virtual bool fGetValueAsBool() const {
+		return lValue != 0.0;
+	}
+	virtual void fProcess() {
 	}
 };
 
@@ -716,6 +839,11 @@ int main(int argc, const char *argv[]) {
 
 	ruleNode::fRegisterNodeTypecreator("or", ruleNodeOr::ruleNodeCreator);
 	ruleNode::fRegisterNodeTypecreator("and", ruleNodeAnd::ruleNodeCreator);
+	ruleNode::fRegisterNodeTypecreator("odd", ruleNodeOddNTrue::ruleNodeCreator);
+	ruleNode::fRegisterNodeTypecreator("even", ruleNodeEvenNTrue::ruleNodeCreator);
+
+	ruleNode::fRegisterNodeTypecreator("greater", ruleNodeGreater::ruleNodeCreator);
+	ruleNode::fRegisterNodeTypecreator("equal", ruleNodeEqual::ruleNodeCreator);
 
 	ruleNode::fRegisterNodeTypecreator("sum", ruleNodeSum::ruleNodeCreator);
 	ruleNode::fRegisterNodeTypecreator("product", ruleNodeProduct::ruleNodeCreator);
@@ -723,6 +851,8 @@ int main(int argc, const char *argv[]) {
 	ruleNode::fRegisterNodeTypecreator("difference", ruleNodeDifference::ruleNodeCreator);
 
 	ruleNode::fRegisterNodeTypecreator("delay", ruleNodeDelay::ruleNodeCreator);
+
+	ruleNode::fRegisterNodeTypecreator("constant", ruleNodeConstant::ruleNodeCreator);
 	
 	ruleNode::fRegisterNodeTypecreator("measurements_float", ruleNodeFloatMeasurement::ruleNodeCreator);
 	ruleNode::fRegisterNodeTypecreator("measurements_bool", ruleNodeBoolMeasurement::ruleNodeCreator);
