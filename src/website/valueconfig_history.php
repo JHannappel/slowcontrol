@@ -8,10 +8,20 @@ if (!$dbconn) {
 
 page_head("value config history");
 
-$uids=explode(",",$_GET["uid"]);
+if (isset($_GET["uid"])) {
+	$ids=explode(",",$_GET["uid"]);
+	$table="uid_config_history";
+	$idcolumn="uid";
+ }	else if (isset($_GET["nodeid"])) {
+	$ids=explode(",",$_GET["nodeid"]);
+	$table="rule_config_history";
+	$idcolumn="nodeid";
+ }	else {
+	die("uid/nodeid required");
+ }
 $name=$_GET['name'];
-foreach ($uids as $uid) {
-  echo "<H1>Uid $uid config history of property $name</H1>\n";
+foreach ($ids as $id) {
+  echo "<H1>$idcolumn $id config history of property $name</H1>\n";
   echo "<table>\n";
   echo "<thead>\n";
   echo "<tr>\n";
@@ -21,7 +31,7 @@ foreach ($uids as $uid) {
   echo "<th> valid to </th>\n";
   echo "</tr>\n";
   echo "<tbody>\n";
-  $result = pg_query($dbconn,"SELECT * FROM uid_config_history WHERE uid=$uid AND name='$name' ORDER BY valid_from DESC;");
+  $result = pg_query($dbconn,"SELECT * FROM $table WHERE $idcolumn=$id AND name='$name' ORDER BY valid_from DESC;");
   while ($row = pg_fetch_assoc($result)) {
     echo "<tr>\n";
     echo "<td> ${row['value']} </td>\n";
