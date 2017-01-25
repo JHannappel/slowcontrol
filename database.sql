@@ -267,6 +267,36 @@ CREATE TABLE measurements_trigger (
 --
 --
 
+CREATE TABLE node_types (
+    type text NOT NULL,
+    nparents integer,
+    comment text,
+    typeid integer NOT NULL
+);
+
+
+
+--
+--
+
+CREATE SEQUENCE node_types_typeid_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+
+--
+--
+
+ALTER SEQUENCE node_types_typeid_seq OWNED BY node_types.typeid;
+
+
+--
+--
+
 CREATE TABLE rule_config_history (
     nodeid integer,
     name text,
@@ -525,6 +555,12 @@ ALTER TABLE ONLY daemon_list ALTER COLUMN daemonid SET DEFAULT nextval('daemon_l
 --
 --
 
+ALTER TABLE ONLY node_types ALTER COLUMN typeid SET DEFAULT nextval('node_types_typeid_seq'::regclass);
+
+
+--
+--
+
 ALTER TABLE ONLY rule_nodes ALTER COLUMN nodeid SET DEFAULT nextval('rule_nodes_nodeid_seq'::regclass);
 
 
@@ -635,6 +671,13 @@ ALTER TABLE ONLY latest_measurements_int8
 
 ALTER TABLE ONLY latest_measurements_trigger
     ADD CONSTRAINT latest_measurements_trigger_pkey PRIMARY KEY (uid);
+
+
+--
+--
+
+ALTER TABLE ONLY node_types
+    ADD CONSTRAINT node_types_pkey PRIMARY KEY (type);
 
 
 --
@@ -832,6 +875,22 @@ CREATE RULE rule_config_history_saver AS
 CREATE RULE ruleprocessornotify AS
     ON INSERT TO measurements_trigger DO
  NOTIFY ruleprocessor_measurements_trigger;
+
+
+--
+--
+
+CREATE RULE ruleprocessornotify AS
+    ON INSERT TO measurements_float DO
+ NOTIFY ruleprocessor_measurements_float;
+
+
+--
+--
+
+CREATE RULE ruleprocessornotify AS
+    ON INSERT TO measurements_bool DO
+ NOTIFY ruleprocessor_measurements_bool;
 
 
 --
