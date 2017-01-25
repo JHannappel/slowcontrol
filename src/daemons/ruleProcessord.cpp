@@ -64,6 +64,9 @@ class ruleNode {
 		if (isNew) {
 		};
 	};
+	template <typename T> static void fRegisterNodeTypeCreator(const std::string& aNodeType) {
+		fRegisterNodeTypeCreator(aNodeType, T::ruleNodeCreator::fGetCreator());
+	}
 	static ruleNode* fCreateNode(const std::string& aNodeType,
 	                             const std::string& aName,
 	                             int aNodeId) {
@@ -900,34 +903,34 @@ int main(int argc, const char *argv[]) {
 	OptionParser parser("slowcontrol program for processing rules");
 	parser.fParse(argc, argv);
 
-	ruleNode::fRegisterNodeTypeCreator("or", ruleNodeOr::ruleNodeCreator::fGetCreator());
-	ruleNode::fRegisterNodeTypeCreator("and", ruleNodeAnd::ruleNodeCreator::fGetCreator());
-	ruleNode::fRegisterNodeTypeCreator("odd", ruleNodeOddNTrue::ruleNodeCreator::fGetCreator());
-	ruleNode::fRegisterNodeTypeCreator("even", ruleNodeEvenNTrue::ruleNodeCreator::fGetCreator());
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeOr>("or");
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeAnd>("and");
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeOddNTrue>("odd");
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeEvenNTrue>("even");
 
-	ruleNode::fRegisterNodeTypeCreator("latch", ruleNodeLatch::ruleNodeCreator::fGetCreator());
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeLatch>("latch");
 
-	ruleNode::fRegisterNodeTypeCreator("greater", ruleNodeGreater::ruleNodeCreator::fGetCreator());
-	ruleNode::fRegisterNodeTypeCreator("equal", ruleNodeEqual::ruleNodeCreator::fGetCreator());
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeGreater>("greater");
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeEqual>("equal");
 
-	ruleNode::fRegisterNodeTypeCreator("sum", ruleNodeSum::ruleNodeCreator::fGetCreator());
-	ruleNode::fRegisterNodeTypeCreator("product", ruleNodeProduct::ruleNodeCreator::fGetCreator());
-	ruleNode::fRegisterNodeTypeCreator("quotient", ruleNodeQuotient::ruleNodeCreator::fGetCreator());
-	ruleNode::fRegisterNodeTypeCreator("difference", ruleNodeDifference::ruleNodeCreator::fGetCreator());
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeSum>("sum");
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeProduct>("product");
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeQuotient>("quotient");
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeDifference>("difference");
 
-	ruleNode::fRegisterNodeTypeCreator("delay", ruleNodeDelay::ruleNodeCreator::fGetCreator());
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeDelay>("delay");
 
-	ruleNode::fRegisterNodeTypeCreator("constant", ruleNodeConstant::ruleNodeCreator::fGetCreator());
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeConstant>("constant");
 
-	ruleNode::fRegisterNodeTypeCreator("measurements_float", ruleNodeFloatMeasurement::ruleNodeCreator::fGetCreator());
-	ruleNode::fRegisterNodeTypeCreator("measurements_bool", ruleNodeBoolMeasurement::ruleNodeCreator::fGetCreator());
-	ruleNode::fRegisterNodeTypeCreator("measurements_trigger", ruleNodeTriggerMeasurement::ruleNodeCreator::fGetCreator());
-	ruleNode::fRegisterNodeTypeCreator("actions_float", ruleNodeFloatAction::ruleNodeCreator::fGetCreator());
-	ruleNode::fRegisterNodeTypeCreator("actions_bool", ruleNodeBoolAction::ruleNodeCreator::fGetCreator());
-	ruleNode::fRegisterNodeTypeCreator("actions_trigger", ruleNodeTriggerAction::ruleNodeCreator::fGetCreator());
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeFloatMeasurement>("measurements_float");
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeBoolMeasurement>("measurements_bool");
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeTriggerMeasurement>("measurements_trigger");
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeFloatAction>("actions_float");
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeBoolAction>("actions_bool");
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeTriggerAction>("actions_trigger");
 
-	ruleNode::fRegisterNodeTypeCreator("derived_float", ruleNodeDerivedFloat::ruleNodeCreator::fGetCreator());
-	ruleNode::fRegisterNodeTypeCreator("derived_bool", ruleNodeDerivedBool::ruleNodeCreator::fGetCreator());
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeDerivedFloat>("derived_float");
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeDerivedBool>("derived_bool");
 
 
 
