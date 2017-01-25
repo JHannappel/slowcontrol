@@ -329,13 +329,11 @@ class ruleNodeAnd: public ruleNodeLogical<> {
 };
 
 class ruleNodeOddNTrue: public ruleNodeLogical<> {
-  protected:
+  public:
 	ruleNodeOddNTrue(const std::string& aName, int aNodeId):
 		ruleNodeLogical(aName, aNodeId) {
 	};
-  public:
-	static ruleNode* ruleNodeCreator(const std::string& aName, int aId) {
-		return new ruleNodeOddNTrue(aName, aId);
+	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeOddNTrue, ruleNodeLogical<>> {
 	};
 	virtual void fProcess() {
 		lValue = false;
