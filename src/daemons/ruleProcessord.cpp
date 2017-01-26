@@ -15,9 +15,12 @@
 class ruleNode {
   public:
 	class ruleNodeCreator {
+	  protected:
+		int lMaxParents = -1;
 	  public:
 		virtual ruleNode *fCreate(const std::string& aName,
 		                          int aNodeId) = 0;
+		virtual int fGetNumberOfPossibleParents() const = 0;
 	};
 	template <typename T, typename genT> class ruleNodeCreatorTemplate: public genT::ruleNodeCreator {
 	  private:
@@ -30,7 +33,9 @@ class ruleNode {
 			return nullptr;
 		};
 	  public:
-		ruleNodeCreatorTemplate() {};
+		ruleNodeCreatorTemplate() {
+			debugthis;
+		};
 		virtual ruleNode* fCreate(const std::string& aName,
 		                          int aNodeId) {
 			auto rule = fNewT<T>(aName, aNodeId);
@@ -42,7 +47,8 @@ class ruleNode {
 			return &gCreator;
 		};
 		virtual int fGetNumberOfPossibleParents() const {
-			return -1;
+			debugthis;
+			return this->lMaxParents;
 		};
 	};
 
@@ -73,10 +79,17 @@ class ruleNode {
 		ruleNode::fGetNodeCreatorMap().emplace(aNodeType, aCreator);
 
 		bool isNew = true;
-		slowcontrol::base::fSelectOrInsert("node_types", "typeid",
-		                                   "type", aNodeType.c_str(),
-		                                   nullptr, nullptr, &isNew);
+		auto id = slowcontrol::base::fSelectOrInsert("node_types", "typeid",
+		          "type", aNodeType.c_str(),
+		          nullptr, nullptr, &isNew);
 		if (isNew) {
+			std::string query("UPDATE node_types SET nparents=");
+			query += std::to_string(aCreator->fGetNumberOfPossibleParents());
+			query += " WHERE typeid=";
+			query += std::to_string(id);
+			query += ";";
+			auto result = PQexec(slowcontrol::base::fGetDbconn(), query.c_str());
+			PQclear(result);
 		};
 	};
 	template <typename T> static void fRegisterNodeTypeCreator(const std::string& aNodeType) {
@@ -238,7 +251,13 @@ template <unsigned nParents = 0> class ruleNodeWithParents: public ruleNode {
 
   public:
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeWithParents<nParents>, ruleNode> {
+	  public:
+		ruleNodeCreator() {
+			debugthis;
+			this->lMaxParents = nParents;
+		}
 		virtual int fGetNumberOfPossibleParents() const {
+			debugthis;
 			return nParents;
 		};
 	};
@@ -295,8 +314,7 @@ template <unsigned nParents = 0> class ruleNodeLogical: public ruleNodeWithParen
 	ruleNodeLogical(const std::string& aName, int aNodeId):
 		ruleNodeWithParents<nParents>(aName, aNodeId) {
 	}
-	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeLogical, ruleNodeWithParents<nParents>> {
-	};
+	//class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeLogical, ruleNodeWithParents<nParents>> {};
 	virtual double fGetValueAsDouble() const {
 		return lValue ? 1.0 : 0.0;
 	}
