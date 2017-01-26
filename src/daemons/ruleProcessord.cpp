@@ -7,6 +7,10 @@
 #include <stdio.h>
 #include <typeinfo>
 
+
+#define debugthis std::cerr << __FILE__ << ":" << __LINE__ << ": " << __func__ << "@" << (void*)this << ", a " << typeid(*this).name() << "\n"
+#define debugthat(that) std::cerr << __FILE__ << ":" << __LINE__ << ": " << __func__ << " on " << (void*)that << ", a " << typeid(*that).name() << "\n"
+
 //using namespace date;
 class ruleNode {
   public:
@@ -16,11 +20,22 @@ class ruleNode {
 		                          int aNodeId) = 0;
 	};
 	template <typename T, typename genT> class ruleNodeCreatorTemplate: public genT::ruleNodeCreator {
+	  private:
+		template <class t> typename std::enable_if < !std::is_abstract<t>::value, t >::type* fNewT(const std::string& aName,
+		        int aNodeId) {
+			return new t(aName, aNodeId);
+		};
+		template <class t> typename std::enable_if<std::is_abstract<t>::value, t>::type* fNewT(const std::string& /*aName*/,
+		        int /*aNodeId*/) {
+			return nullptr;
+		};
 	  public:
 		ruleNodeCreatorTemplate() {};
 		virtual ruleNode* fCreate(const std::string& aName,
 		                          int aNodeId) {
-			return new T(aName, aNodeId);
+			auto rule = fNewT<T>(aName, aNodeId);
+			debugthat(rule);
+			return rule;
 		};
 		static ruleNode::ruleNodeCreator *fGetCreator() {
 			static ruleNodeCreatorTemplate gCreator;
@@ -119,12 +134,9 @@ class ruleNode {
 			dependentNode->fProcess();
 		}
 	};
-	virtual double fGetValueAsDouble() const {
-		return 0;
-	};
-	virtual bool fGetValueAsBool() const {
-		return 0;
-	};
+	virtual double fGetValueAsDouble() const = 0;
+	virtual bool fGetValueAsBool() const = 0;
+
 	virtual slowcontrol::measurementBase::timeType fGetTime() const {
 		return lTime;
 	};
