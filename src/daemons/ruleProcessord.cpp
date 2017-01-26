@@ -69,7 +69,7 @@ class ruleNode {
   public:
 	static void fRegisterNodeTypeCreator(const std::string& aNodeType,
 	                                     ruleNodeCreator* aCreator) {
-		std::cout << "registering " << aNodeType << " at " << (void*)aCreator << "\n";
+		std::cout << "registering " << aNodeType << " at " << (void*)aCreator << "of type " << typeid(*aCreator).name() << "\n";
 		ruleNode::fGetNodeCreatorMap().emplace(aNodeType, aCreator);
 
 		bool isNew = true;
@@ -717,8 +717,6 @@ template <typename T> class ruleNodeTypedAction: public ruleNodeAction {
 	ruleNodeTypedAction(const std::string& aName, int aId) :
 		ruleNodeAction(aName, aId) {
 	}
-	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeTypedAction, ruleNodeAction> {
-	};
 	virtual double fGetValueAsDouble() const {
 		return lParent->fGetValueAsDouble();
 	};
@@ -739,8 +737,20 @@ template <typename T> class ruleNodeTypedAction: public ruleNodeAction {
 	};
 };
 class ruleNodeFloatAction: public ruleNodeTypedAction<float> {
+  public:
+	ruleNodeFloatAction(const std::string& aName, int aId) :
+		ruleNodeTypedAction(aName, aId) {
+	};
+	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeFloatAction, ruleNodeTypedAction> {
+	};
 };
 class ruleNodeBoolAction: public ruleNodeTypedAction<bool> {
+  public:
+	ruleNodeBoolAction(const std::string& aName, int aId) :
+		ruleNodeTypedAction(aName, aId) {
+	};
+	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeBoolAction, ruleNodeTypedAction> {
+	};
 };
 class ruleNodeTriggerAction: public ruleNodeAction {
   public:
@@ -774,8 +784,7 @@ template <typename T> class ruleNodeDerivedValue: public ruleNodeWithParents<1>,
 		ruleNodeWithParents<1>(aName, aId),
 		slowcontrol::boundCheckerInterface<slowcontrol::measurement<T>>(std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max()) {
 	};
-	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeDerivedValue, ruleNodeWithParents<1>> {
-	};
+	// class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeDerivedValue, ruleNodeWithParents<1>> {};
 	virtual void fProcess() {
 		this->fStore(lParent->fGetValueAsDouble(), lParent->fGetTime());
 		ruleNodeWithParents::fProcess();
@@ -794,8 +803,7 @@ template <> class ruleNodeDerivedValue<bool>: public ruleNodeWithParents<1>,
 		ruleNodeWithParents<1>(aName, aId),
 		slowcontrol::measurement<bool>() {
 	};
-	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeDerivedValue, ruleNodeWithParents<1>> {
-	};
+	//	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeDerivedValue, ruleNodeWithParents<1>> {};
 	virtual void fProcess() {
 		fStore(lParent->fGetValueAsBool(), lParent->fGetTime());
 		ruleNodeWithParents::fProcess();
