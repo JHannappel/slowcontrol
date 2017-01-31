@@ -26,23 +26,23 @@
 #define I2C_SLAVE 0x703
 
 class dewPoint: slowcontrol::measurement<float>,
-	        public slowcontrol::unitInterface {
-public:
-  dewPoint(const char *lName):
-    unitInterface(lConfigValues, "deg C") {
-    	lClassName.fSetFromString(__func__);
-	fInitializeUid(lName);
-	fConfigure();
-  };
-  void fCalculateAndStore(float T, float RH) {
-    // dew point according to https://en.wikipedia.org/wiki/Dew_point
-    constexpr float a = 6.1121;
-    constexpr float b = 18.678;
-    constexpr float c = 257.14;
-    constexpr float d = 234.5;
-    auto gamma=std::log(RH*0.01*std::exp((b-T/d)*(T/(c+T))));
-    fStore(c*gamma/(b-gamma));
-  };
+	public slowcontrol::unitInterface {
+  public:
+	dewPoint(const char *lName):
+		unitInterface(lConfigValues, "deg C") {
+		lClassName.fSetFromString(__func__);
+		fInitializeUid(lName);
+		fConfigure();
+	};
+	void fCalculateAndStore(float T, float RH) {
+		// dew point according to https://en.wikipedia.org/wiki/Dew_point
+		constexpr float a = 6.1121;
+		constexpr float b = 18.678;
+		constexpr float c = 257.14;
+		constexpr float d = 234.5;
+		auto gamma = std::log(RH * 0.01 * std::exp((b - T / d) * (T / (c + T))));
+		fStore(c * gamma / (b - gamma));
+	};
 };
 class hih6131moisture: public slowcontrol::boundCheckerInterface<slowcontrol::measurement<float>>,
 	        public slowcontrol::defaultReaderInterface,
@@ -50,7 +50,7 @@ class hih6131moisture: public slowcontrol::boundCheckerInterface<slowcontrol::me
   protected:
 	int fd;
 	slowcontrol::parasitic_temperature *lTemperature;
-        dewPoint *lDewPoint;
+	dewPoint *lDewPoint;
   public:
 	hih6131moisture(const char *aPath, const char *aNameBase):
 		boundCheckerInterface(40, 60, 0.5),
@@ -85,7 +85,7 @@ class hih6131moisture: public slowcontrol::boundCheckerInterface<slowcontrol::me
 		unsigned int hum;
 		hum = buf[1];
 		hum |= (buf[0] & 0x3F) << 8;
-		auto RH = (100.0 * hum) / (0x4000 - 2); 
+		auto RH = (100.0 * hum) / (0x4000 - 2);
 		auto valueHasChanged = fStore(RH);
 		unsigned int temp;
 		temp = buf[3] >> 2;
