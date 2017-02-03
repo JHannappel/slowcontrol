@@ -59,6 +59,7 @@ int main(int argc, const char *argv[]) {
 	parser.fParse(argc, argv);
 
 	slowcontrol::serialLine serial(device, 500000);
+	serial.fSetRetries(0); // don't worry about timeouts
 
 	auto daemon = new slowcontrol::daemon("rfio433d");
 

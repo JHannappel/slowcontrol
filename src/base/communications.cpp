@@ -42,6 +42,8 @@ namespace slowcontrol {
 		aSeperator = aSeperator;
 	}
 
+	/// set the number of retries for reading, default is 10
+	/// set to 0 for spontaneous data, where timeouts are not errors
 	void serialLine::fSetRetries(int aRetries) {
 		lRetries = aRetries;
 	}
@@ -232,16 +234,20 @@ namespace slowcontrol {
 					charsread++;
 				}
 			} else {
-				syslog(LOG_WARNING, "timeout waiting for data");
-				timeouts++;
-				if (timeouts > lRetries) {
-					if (lReconnect) {
-						close(lFd);
-						fInit();
-						pollfds[0].fd = lFd;
-						return -2;
+				if (lRetries > 0) {
+					syslog(LOG_WARNING, "timeout waiting for data");
+					timeouts++;
+					if (timeouts > lRetries) {
+						if (lReconnect) {
+							close(lFd);
+							fInit();
+							pollfds[0].fd = lFd;
+							return -2;
+						}
+						syslog(LOG_ERR, "too many timeouts waiting for data");
+						return -1;
 					}
-					syslog(LOG_ERR, "too many timeouts waiting for data");
+				} else {
 					return -1;
 				}
 			}
