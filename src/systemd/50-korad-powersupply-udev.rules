@@ -1,1 +1,0 @@
-KERNEL=="ttyACM*",ATTRS{serial}=="NT2009101400",ENV{SYSTEMD_WANTS}="korad_d.service",SYMLINK+="ttyKorad", OPTIONS="last_rule"
