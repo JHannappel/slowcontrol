@@ -1,3 +1,4 @@
+# file installed from ${CMAKE_CURRENT_SOURCE_DIR}
 [Unit]
 Description=Slowcontrol ${DAEMON} start
 After=network.target nss-lookup.target time-sync.target
@@ -9,6 +10,7 @@ PIDFile=/var/run/${DAEMON}.pid
 Environment="HOME=/root"
 ExecStart=/bin/bash -c '${CMAKE_INSTALL_PREFIX}/bin/${DAEMON} --pidFile /var/run/${DAEMON}.pid &> /tmp/${DAEMON}.log'
 KillMode=mixed
+${SERVICE_EXTRALINES}
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=${WANTED_BY}
