@@ -7,17 +7,23 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <poll.h>
-#include <string.h>
-
+#include <cstring>
+#include <cerrno>
 #define likely(x)       __builtin_expect((x),1)
 #define unlikely(x)     __builtin_expect((x),0)
 
 namespace slowcontrol {
+	communicationChannel::communicationChannel() :
+		lThrowLevel(exception::level::kNone) {
+	};
 
 	bool communicationChannel::fWrite(const char *aData) {
 		auto datasize = strlen(aData);
 		auto written = ::write(lFd, aData, datasize);
 		if (written < 0) {
+			if (lThrowLevel > exception::level::kNone) {
+				throw exception(std::strerror(errno), lThrowLevel);
+			}
 			syslog(LOG_WARNING, "could not write %lu bytes to socket %d: %m", datasize, lFd);
 		}
 		return (written == static_cast<decltype(written)>(datasize));
@@ -207,6 +213,9 @@ namespace slowcontrol {
 		for (int timeouts = 0; charsread + 2 < aBuffsize;) {
 			poll(pollfds, sizeof(pollfds) / sizeof(pollfds[0]), std::chrono::duration_cast<std::chrono::milliseconds>(aTimeout).count());
 			if (pollfds[0].revents & POLLERR) { /* some problem occurred */
+				if (lThrowLevel > exception::level::kNone) {
+					throw exception(std::strerror(errno), lThrowLevel);
+				}
 				syslog(LOG_ERR, "error while polling tty. Interface gone?");
 				if (lReconnect) {
 					close(lFd);
@@ -225,6 +234,9 @@ namespace slowcontrol {
 				}
 				char c;
 				if (unlikely(::read(lFd, &c, 1) != 1)) {
+					if (lThrowLevel > exception::level::kNone) {
+						throw exception(std::strerror(errno), lThrowLevel);
+					}
 					syslog(LOG_ERR, "error reading from tty");
 				}
 				if (c == lSeparator) {

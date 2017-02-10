@@ -3,17 +3,20 @@
 #include <chrono>
 #include <string>
 
+#include "slowcontrol.h"
+
 namespace slowcontrol {
 	class communicationChannel {
 	  public:
 		typedef std::chrono::system_clock::time_point timeType; ///<type for time measurements
 		typedef std::chrono::system_clock::duration durationType; ///< type for durations matching the timeType
 	  protected:
+		exception::level lThrowLevel;
 		int lFd;
 		timeType lLastCommunicationTime;
 		timeType lReadStartTime;
 	  public:
-		communicationChannel() {};
+		communicationChannel();
 		virtual ~communicationChannel() {};
 		int fGetFd() const {
 			return lFd;
@@ -30,6 +33,9 @@ namespace slowcontrol {
 		virtual timeType fGetReadStartTime() const {
 			return lReadStartTime;
 		};
+		void fSetThrowLevel(exception::level aLevel) {
+			lThrowLevel = aLevel;
+		}
 	};
 	class serialLine : public communicationChannel {
 

@@ -235,7 +235,7 @@ namespace slowcontrol {
 					then += maxReadoutInterval;
 				}
 			}
-			// here no lock on the mutex is needed fur just acessing size()
+			// here no lock on the mutex is needed for just acessing size()
 			while (lMeasurementsWithDefaultReader.size()
 			        == scheduledMeasurements.size()) {
 				if (lStopRequested) {
@@ -249,8 +249,15 @@ namespace slowcontrol {
 				auto measurement = it->second;
 
 				auto justBeforeReadout = std::chrono::steady_clock::now();
-				measurement.lReader->fReadCurrentValue();
-
+				try {
+					measurement.lReader->fReadCurrentValue();
+				} catch (exception& e) {
+					if (e.fGetLevel() == exception::level::kStop) {
+						std::cout << "caught exception " << e.what() << "\n";
+						fRequestStop();
+						continue;
+					}
+				}
 				scheduledMeasurements.erase(it);
 				scheduledMeasurements.emplace(justBeforeReadout
 				                              + measurement.lReader->fGetReadoutInterval(),
@@ -494,7 +501,7 @@ namespace slowcontrol {
 		lThreads.insert(new std::thread(&daemon::fSignalCatcherThread, this));
 		lThreads.insert(new std::thread(&daemon::fReaderThread, this));
 		lThreads.insert(new std::thread(&daemon::fPollerThread, this));
-		lThreads.insert(new std::thread(&daemon::fStorerThread, this));
+		lStorerThread = new std::thread(&daemon::fStorerThread, this);
 		fClearOldPendingRequests();
 		fProcessPendingRequests();
 		lThreads.insert(new std::thread(&daemon::fConfigChangeListener, this));
@@ -509,6 +516,8 @@ namespace slowcontrol {
 		for (auto thread : lThreads) {
 			thread->join();
 		}
+		fSignalToStorer();
+		lStorerThread->join();
 	}
 
 } // end of namespace slowcontrol

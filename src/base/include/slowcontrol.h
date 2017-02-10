@@ -34,5 +34,28 @@ namespace slowcontrol {
 		                                 std::string& aResponse);
 	};
 
+	class exception: public std::exception {
+	  public:
+		enum class level {
+			kNone,
+			kContinue,
+			kStop
+		};
+	  protected:
+		std::string lWhat;
+		level lLevel;
+	  public:
+		exception(const char *aWhat, level aLevel) :
+			lWhat(aWhat),
+			lLevel(aLevel) {
+		};
+		virtual const char* what() const noexcept {
+			return lWhat.c_str();
+		};
+		virtual level fGetLevel() const {
+			return lLevel;
+		};
+	};
+
 } // end of namespace slowcontrol
 #endif

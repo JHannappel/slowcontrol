@@ -64,6 +64,7 @@ namespace slowcontrol {
 		void fDaemonize();
 		std::chrono::system_clock::time_point fBeatHeart(bool aLastTime = false);
 		std::set<std::thread*, bool (*)(std::thread*, std::thread *)> lThreads;
+		std::thread* lStorerThread;
 		std::mutex lStorerMutex;
 		std::condition_variable lStorerCondition;
 		void fFlushAllValues();
@@ -79,6 +80,9 @@ namespace slowcontrol {
 		bool fGetStopRequested() const {
 			return lStopRequested;
 		};
+		void fRequestStop() {
+			lStopRequested = true;
+		}
 		void fProcessPendingRequests();
 		template <class Clock, class Duration> void fWaitUntil(const std::chrono::time_point<Clock, Duration>& aWhen) {
 			std::unique_lock<std::mutex> lock(lWaitConditionMutex);
