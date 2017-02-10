@@ -51,10 +51,11 @@ class koradReadValue: public koradTypedValue<float>,
 	               const std::string& aReadBackCommand,
 	               const char *aUnit):
 		koradTypedValue(aSupply, aPsName, aValueName),
-		defaultReaderInterface(lConfigValues, std::chrono::seconds(10)),
+		defaultReaderInterface(lConfigValues, std::chrono::milliseconds(200)),
 		unitInterface(lConfigValues, aUnit),
 		lSupply(aSupply),
 		lReadBackCommand(aReadBackCommand) {
+		lDeadBand.fSetValue(0.00001);
 	};
 	virtual bool fReadCurrentValue();
 };
@@ -136,9 +137,11 @@ class koradPowerSupply {
 		lISet(this, aName, "ISet", "ISET1:%05.3f", "ISET1?", "A"),
 		lOutputSwitch(this, aName),
 		lVRead(aWatchPack, [](koradReadValue*) -> bool {return true;}, this, aName, "VRead", "VOUT1?", "V"),
-	       lIRead(aWatchPack, [](koradReadValue*) -> bool {return true;}, this, aName, "IRead", "IOUT1?", "A"),
-	       lPower(this, aName, "Power", "W"),
-	lLoad(this, aName, "Load", "Ohm") {
+		lIRead(aWatchPack, [](koradReadValue*) -> bool {return true;}, this, aName, "IRead", "IOUT1?", "A"),
+		lPower(this, aName, "Power", "W"),
+		lLoad(this, aName, "Load", "Ohm") {
+		lSerial.fSetThrowLevel(slowcontrol::exception::level::kStop);
+		lSerial.fSetRetries(0); // no retries, stop on communication errors
 		auto compound = slowcontrol::base::fGetCompoundId(aName.c_str(), aName.c_str());
 		for (auto value : lValues) {
 			value->fInit();
