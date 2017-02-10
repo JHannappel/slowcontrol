@@ -169,20 +169,24 @@ namespace slowcontrol {
 		sigaction(SIGUSR2, &action, nullptr);
 		std::cerr << "unblocked signal " <<  std::endl;
 		while (true) {
-			int sig;
 			std::cerr << "wait for signal " <<  std::endl;
-			sigwait(&sigmask, &sig);
+			struct timespec timeout;
+			timeout.tv_sec = 1;
+			timeout.tv_nsec = 0;
+			auto sig = sigtimedwait(&sigmask, nullptr, &timeout);
 			std::cerr << "caught signal " << sig << std::endl;
 			switch (sig) {
 				case SIGTERM:
 				case SIGINT:
 					lStopRequested = true;
 					lWaitCondition.notify_all();
-					fFlushAllValues();
-					std::cerr << "stopping signal thread" << std::endl;
-					return;
-				default     :
+				default:
 					break;
+			}
+			if (lStopRequested) {
+				fFlushAllValues();
+				std::cerr << "stopping signal thread" << std::endl;
+				return;
 			}
 		}
 	}
