@@ -253,14 +253,10 @@ namespace slowcontrol {
 				auto measurement = it->second;
 
 				auto justBeforeReadout = std::chrono::steady_clock::now();
-				try {
-					measurement.lReader->fReadCurrentValue();
-				} catch (exception& e) {
-					if (e.fGetLevel() == exception::level::kStop) {
-						std::cout << "caught exception " << e.what() << "\n";
-						fRequestStop();
-						continue;
-					}
+				if (fExecuteGuarded([measurement]() {
+				measurement.lReader->fReadCurrentValue();
+				})) {
+					continue;
 				}
 				scheduledMeasurements.erase(it);
 				scheduledMeasurements.emplace(justBeforeReadout
@@ -306,7 +302,11 @@ namespace slowcontrol {
 						if (pfd.revents != 0) {
 							auto it = lMeasurementsWithPollReader.find(pfd.fd);
 							if (it != lMeasurementsWithPollReader.end()) {
+								if (fExecuteGuarded([it, pfd]() {
 								it->second->fProcessData(pfd.revents);
+								})) {
+									continue;
+								}
 							}
 						}
 					}
@@ -368,7 +368,10 @@ namespace slowcontrol {
 				gScheduledWriteRequests.erase(it);
 			}
 			std::string response;
-			auto outcome = req->fProcess(response);
+			auto outcome = false;
+			fExecuteGuarded([req, &outcome, &response]() {
+				outcome = req->fProcess(response);
+			});
 			std::string query("UPDATE setvalue_requests SET response_time=now(), response=");
 			base::fAddEscapedStringToQuery(response, query);
 			query += ",result=";
@@ -423,7 +426,10 @@ namespace slowcontrol {
 					}
 					lScheduledWriteRequestWaitCondition.notify_all();
 				} else {
-					auto outcome = req->fProcess(response);
+					auto outcome = false;
+					fExecuteGuarded([req, &outcome, &response]() {
+						outcome = req->fProcess(response);
+					});
 					delete req;
 					base::fAddEscapedStringToQuery(response, query);
 					if (outcome == true) {

@@ -9,6 +9,7 @@
 #include <condition_variable>
 #include <atomic>
 #include <slowcontrol.h>
+#include <iostream>
 
 namespace slowcontrol {
 
@@ -92,6 +93,18 @@ namespace slowcontrol {
 			auto then = std::chrono::steady_clock::now() + aDuration;
 			fWaitUntil(then);
 		};
+
+		template <typename T> bool fExecuteGuarded(T&& aAction) {
+			try {
+				aAction();
+			} catch (exception& e) {
+				std::cout << "caught exception " << e.what() << "\n";
+				fRequestStop();
+				return true;
+			}
+			return false;
+		};
+
 	};
 
 } // end of namespace slowcontrol
