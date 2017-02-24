@@ -35,7 +35,7 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wunused -Woverloaded-virtual -Wsh
 # Get latest tagged version.
 # INCLUDE(GetLatestTag)
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I ${OptionParser_INCLUDE_DIRS} -I {PostgreSQL_INCLUDE_DIRS}")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I ${OptionParser_INCLUDE_DIRS} -I ${PostgreSQL_INCLUDE_DIRS}")
 
 # Set variables for packaging. 
 SET(PROJECT_DESCRIPTION "slowcontrol system written in C++11")
