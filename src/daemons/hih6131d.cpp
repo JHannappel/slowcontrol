@@ -36,7 +36,7 @@ class dewPoint: slowcontrol::measurement<float>,
 	};
 	void fCalculateAndStore(float T, float RH) {
 		// dew point according to https://en.wikipedia.org/wiki/Dew_point
-		constexpr float a = 6.1121;
+		// constexpr float a = 6.1121; // would be needed for sat. vapour pressure
 		constexpr float b = 18.678;
 		constexpr float c = 257.14;
 		constexpr float d = 234.5;
