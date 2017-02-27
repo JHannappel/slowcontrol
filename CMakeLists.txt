@@ -29,13 +29,12 @@ endif()
 find_package(OptionParser)
 find_package(PostgreSQL)
 
-
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${CXX_STD_FLAG}")
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wunused -Woverloaded-virtual -Wshadow -Wextra -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=2 -Wvla -Wsuggest-attribute=noreturn")
 # Get latest tagged version.
 # INCLUDE(GetLatestTag)
 
-SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I ${OptionParser_INCLUDE_DIRS} -I ${PostgreSQL_INCLUDE_DIRS}")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I ${OptionParser_INCLUDE_DIRS} -I ${PostgreSQL_INCLUDE_DIR}")
 
 # Set variables for packaging. 
 SET(PROJECT_DESCRIPTION "slowcontrol system written in C++11")
