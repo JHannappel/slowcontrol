@@ -24,7 +24,7 @@ namespace slowcontrol {
 			if (lThrowLevel > exception::level::kNone) {
 				throw exception(std::strerror(errno), lThrowLevel);
 			}
-			syslog(LOG_WARNING, "could not write %lu bytes to socket %d: %m", datasize, lFd);
+			syslog(LOG_WARNING, "could not write %zu bytes to socket %d: %m", datasize, lFd);
 		}
 		return (written == static_cast<decltype(written)>(datasize));
 	}
