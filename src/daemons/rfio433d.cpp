@@ -33,7 +33,7 @@ class rslSender: public rslTrigger, public slowcontrol::writeValue {
 		rslTrigger(aName, aPattern),
 		lSerial(aSerial) {
 	}
-	virtual writeValue::request* fParseForRequest(const std::string& aRequestText,
+	virtual writeValue::request* fParseForRequest(const std::string& /*aRequestText*/,
 	        request::timeType aWhen,
 	        request::idType aRequestId) {
 		return new request(this, aWhen, aRequestId);
