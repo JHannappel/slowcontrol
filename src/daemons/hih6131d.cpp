@@ -80,11 +80,11 @@ class hih6131moisture: public slowcontrol::boundCheckerInterface<slowcontrol::me
 		unsigned char buf[4];
 		buf[0] = 0;
 		if (write(fd, buf, 0) < 0) {
-			throw slowcontrol::exception("can't trigger hih6131 readout",slowcontrol::exception::level::kStop);
+			throw slowcontrol::exception("can't trigger hih6131 readout", slowcontrol::exception::level::kStop);
 		}
 		usleep(100);
 		if (read(fd, buf, 4) < 4) {
-			throw slowcontrol::exception("can't read 4 bytes from hih6131",slowcontrol::exception::level::kContinue);
+			throw slowcontrol::exception("can't read 4 bytes from hih6131", slowcontrol::exception::level::kContinue);
 		}
 		unsigned int hum;
 		hum = buf[1];

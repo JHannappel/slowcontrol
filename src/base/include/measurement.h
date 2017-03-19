@@ -485,7 +485,7 @@ namespace slowcontrol {
 		virtual void fCheckValue(typename boundChecker::baseClassType::timeType aTime,
 		                         typename boundChecker::baseClassType::valueType aValue) {
 			auto deltaT = aTime - time;
-			auto r0=static_cast<double>(deltaT.count()) / lTau.fGetValue().count();
+			auto r0 = static_cast<double>(deltaT.count()) / lTau.fGetValue().count();
 			auto ratio = std::exp(- r0);
 			value *= ratio;
 			value += aValue * (1 - ratio);
