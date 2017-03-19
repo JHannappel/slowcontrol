@@ -72,7 +72,7 @@ class hih6131moisture: public slowcontrol::boundCheckerInterface<slowcontrol::me
 		{
 			std::string humidityName(aNameBase);
 			humidityName += "_humidity";
-			fInitializeUid(humidityName.c_str());
+			fInitializeUid(humidityName);
 		}
 		fConfigure();
 	};

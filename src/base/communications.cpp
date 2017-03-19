@@ -44,7 +44,7 @@ namespace slowcontrol {
 	serialLine::~serialLine() {
 		close(lFd);
 	}
-	void serialLine::fSetLineSeperator(char aSeparator) {
+	void serialLine::fSetLineSeparator(char aSeparator) {
 		lSeparator = aSeparator;
 	}
 

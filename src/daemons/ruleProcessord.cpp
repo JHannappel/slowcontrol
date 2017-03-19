@@ -75,7 +75,7 @@ class ruleNode {
   public:
 	static void fRegisterNodeTypeCreator(const std::string& aNodeType,
 	                                     ruleNodeCreator* aCreator) {
-		std::cout << "registering " << aNodeType << " at " << (void*)aCreator << "of type " << typeid(*aCreator).name() << "\n";
+		std::cout << "registering " << aNodeType << " at " << reinterpret_cast<void*>(aCreator) << "of type " << typeid(*aCreator).name() << "\n";
 		ruleNode::fGetNodeCreatorMap().emplace(aNodeType, aCreator);
 
 		bool isNew = true;
@@ -214,10 +214,10 @@ template <typename parentContainer> void fRegisterParent(parentContainer& where,
 template <> void fRegisterParent<std::multimap<std::string, ruleNode*>>(std::multimap<std::string, ruleNode*>& where, ruleNode* parent, const std::string& slot) {
 	where.emplace(slot, parent);
 };
-template <> void fRegisterParent<std::set<ruleNode*>>(std::set<ruleNode*>& where, ruleNode* parent, const std::string&) {
+template <> void fRegisterParent<std::set<ruleNode*>>(std::set<ruleNode*>& where, ruleNode* parent, const std::string& /*unused*/) {
 	where.emplace(parent);
 };
-template <> void fRegisterParent<ruleNode*>(ruleNode* &where, ruleNode* parent, const std::string&) {
+template <> void fRegisterParent<ruleNode*>(ruleNode* &where, ruleNode* parent, const std::string& /*unused*/) {
 	where = parent;
 };
 
@@ -230,11 +230,11 @@ template <> void fRegisterParent<ruleNode*>(ruleNode* &where, ruleNode* parent, 
 template <unsigned nParents = 0> class ruleNodeWithParents: public ruleNode {
 	class mapDummy {
 	  public:
-		void emplace(std::string&, ruleNode*) {};
+		void emplace(std::string& /*unused*/, ruleNode* /*unused*/) {};
 	};
 	class setDummy {
 	  public:
-		void emplace(ruleNode*) {};
+		void emplace(ruleNode* /*unused*/) {};
 	};
   protected:
 	typename std::conditional < nParents != 1,

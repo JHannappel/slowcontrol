@@ -57,11 +57,11 @@ namespace slowcontrol {
 	  public:
 		serialLine(const std::string& aDevName, int aBaudRate, Parity aParity = NONE, int aBits = 8, int aStopBits = 1);
 		virtual ~serialLine();
-		virtual void fSetLineSeperator(char aSeperator);
+		virtual void fSetLineSeparator(char aSeperator);
 		virtual void fSetRetries(int aRetries);
 		virtual bool fInit();
 		virtual int fRead(char *aBuffer, int aBuffsize, durationType aTimeout);
-		virtual bool fWrite(const char *Data);
+		virtual bool fWrite(const char *aData);
 		virtual int fFlushReceiveBuffer();
 		virtual int fFlushTransmitBuffer();
 		virtual void fSetReconnectOnError();

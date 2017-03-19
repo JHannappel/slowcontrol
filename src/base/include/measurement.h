@@ -39,7 +39,7 @@ namespace slowcontrol {
 
 		virtual const char *fGetDefaultTableName() const = 0;  ///< returns the name of the table in the database
 		void fSaveOption(const configValueBase& aCfgValue,
-		                 const char *comment); ///< saves an option's current value in the database, will only work if this option is not yet in the database
+		                 const char *aComment); ///< saves an option's current value in the database, will only work if this option is not yet in the database
 		void fUpdateOption(const configValueBase& aCfgValue,
 		                   const char *aComment); ///< updates databse to current value of an option
 

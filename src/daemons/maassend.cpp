@@ -127,7 +127,7 @@ class fsSize: public boundCheckerInterface<measurement<float>, true, false>,
 	bool fReadCurrentValue() override {
 		struct statfs buf;
 		if (statfs(lMountPoint.c_str(), &buf) == 0) {
-			return fStore((double)buf.f_bavail * (double)buf.f_bsize / (1024. * 1024. * 1024.));
+			return fStore(static_cast<double>(buf.f_bavail) * static_cast<double>(buf.f_bsize) / (1024. * 1024. * 1024.));
 		};
 		return false;
 	};
