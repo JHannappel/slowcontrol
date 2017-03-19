@@ -35,7 +35,9 @@ namespace slowcontrol {
 		bool input::fRead() {
 			lseek(lValueFd, 0, SEEK_SET);
 			char buffer;
-			read(lValueFd, &buffer, 1);
+			if (read(lValueFd, &buffer, 1) < 1) {
+				throw slowcontrol::exception("can't read gpio",slowcontrol::exception::level::kContinue);
+			}
 			return buffer == '1';
 		};
 
@@ -51,9 +53,13 @@ namespace slowcontrol {
 
 		void output::fWrite(bool aValue) {
 			if (aValue) {
-				write(lValueFd, "1\n", 2);
+				if (write(lValueFd, "1\n", 2) < 2) {
+					throw slowcontrol::exception("can't write to gpio",slowcontrol::exception::level::kStop);
+				}
 			} else {
-				write(lValueFd, "0\n", 2);
+				if (write(lValueFd, "0\n", 2) < 2) {
+					throw slowcontrol::exception("can't write to gpio",slowcontrol::exception::level::kStop);
+				}
 			}
 		}
 
