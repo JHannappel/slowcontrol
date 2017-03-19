@@ -9,15 +9,15 @@
 
 static void populateThermometers();
 
-class owTemperature: public slowcontrol::boundCheckerInterface<slowcontrol::measurement<float>>,
-	        public slowcontrol::defaultReaderInterface,
-	        public slowcontrol::unitInterface {
+class owTemperature: public slowcontrol::boundCheckerDamper<slowcontrol::boundCheckerInterface<slowcontrol::measurement<float>>>,
+	public slowcontrol::defaultReaderInterface,
+	public slowcontrol::unitInterface {
   protected:
 	std::string lPath;
 	measurement_state::stateType lBadFileType = 0;
   public:
 	owTemperature(const char *aPath):
-		boundCheckerInterface(-55, 125, 0.5),
+		boundCheckerDamper(std::chrono::seconds(120), -55, 125, 0.5),
 		defaultReaderInterface(lConfigValues, std::chrono::seconds(30)),
 		unitInterface(lConfigValues, "deg C") {
 		lClassName.fSetFromString(__func__);

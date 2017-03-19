@@ -408,6 +408,7 @@ namespace slowcontrol {
 
 	template <typename baseClass, bool checkLowBound = true, bool checkHighBound = true> class boundCheckerInterface: public baseClass {
 	  protected:
+		typedef baseClass baseClassType;
 		typename std::conditional<checkLowBound, configValue<typename baseClass::valueType>,
 		         dummyConfigValue<typename baseClass::valueType>>::type lLowerBound;
 		typename std::conditional<checkHighBound, configValue<typename baseClass::valueType>,
@@ -466,6 +467,30 @@ namespace slowcontrol {
 				}
 			}
 		};
+	};
+
+	template <typename boundChecker> class boundCheckerDamper: public boundChecker {
+	  protected:
+		typename boundChecker::baseClassType::valueType value;
+		typename boundChecker::baseClassType::timeType time;
+		configValue<typename boundChecker::baseClassType::timeType::duration> lTau;
+	  public:
+		template <class ... Types> boundCheckerDamper(
+		    decltype(lTau.fGetValue()) aTau,
+		    Types ... args
+		) :
+			boundChecker(args ...),
+			lTau("tau", this->lConfigValues, aTau) {
+		};
+		virtual void fCheckValue(typename boundChecker::baseClassType::timeType aTime,
+		                         typename boundChecker::baseClassType::valueType aValue) {
+			auto deltaT = aTime - time;
+			auto ratio = exp(- deltaT / lTau.fGetValue());
+			value *= ratio;
+			value += aValue * (1 - ratio);
+			time = aTime;
+			boundChecker::fCheckValue(time, value);
+		}
 	};
 
 
