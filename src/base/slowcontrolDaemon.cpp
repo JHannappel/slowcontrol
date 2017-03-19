@@ -167,14 +167,11 @@ namespace slowcontrol {
 		sigaction(SIGINT, &action, nullptr);
 		sigaction(SIGUSR1, &action, nullptr);
 		sigaction(SIGUSR2, &action, nullptr);
-		std::cerr << "unblocked signal " <<  std::endl;
 		while (true) {
-			std::cerr << "wait for signal " <<  std::endl;
 			struct timespec timeout;
 			timeout.tv_sec = 1;
 			timeout.tv_nsec = 0;
 			auto sig = sigtimedwait(&sigmask, nullptr, &timeout);
-			std::cerr << "caught signal " << sig << std::endl;
 			switch (sig) {
 				case SIGTERM:
 				case SIGINT:
