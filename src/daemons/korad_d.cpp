@@ -192,7 +192,7 @@ bool koradReadValue::fReadCurrentValue() {
 			aLine.fRead(buffer, 7, std::chrono::seconds(2));
 			retval = fStore(std::stof(buffer));
 		});
-	} catch (std::invalid_argument) {
+	} catch (std::invalid_argument&) {
 		retval = false;
 	}
 	return retval;
