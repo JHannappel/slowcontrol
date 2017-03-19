@@ -143,10 +143,10 @@ class diskwatch {
 	int id;
 	int lHostCompound;
   public:
-	diskwatch(const char *aPath, int aHostCompound);
+	diskwatch(const std::string& aPath, int aHostCompound);
 	void read();
 };
-diskwatch::diskwatch(const char *aPath, int aHostCompound) {
+diskwatch::diskwatch(const std::string& aPath, int aHostCompound) {
 	lCommand = "smartctl -s on -i -A ";
 	lCommand += aPath;
 	id = 0;
@@ -245,17 +245,17 @@ static void populateTemperature(int aCompound) {
 static void populateDiskwatches(int aCompund, std::vector<diskwatch*>& aDiskwatches) {
 	DIR *devdir = opendir("/dev");
 	for (;;) {
-		struct dirent *de = readdir(devdir);
-		if (de == NULL) {
+		auto de = readdir(devdir);
+		if (de == nullptr) {
 			break;
 		}
 		if (strncmp("sd", de->d_name, 2) == 0 && strlen(de->d_name) == 3) {
-			char name[256] = "/dev/";
-			strcat(name, de->d_name);
-			char testcmd[256] = "smartctl -s on ";
-			strcat(testcmd, name);
-			if (system(testcmd) == 0) {
-				diskwatch *dw = new diskwatch(name, aCompund);
+			std::string name("/dev/");
+			name += de->d_name;
+			std::string testcmd("smartctl -s on ");
+			testcmd += name;
+			if (system(testcmd.c_str()) == 0) {
+				auto dw = new diskwatch(name, aCompund);
 				dw->read();
 				aDiskwatches.push_back(dw);
 				std::cerr << name << " found as hard disk" << std::endl;
