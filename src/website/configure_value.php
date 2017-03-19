@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $query.="value=".pg_escape_literal($_POST['value']);
     $query.=",comment=".pg_escape_literal($_POST['comment']);
     $query.=",last_change=now()";
-    $query.="WHERE $idcolumn=$id AND name=".pg_escape_literal($_GET['name']).";";
+    $query.=" WHERE $idcolumn=$id AND name=".pg_escape_literal($_GET['name']).";";
   } else {
     $query="INSERT INTO $table ($idcolumn,name,value,comment) VALUES (";
     $query.="$id";
