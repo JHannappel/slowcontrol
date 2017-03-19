@@ -94,8 +94,9 @@ class cameraRecording: public slowcontrol::measurement<bool> {
 		std::string command(lCommand);
 		command += filename;
 		command += ".h264";
-		system(command.c_str());
-		lMessageQueue.fEnqueue(filename);
+		if (system(command.c_str()) == 0) { // enqueue only if filming worked
+			lMessageQueue.fEnqueue(filename);
+		}
 	}
 	void fPostProcess() {
 		while (!slowcontrol::daemon::fGetInstance()->fGetStopRequested()) {
@@ -107,11 +108,12 @@ class cameraRecording: public slowcontrol::measurement<bool> {
 				command += lOutputDir;
 				command += filename;
 				command += ".mp4";
-				system(command.c_str());
-				command = "/run/";
-				command += filename;
-				command += ".h264";
-				unlink(command.c_str());
+				if (system(command.c_str()) == 0) { // remove only if conversion worked
+					command = "/run/";
+					command += filename;
+					command += ".h264";
+					unlink(command.c_str());
+				}
 			}
 		}
 		std::cout << "stopping post process thread\n";
