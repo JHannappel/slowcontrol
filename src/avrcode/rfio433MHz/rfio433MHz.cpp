@@ -72,13 +72,13 @@ IOPin(B, 1) RFDataOut(true);
 USARTHandler(0, 500000, 7, 64, 0) gUSARTHandler;
 
 
-ISR(USART_RX_vect) {
+ISR(USART_RX_vect, ISR_BLOCK) {
 	gUSARTHandler.fAddByteToBuffer();
 }
 
 
 
-ISR(TIMER1_CAPT_vect) { // an edge was detected and captured
+ISR(TIMER1_CAPT_vect, ISR_BLOCK) { // an edge was detected and captured
 	Capture.fSet(true);
 	unsigned short interval = ICR1;
 	TCCR1B ^= _BV(ICES1); // change edge
@@ -102,7 +102,7 @@ ISR(TIMER1_CAPT_vect) { // an edge was detected and captured
 	Capture.fSet(false);
 }
 
-ISR(TIMER1_COMPA_vect) { // an edge timeout happened
+ISR(TIMER1_COMPA_vect, ISR_BLOCK) { // an edge timeout happened
 	TimeOut.fSet(true);
 	if (gBuffer[gWriteBufferIndex].fGetNEntries() > pulseBuffer::kMinEdges /* pulse train found */) {
 		gBuffer[gWriteBufferIndex].fSetValid();
