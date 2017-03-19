@@ -57,7 +57,7 @@ namespace slowcontrol {
 	  public:
 		serialLine(const std::string& aDevName, int aBaudRate, Parity aParity = NONE, int aBits = 8, int aStopBits = 1);
 		virtual ~serialLine();
-		virtual void fSetLineSeparator(char aSeperator);
+		virtual void fSetLineSeparator(char aSeparator);
 		virtual void fSetRetries(int aRetries);
 		virtual bool fInit();
 		virtual int fRead(char *aBuffer, int aBuffsize, durationType aTimeout);
