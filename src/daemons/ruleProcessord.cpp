@@ -673,9 +673,9 @@ template <typename T> class ruleNodeTypedMeasurement: public ruleNodeMeasurement
 	const char *fGetValueExpression() override {
 		if (typeid(bool) == typeid(T)) {
 			return " CAST(value AS INTEGER) AS value ";
-		} else {
-			return " value ";
-		};
+		}
+		return " value ";
+		;
 	}
 };
 

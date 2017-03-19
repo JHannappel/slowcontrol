@@ -24,16 +24,16 @@ class presence: public slowcontrol::measurement<bool>,
 	bool fReadCurrentValue() override {
 		if (system(lCommand.c_str()) == 0) {
 			return fStore(true);
-		} else {
-			return fStore(false);
 		}
+		return fStore(false);
+
 	};
 	decltype(lReadoutInterval.fGetValue()) fGetReadoutInterval() const override {
 		if (lNoValueYet || lOldValue) {
 			return lReadoutInterval.fGetValue();
-		} else {
-			return lQuickReadoutInterval.fGetValue();
 		}
+		return lQuickReadoutInterval.fGetValue();
+
 	}
 };
 

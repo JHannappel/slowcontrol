@@ -50,18 +50,18 @@ namespace slowcontrol {
 			}
 			gConnections[std::this_thread::get_id()] = dbc;
 			return dbc;
-		} else {
-			auto connection = it->second;
-			unsigned int retries = 0;
-			while (PQstatus(connection) != CONNECTION_OK) {
-				std::cerr << PQerrorMessage(connection) << std::endl;
-				sleep(retries);
-				retries = std::min<unsigned int>(retries + 1, 120);
-				std::cerr << "retry to reset db connection in " << std::this_thread::get_id() << std::endl;
-				PQreset(connection);
-			}
-			return connection;
 		}
+		auto connection = it->second;
+		unsigned int retries = 0;
+		while (PQstatus(connection) != CONNECTION_OK) {
+			std::cerr << PQerrorMessage(connection) << std::endl;
+			sleep(retries);
+			retries = std::min<unsigned int>(retries + 1, 120);
+			std::cerr << "retry to reset db connection in " << std::this_thread::get_id() << std::endl;
+			PQreset(connection);
+		}
+		return connection;
+
 	}
 	const std::string& base::fGetHostName() {
 		if (gHostname.empty()) {
@@ -232,9 +232,9 @@ namespace slowcontrol {
 						PQclear(result);
 						std::cout << "result is now '" << aResponse << "'" << std::endl;
 						return (outcome);
-					} else {
-						PQfreemem(notification);
 					}
+					PQfreemem(notification);
+
 				}
 			}
 

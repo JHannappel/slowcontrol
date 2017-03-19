@@ -86,7 +86,8 @@ namespace slowcontrol {
 			dup2(fd, 2);
 			setsid();       // detach from old session;
 			return;
-		} else if (daemon_pid != -1) { /* now we are still the old process */
+		}
+		if (daemon_pid != -1) { /* now we are still the old process */
 			exit(0);
 		} else { /* dirt! the fork failed! */
 			std::cerr << "could not fork daemon" << std::endl;
