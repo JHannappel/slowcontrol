@@ -44,8 +44,8 @@ namespace slowcontrol {
 	serialLine::~serialLine() {
 		close(lFd);
 	}
-	void serialLine::fSetLineSeperator(char aSeperator) {
-		aSeperator = aSeperator;
+	void serialLine::fSetLineSeperator(char aSeparator) {
+		lSeparator = aSeparator;
 	}
 
 	/// set the number of retries for reading, default is 10
