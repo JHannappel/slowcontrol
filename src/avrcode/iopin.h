@@ -40,6 +40,6 @@ template <unsigned short portAddr,
 /// macro to define an ioPin, uses preprocessor magic to produce the
 /// required register adresses from the symbolic port name.
 /// \class ioPin
-#define IOPin(Port,Bit) ioPin<(unsigned short)(&PORT##Port),(unsigned short)(&DDR##Port),(unsigned short)(&PIN##Port),Bit>
+#define IOPin(Port,Bit) ioPin<reinterpret_cast<unsigned short>(&PORT##Port),reinterpret_cast<unsigned short>(&DDR##Port),reinterpret_cast<unsigned short>(&PIN##Port),Bit>
 
 #endif
