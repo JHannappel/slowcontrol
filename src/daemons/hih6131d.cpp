@@ -76,7 +76,7 @@ class hih6131moisture: public slowcontrol::boundCheckerInterface<slowcontrol::me
 		}
 		fConfigure();
 	};
-	virtual bool fReadCurrentValue() {
+	bool fReadCurrentValue() override {
 		unsigned char buf[4];
 		buf[0] = 0;
 		if (write(fd, buf, 0) < 0) {

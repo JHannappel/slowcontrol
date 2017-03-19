@@ -29,11 +29,11 @@ template <typename T> class koradTypedValue:  public slowcontrol::measurement<T>
 		koradValue(aSupply, aPsName, aValueName) {
 		this->lClassName.fSetFromString(__func__);
 	};
-	virtual void fInit() {
+	void fInit() override {
 		this->fInitializeUid(lName);
 		this->fConfigure();
 	};
-	virtual slowcontrol::base::uidType fDoGetUid() {
+	slowcontrol::base::uidType fDoGetUid() override {
 		return this->fGetUid();
 	};
 };
@@ -57,7 +57,7 @@ class koradReadValue: public koradTypedValue<float>,
 		lReadBackCommand(aReadBackCommand) {
 		lDeadBand.fSetValue(0.00001);
 	};
-	virtual bool fReadCurrentValue();
+	bool fReadCurrentValue() override;
 };
 
 class koradSetValue: public koradReadValue,
@@ -74,7 +74,7 @@ class koradSetValue: public koradReadValue,
 		koradReadValue(aSupply, aPsName, aValueName, aReadBackCommand, aUnit),
 		lSetCommandFormat(aSetCommandFormat) {
 	};
-	virtual bool fProcessRequest(const request* aRequest, std::string& aResponse);
+	bool fProcessRequest(const request* aRequest, std::string& aResponse) override;
 };
 
 class koradDerivedValue: public koradTypedValue<float>,
@@ -112,8 +112,8 @@ class koradOutValue: public koradTypedValue<bool>,
 		lSupply(aSupply),
 		lCVMode(aSupply, aPsName, "CVMode") {
 	};
-	virtual bool fProcessRequest(const request* aRequest, std::string& aResponse);
-	virtual bool fReadCurrentValue();
+	bool fProcessRequest(const request* aRequest, std::string& aResponse) override;
+	bool fReadCurrentValue() override;
 };
 
 class koradPowerSupply {

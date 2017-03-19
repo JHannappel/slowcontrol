@@ -58,14 +58,14 @@ class dvmReadout: public slowcontrol::measurement<float>,
 		}
 	}
 
-	virtual int fGetFd() {
+	int fGetFd() override {
 		return lSerial.fGetFd();
 	}
-	virtual void fSetPollFd(struct pollfd *aPollfd) {
+	void fSetPollFd(struct pollfd *aPollfd) override {
 		aPollfd->fd = fGetFd();
 		aPollfd->events = POLLIN;
 	}
-	virtual bool fProcessData(short /*aRevents*/) {
+	bool fProcessData(short /*aRevents*/) override {
 		bool valueHasChanged = false;
 		unsigned char c;
 		if (read(fGetFd(), &c, 1) == 1) {

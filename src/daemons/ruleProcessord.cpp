@@ -36,8 +36,8 @@ class ruleNode {
 		ruleNodeCreatorTemplate() {
 			debugthis;
 		};
-		virtual ruleNode* fCreate(const std::string& aName,
-		                          int aNodeId) {
+		ruleNode* fCreate(const std::string& aName,
+		                  int aNodeId) override {
 			auto rule = fNewT<T>(aName, aNodeId);
 			debugthat(rule);
 			return rule;
@@ -46,7 +46,7 @@ class ruleNode {
 			static ruleNodeCreatorTemplate gCreator;
 			return &gCreator;
 		};
-		virtual int fGetNumberOfPossibleParents() const {
+		int fGetNumberOfPossibleParents() const override {
 			debugthis;
 			return this->lMaxParents;
 		};
@@ -256,7 +256,7 @@ template <unsigned nParents = 0> class ruleNodeWithParents: public ruleNode {
 			debugthis;
 			this->lMaxParents = nParents;
 		}
-		virtual int fGetNumberOfPossibleParents() const {
+		int fGetNumberOfPossibleParents() const override {
 			debugthis;
 			return nParents;
 		};
@@ -281,7 +281,7 @@ template <unsigned nParents = 0> class ruleNodeWithParents: public ruleNode {
 		}
 	};
 
-	virtual void fInit() {
+	void fInit() override {
 		ruleNode::fInit();
 		std::string query("SELECT parent,slot FROM rule_node_parents WHERE nodeid=");
 		query += std::to_string(lNodeId);
@@ -315,10 +315,10 @@ template <unsigned nParents = 0> class ruleNodeLogical: public ruleNodeWithParen
 		ruleNodeWithParents<nParents>(aName, aNodeId) {
 	}
 	//class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeLogical, ruleNodeWithParents<nParents>> {};
-	virtual double fGetValueAsDouble() const {
+	double fGetValueAsDouble() const override {
 		return lValue ? 1.0 : 0.0;
 	}
-	virtual bool fGetValueAsBool() const {
+	bool fGetValueAsBool() const override {
 		return lValue;
 	}
 };
@@ -330,7 +330,7 @@ class ruleNodeOr: public ruleNodeLogical<> {
 	};
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeOr, ruleNodeLogical<>> {
 	};
-	virtual void fProcess() {
+	void fProcess() override {
 		lValue = false;
 		for (auto parent : lParents) {
 			lValue |= parent->fGetValueAsBool();
@@ -349,7 +349,7 @@ class ruleNodeAnd: public ruleNodeLogical<> {
 	};
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeAnd, ruleNodeLogical<>> {
 	};
-	virtual void fProcess() {
+	void fProcess() override {
 		lValue = true;
 		for (auto parent : lParents) {
 			lValue &= parent->fGetValueAsBool();
@@ -368,7 +368,7 @@ class ruleNodeOddNTrue: public ruleNodeLogical<> {
 	};
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeOddNTrue, ruleNodeLogical<>> {
 	};
-	virtual void fProcess() {
+	void fProcess() override {
 		lValue = false;
 		for (auto parent : lParents) {
 			lValue ^= parent->fGetValueAsBool();
@@ -386,7 +386,7 @@ class ruleNodeEvenNTrue: public ruleNodeLogical<> {
 	};
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeEvenNTrue, ruleNodeLogical<>> {
 	};
-	virtual void fProcess() {
+	void fProcess() override {
 		lValue = true;
 		for (auto parent : lParents) {
 			lValue ^= parent->fGetValueAsBool();
@@ -408,12 +408,12 @@ class ruleNodeLatch: public ruleNodeLogical<2> {
 	};
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeLatch, ruleNodeLogical<2>> {
 	};
-	virtual void fInit() {
+	void fInit() override {
 		ruleNodeLogical::fInit();
 		lSet = fSetNamedParent("set");
 		lReset = fSetNamedParent("reset");
 	}
-	virtual void fProcess() {
+	void fProcess() override {
 		if (lSet->fGetValueAsBool() && lSet->fGetTime() > lReset->fGetTime()) {
 			lValue = true;
 			fSetTime(lSet->fGetTime());
@@ -438,12 +438,12 @@ class ruleNodeGreater: public ruleNodeLogical<2> {
 	};
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeGreater, ruleNodeLogical<2>> {
 	};
-	virtual void fInit() {
+	void fInit() override {
 		ruleNodeLogical::fInit();
 		lLeft = fSetNamedParent("left");
 		lRight = fSetNamedParent("right");
 	}
-	virtual void fProcess() {
+	void fProcess() override {
 		lValue = lLeft->fGetValueAsDouble() > lRight->fGetValueAsDouble();
 		fSetTimeFromParents();
 		ruleNode::fProcess();
@@ -460,7 +460,7 @@ class ruleNodeEqual: public ruleNodeLogical<> {
 	};
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeEqual, ruleNodeLogical<>> {
 	};
-	virtual void fProcess() {
+	void fProcess() override {
 		lValue = true;
 		// algorithm from https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance
 		size_t n = 0;
@@ -494,10 +494,10 @@ template <unsigned nParents = 0> class ruleNodeArithmetic: public ruleNodeWithPa
 	}
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeArithmetic, ruleNodeWithParents<nParents>> {
 	};
-	virtual double fGetValueAsDouble() const {
+	double fGetValueAsDouble() const override {
 		return lValue;
 	}
-	virtual bool fGetValueAsBool() const {
+	bool fGetValueAsBool() const override {
 		return lValue != 0.0;
 	};
 };
@@ -510,7 +510,7 @@ class ruleNodeSum: public ruleNodeArithmetic<> {
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeSum, ruleNodeArithmetic<>> {
 	};
 
-	virtual void fProcess() {
+	void fProcess() override {
 		lValue = 0.0;
 		for (auto parent : lParents) {
 			lValue += parent->fGetValueAsDouble();
@@ -530,7 +530,7 @@ class ruleNodeProduct: public ruleNodeArithmetic<> {
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeProduct, ruleNodeArithmetic<>> {
 	};
 
-	virtual void fProcess() {
+	void fProcess() override {
 		lValue = 1.0;
 		for (auto parent : lParents) {
 			lValue *= parent->fGetValueAsDouble();
@@ -552,13 +552,13 @@ class ruleNodeQuotient: public ruleNodeArithmetic<2> {
 	};
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeQuotient, ruleNodeArithmetic<2>> {
 	};
-	virtual void fInit() {
+	void fInit() override {
 		ruleNodeArithmetic::fInit();
 		lDividend = fSetNamedParent("dividend");
 		lDivisor = fSetNamedParent("divisor");
 	}
 
-	virtual void fProcess() {
+	void fProcess() override {
 		lValue = lDividend->fGetValueAsDouble() / lDivisor->fGetValueAsDouble();
 		fSetTimeFromParents();
 		ruleNode::fProcess();
@@ -575,13 +575,13 @@ class ruleNodeDifference: public ruleNodeArithmetic<2> {
 	};
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeDifference, ruleNodeArithmetic<2>> {
 	};
-	virtual void fInit() {
+	void fInit() override {
 		ruleNodeArithmetic::fInit();
 		lSubtrahend = fSetNamedParent("subtrahend");
 		lMinuend = fSetNamedParent("minuend");
 	}
 
-	virtual void fProcess() {
+	void fProcess() override {
 		lValue = lSubtrahend->fGetValueAsDouble() - lMinuend->fGetValueAsDouble();
 		fSetTimeFromParents();
 		ruleNode::fProcess();
@@ -602,19 +602,19 @@ class ruleNodeDelay: public ruleNodeWithParents<1>,
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeDelay, ruleNodeArithmetic<1>> {
 	};
 
-	virtual double fGetValueAsDouble() const {
+	double fGetValueAsDouble() const override {
 		return lValue;
 	}
-	virtual bool fGetValueAsBool() const {
+	bool fGetValueAsBool() const override {
 		return lValue != 0.0;
 	}
-	virtual void fProcess() {
+	void fProcess() override {
 		std::cout << " processing undelayed " << lName << "\n";
 		auto then = lParent->fGetTime() + lDelay.fGetValue();
 		lValue = lParent->fGetValueAsDouble();
 		fResumeAt(then);
 	}
-	virtual void fProcessTimed() {
+	void fProcessTimed() override {
 		ruleNode::fProcess();
 	}
 };
@@ -630,13 +630,13 @@ class ruleNodeConstant: public ruleNode {
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeConstant, ruleNode> {
 	};
 
-	virtual double fGetValueAsDouble() const {
+	double fGetValueAsDouble() const override {
 		return lValue;
 	}
-	virtual bool fGetValueAsBool() const {
+	bool fGetValueAsBool() const override {
 		return lValue != 0.0;
 	}
-	virtual void fProcess() {
+	void fProcess() override {
 	}
 };
 
@@ -658,19 +658,19 @@ template <typename T> class ruleNodeTypedMeasurement: public ruleNodeMeasurement
 	}
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeTypedMeasurement, ruleNodeMeasurement> {
 	};
-	virtual double fGetValueAsDouble() const {
+	double fGetValueAsDouble() const override {
 		return lCurrentValue.load();
 	};
-	virtual bool fGetValueAsBool() const {
+	bool fGetValueAsBool() const override {
 		return lCurrentValue.load() != 0;
 	};
-	virtual void fSetFromString(const char* aString) {
+	void fSetFromString(const char* aString) override {
 		std::stringstream buf(aString);
 		T value;
 		buf >> value;
 		lCurrentValue = value;
 	};
-	virtual const char *fGetValueExpression() {
+	const char *fGetValueExpression() override {
 		if (typeid(bool) == typeid(T)) {
 			return " CAST(value AS INTEGER) AS value ";
 		} else {
@@ -703,15 +703,15 @@ class ruleNodeTriggerMeasurement: public ruleNodeMeasurement {
 	}
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeTriggerMeasurement, ruleNodeMeasurement> {
 	};
-	virtual double fGetValueAsDouble() const {
+	double fGetValueAsDouble() const override {
 		return 1.0;
 	};
-	virtual bool fGetValueAsBool() const {
+	bool fGetValueAsBool() const override {
 		return true;
 	};
-	virtual void fSetFromString(const char* /*aString*/) {
+	void fSetFromString(const char* /*aString*/) override {
 	};
-	virtual const char *fGetValueExpression() {
+	const char *fGetValueExpression() override {
 		return " 1 AS value ";
 	};
 };
@@ -735,13 +735,13 @@ template <typename T> class ruleNodeTypedAction: public ruleNodeAction {
 	ruleNodeTypedAction(const std::string& aName, int aId) :
 		ruleNodeAction(aName, aId) {
 	}
-	virtual double fGetValueAsDouble() const {
+	double fGetValueAsDouble() const override {
 		return lParent->fGetValueAsDouble();
 	};
-	virtual bool fGetValueAsBool() const {
+	bool fGetValueAsBool() const override {
 		return lParent->fGetValueAsBool();
 	};
-	virtual void fProcess() {
+	void fProcess() override {
 		std::string query("INSERT INTO setvalue_requests (uid,request,comment) VALUES (");
 		query += std::to_string(lUid);
 		query += ",";
@@ -777,13 +777,13 @@ class ruleNodeTriggerAction: public ruleNodeAction {
 	}
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeTriggerAction, ruleNodeAction> {
 	};
-	virtual double fGetValueAsDouble() const {
+	double fGetValueAsDouble() const override {
 		return lParent->fGetValueAsDouble();
 	};
-	virtual bool fGetValueAsBool() const {
+	bool fGetValueAsBool() const override {
 		return lParent->fGetValueAsBool();
 	};
-	virtual void fProcess() {
+	void fProcess() override {
 		std::string query("INSERT INTO setvalue_requests (uid,request,comment) VALUES (");
 		query += std::to_string(lUid);
 		query += ",'set','by rule processor');";
@@ -803,11 +803,11 @@ template <typename T> class ruleNodeDerivedValue: public ruleNodeWithParents<1>,
 		slowcontrol::boundCheckerInterface<slowcontrol::measurement<T>>(std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max()) {
 	};
 	// class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeDerivedValue, ruleNodeWithParents<1>> {};
-	virtual void fProcess() {
+	void fProcess() override {
 		this->fStore(lParent->fGetValueAsDouble(), lParent->fGetTime());
 		ruleNodeWithParents::fProcess();
 	};
-	virtual void fInit() {
+	void fInit() override {
 		ruleNodeWithParents::fInit();
 		this->fInitializeUid(lName);
 		this->fConfigure();
@@ -822,11 +822,11 @@ template <> class ruleNodeDerivedValue<bool>: public ruleNodeWithParents<1>,
 		slowcontrol::measurement<bool>() {
 	};
 	//	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeDerivedValue, ruleNodeWithParents<1>> {};
-	virtual void fProcess() {
+	void fProcess() override {
 		fStore(lParent->fGetValueAsBool(), lParent->fGetTime());
 		ruleNodeWithParents::fProcess();
 	};
-	virtual void fInit() {
+	void fInit() override {
 		ruleNodeWithParents::fInit();
 		fInitializeUid(lName);
 		fConfigure();
@@ -841,10 +841,10 @@ class ruleNodeDerivedFloat : public ruleNodeDerivedValue<float> {
 	};
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeDerivedFloat, ruleNodeDerivedValue<float>> {
 	};
-	virtual double fGetValueAsDouble() const {
+	double fGetValueAsDouble() const override {
 		return const_cast<ruleNodeDerivedFloat*>(this)->fGetCurrentValue();
 	};
-	virtual bool fGetValueAsBool() const {
+	bool fGetValueAsBool() const override {
 		return const_cast<ruleNodeDerivedFloat*>(this)->fGetCurrentValue() != 0.0;
 	};
 };
@@ -856,10 +856,10 @@ class ruleNodeDerivedBool : public ruleNodeDerivedValue<bool> {
 	};
 	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeDerivedBool, ruleNodeDerivedValue<bool>> {
 	};
-	virtual double fGetValueAsDouble() const {
+	double fGetValueAsDouble() const override {
 		return const_cast<ruleNodeDerivedBool*>(this)->fGetCurrentValue() ? 1.0 : 0.0;
 	};
-	virtual bool fGetValueAsBool() const {
+	bool fGetValueAsBool() const override {
 		return const_cast<ruleNodeDerivedBool*>(this)->fGetCurrentValue();
 	};
 };

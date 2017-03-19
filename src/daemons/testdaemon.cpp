@@ -14,7 +14,7 @@ class testvalue: public slowcontrol::boundCheckerInterface<slowcontrol::measurem
 		fInitializeUid(aName);
 		fConfigure();
 	}
-	virtual bool fProcessRequest(const writeValue::request* aRequest, std::string& aResponse) {
+	bool fProcessRequest(const writeValue::request* aRequest, std::string& aResponse) override {
 		auto req = dynamic_cast<const requestWithType*>(aRequest);
 		if (req != nullptr) {
 			fStore(req->lGoalValue);

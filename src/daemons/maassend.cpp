@@ -29,7 +29,7 @@ class cpuTemperature: public boundCheckerInterface<measurement<float>, false, tr
 		fConfigure();
 		std::cerr << __func__ << " size is " << sizeof(*this) << std::endl;
 	};
-	virtual bool fReadCurrentValue() {
+	bool fReadCurrentValue() override {
 		std::ifstream thermometer(lPath.c_str());
 		float temperature;
 		thermometer >> temperature;
@@ -78,7 +78,7 @@ class freeMemory: public boundCheckerInterface<measurement<float>, true, false>,
 		slowcontrol::base::fAddToCompound(aHostCompound, fGetUid(), "freeMemory");
 		std::cerr << __func__ << " size is " << sizeof(*this) << std::endl;
 	}
-	virtual bool fReadCurrentValue() {
+	bool fReadCurrentValue() override {
 		bool valueHasChanged = false;
 		FILE *f;
 		double v = 0;
@@ -124,7 +124,7 @@ class fsSize: public boundCheckerInterface<measurement<float>, true, false>,
 		slowcontrol::base::fAddToCompound(aHostCompound, fGetUid(), description);
 		std::cerr << __func__ << " size is " << sizeof(*this) << std::endl;
 	};
-	virtual bool fReadCurrentValue() {
+	bool fReadCurrentValue() override {
 		struct statfs buf;
 		if (statfs(lMountPoint.c_str(), &buf) == 0) {
 			return fStore((double)buf.f_bavail * (double)buf.f_bsize / (1024. * 1024. * 1024.));

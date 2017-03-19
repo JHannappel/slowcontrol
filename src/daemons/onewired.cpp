@@ -30,7 +30,7 @@ class owTemperature: public slowcontrol::boundCheckerDamper<slowcontrol::boundCh
 		fInitializeUid(aPath);
 		fConfigure();
 	};
-	virtual bool fReadCurrentValue() {
+	bool fReadCurrentValue() override {
 		bool valueHasChanged = false;
 		std::ifstream thermometer(lPath.c_str());
 		if (thermometer.fail() && lState != lBadFileType) {

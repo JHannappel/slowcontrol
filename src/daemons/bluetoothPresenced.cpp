@@ -21,14 +21,14 @@ class presence: public slowcontrol::measurement<bool>,
 		fInitializeUid(description);
 		fConfigure();
 	};
-	virtual bool fReadCurrentValue() {
+	bool fReadCurrentValue() override {
 		if (system(lCommand.c_str()) == 0) {
 			return fStore(true);
 		} else {
 			return fStore(false);
 		}
 	};
-	virtual decltype(lReadoutInterval.fGetValue()) fGetReadoutInterval() const {
+	decltype(lReadoutInterval.fGetValue()) fGetReadoutInterval() const override {
 		if (lNoValueYet || lOldValue) {
 			return lReadoutInterval.fGetValue();
 		} else {

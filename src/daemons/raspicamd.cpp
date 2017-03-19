@@ -49,7 +49,7 @@ class cameraRecording: public slowcontrol::measurement<bool> {
 
 	messageQueue<std::string> lMessageQueue;
   public:
-	virtual void fConfigure() {
+	void fConfigure() override {
 		measurement::fConfigure();
 		lCommand = "raspivid -t ";
 		lCommand += std::to_string(lChunkLength);
