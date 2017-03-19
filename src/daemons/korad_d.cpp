@@ -1,6 +1,6 @@
 #include "measurement.h"
-#include "slowcontrolDaemon.h"
 #include "communications.h"
+#include "slowcontrolDaemon.h"
 
 #include <Options.h>
 class koradPowerSupply;

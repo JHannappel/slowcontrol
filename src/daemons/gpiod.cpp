@@ -1,6 +1,6 @@
 #include "measurement.h"
-#include "slowcontrolDaemon.h"
 #include "gpio.h"
+#include "slowcontrolDaemon.h"
 #include <fstream>
 #include <Options.h>
 

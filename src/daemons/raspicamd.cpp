@@ -1,8 +1,8 @@
 #include "measurement.h"
-#include "slowcontrolDaemon.h"
 #include "gpio.h"
-#include <iostream>
+#include "slowcontrolDaemon.h"
 #include <Options.h>
+#include <iostream>
 #include <deque>
 template <typename T> class messageQueue {
   protected:

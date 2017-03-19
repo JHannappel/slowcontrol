@@ -3,8 +3,8 @@
 #include <fstream>
 #include <Options.h>
 #include <dirent.h>
-#include <string.h>
 #include <iostream>
+#include <string.h>
 
 
 static void populateThermometers();

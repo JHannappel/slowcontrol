@@ -1,10 +1,10 @@
 #include "communications.h"
-#include <unistd.h>
 #include <syslog.h>
+#include <unistd.h>
 #include <errno.h>
 #include <termios.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <cstring>

@@ -2,10 +2,10 @@
 #include "measurement.h"
 #include "slowcontrol.h"
 #include <Options.h>
-#include <unistd.h>
 #include <poll.h>
-#include <sys/types.h>
+#include <unistd.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <fcntl.h>
 #include <pthread.h>
 #include <signal.h>

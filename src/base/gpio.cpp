@@ -1,10 +1,10 @@
 #include "gpio.h"
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
 #include <stdio.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <fcntl.h>
 #include <unistd.h>
 

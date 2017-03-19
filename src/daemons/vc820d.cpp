@@ -1,6 +1,6 @@
 #include "measurement.h"
-#include "slowcontrolDaemon.h"
 #include "communications.h"
+#include "slowcontrolDaemon.h"
 #include <Options.h>
 #include <termios.h>
 #include <sys/ioctl.h>

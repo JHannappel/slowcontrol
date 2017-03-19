@@ -1,6 +1,6 @@
 #include "trigger.h"
-#include "slowcontrolDaemon.h"
 #include "communications.h"
+#include "slowcontrolDaemon.h"
 #include <fstream>
 #include <Options.h>
 #include <stdio.h>

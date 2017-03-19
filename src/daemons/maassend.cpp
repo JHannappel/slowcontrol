@@ -1,13 +1,13 @@
 #include "measurement.h"
-#include "slowcontrolDaemon.h"
 #include "slowcontrol.h"
+#include "slowcontrolDaemon.h"
 #include <fstream>
 #include <Options.h>
 
 #include <dirent.h>
-#include <string.h>
 #include <iostream>
 #include <limits>
+#include <string.h>
 #include <sys/vfs.h>
 using namespace slowcontrol;
 class cpuTemperature: public boundCheckerInterface<measurement<float>, false, true>,
