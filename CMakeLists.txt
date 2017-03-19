@@ -36,6 +36,11 @@ SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wunused -Woverloaded-virtual -Wsh
 
 SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -I ${OptionParser_INCLUDE_DIRS} -I ${PostgreSQL_INCLUDE_DIR}")
 
+IF ( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+        MESSAGE("Compiler is CLANG, enabling additional parameters.")
+        SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -D__STRICT_ANSI__ -fdiagnostics-fixit-info -Qunused-arguments")
+ENDIF ()
+
 # Set variables for packaging. 
 SET(PROJECT_DESCRIPTION "slowcontrol system written in C++11")
 SET(PROJECT_VERSION "${${CMAKE_PROJECT_NAME}_LATEST_TAG}")
