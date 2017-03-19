@@ -15,4 +15,4 @@ namespace slowcontrol {
 			fConfigure();
 		};
 	};
-}
+} // namespace slowcontrol
