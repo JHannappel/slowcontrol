@@ -38,7 +38,7 @@ class rslSender: public rslTrigger, public slowcontrol::writeValue {
 	        request::idType aRequestId) {
 		return new request(this, aWhen, aRequestId);
 	}
-	virtual bool fProcessRequest(const writeValue::request* aRequest, std::string& aResponse) {
+	virtual bool fProcessRequest(const writeValue::request* /*aRequest*/, std::string& aResponse) {
 		char buffer[128];
 		sprintf(buffer, "send 6 20 240 0 6 1 5 %X\n", lPattern);
 		lSerial->fWrite(buffer);
