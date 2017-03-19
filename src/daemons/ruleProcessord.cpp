@@ -9,7 +9,7 @@
 
 
 #define debugthis std::cerr << __FILE__ << ":" << __LINE__ << ": " << __func__ << "@" << (void*)this << ", a " << typeid(*this).name() << "\n"
-#define debugthat(that) std::cerr << __FILE__ << ":" << __LINE__ << ": " << __func__ << " on " << (void*)that << ", a " << typeid(*that).name() << "\n"
+#define debugthat(that) std::cerr << __FILE__ << ":" << __LINE__ << ": " << __func__ << " on " << (void*)(that) << ", a " << typeid(*(that)).name() << "\n"
 
 //using namespace date;
 class ruleNode {
