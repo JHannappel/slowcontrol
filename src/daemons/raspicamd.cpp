@@ -89,7 +89,7 @@ class cameraRecording: public slowcontrol::measurement<bool> {
 	}
 	void fRecord() {
 		char filename[1024];
-		std::time_t now = std::time(NULL);
+		std::time_t now = std::time(nullptr);
 		std::strftime(filename, sizeof(filename), lFilePattern.fGetValue().c_str(), std::localtime(&now));
 		std::string command(lCommand);
 		command += filename;

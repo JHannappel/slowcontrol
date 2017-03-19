@@ -158,7 +158,7 @@ void diskwatch::read() {
 	while (!feof(p)) {
 		char line[1024];
 		char buf[1024];
-		if (fgets(line, sizeof(line), p) == NULL) {
+		if (fgets(line, sizeof(line), p) == nullptr) {
 			break;
 		}
 		if (sscanf(line, "Model Family: %[^\n\r]", buf) == 1) { // found drive model family

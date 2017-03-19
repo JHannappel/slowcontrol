@@ -59,7 +59,7 @@ static void populateThermometers() {
 	DIR *owdir = opendir("/1w");
 	for (;;) {
 		struct dirent *de = readdir(owdir);
-		if (de == NULL) {
+		if (de == nullptr) {
 			break;
 		}
 		if (strncmp("10.", de->d_name, 3) == 0
