@@ -1,0 +1,9 @@
+#!/bin/bash
+# file installed from @CMAKE_CURRENT_SOURCE_DIR@
+
+# get connection info for database
+. ~/.slowcontrol
+
+while read name dummy host; do
+    ssh ${host} sudo systemctl restart ${name}
+done < <(psql -q -t "${dataBaseString}" -c "SELECT description FROM daemon_heartbeat NATURAL INNER JOIN daemon_list WHERE daemon_time IS NOT NULL AND next_beat < 'infinity' AND now() > next_beat;")
