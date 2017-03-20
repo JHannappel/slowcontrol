@@ -5,5 +5,13 @@
 . ~/.slowcontrol
 
 while read name dummy host; do
-    ssh ${host} sudo systemctl restart ${name}
-done < <(psql -q -t "${dataBaseString}" -c "SELECT description FROM daemon_heartbeat NATURAL INNER JOIN daemon_list WHERE daemon_time IS NOT NULL AND next_beat < 'infinity' AND now() > next_beat;")
+    if [ ! -z "${name}" -a ! -z "${host}" ]; then
+	echo "${name} on host ${host} seems to be dead"
+	ssh ${host} sudo systemctl restart ${name}
+fi
+done < <(psql -q -t "${dataBaseString}" <<EOF
+SELECT description FROM daemon_heartbeat NATURAL INNER JOIN daemon_list
+WHERE daemon_time IS NOT NULL AND next_beat < 'infinity'
+AND now()>next_beat+(next_beat-daemon_time);
+EOF
+)
