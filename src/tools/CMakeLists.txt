@@ -1,7 +1,7 @@
 add_executable(requestValueSetting requestValueSetting.cpp)
 target_link_libraries(requestValueSetting slowcontrol_static ${OptionParser_LIBRARIES})
 
-set(usr_local_bin "restart_daemons")
+set(usr_local_bin "restart_daemons" "purge_videos")
 
 foreach (SCRIPT ${usr_local_bin})
        configure_file(${SCRIPT}.in ${SCRIPT} @ONLY)

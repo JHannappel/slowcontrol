@@ -1,0 +1,14 @@
+#!/bin/bash
+# file installed from @CMAKE_CURRENT_SOURCE_DIR@
+
+directories=${@:-"/data/video/sort/nix"}
+
+for directory in ${directories}; do
+    sortpath=$(dirname ${directory})
+    sortdir=$(basename ${sortpath})
+    videopath=${sortpath}/../
+    for srcdir in $(ls ${videopath} | grep -v ${sortdir}); do
+	rm $(ls ${videopath}${srcdir} | grep -f <(ls ${directory}))
+    done
+    rm ${directory}/*
+done
