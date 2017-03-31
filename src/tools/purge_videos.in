@@ -8,7 +8,10 @@ for directory in ${directories}; do
     sortdir=$(basename ${sortpath})
     videopath=${sortpath}/../
     for srcdir in $(ls ${videopath} | grep -v ${sortdir}); do
-	rm $(find ${videopath}${srcdir} -mtime +7 | grep -f <(ls ${directory}))
+	filesToDelete="$(find ${videopath}${srcdir} -mtime +7 | grep -f <(ls ${directory}))"
+	for f in $filesToDelete; do
+	    rm ${f}
+	    rm ${directory}/$(basename ${f})
+	done
     done
-    rm ${directory}/*
 done
