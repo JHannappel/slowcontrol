@@ -28,9 +28,9 @@ namespace slowcontrol {
 	};
 
 	daemon* daemon::gInstance = nullptr;
-	Option<bool> gDontDaemonize('\0', "nodaemon", "switch of going to daemon mode", false);
+	options::single<bool> gDontDaemonize('\0', "nodaemon", "switch of going to daemon mode", false);
 
-	Option<const char*> gPidFileName('\0', "pidFile", "name of pid file", nullptr);
+	options::single<const char*> gPidFileName('\0', "pidFile", "name of pid file", nullptr);
 
 	daemon::daemon(const char *aName) :
 		lThreads([](std::thread * a, std::thread * b) {

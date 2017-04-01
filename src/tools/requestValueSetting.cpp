@@ -2,7 +2,7 @@
 #include <Options.h>
 
 int main(int argc, const char* argv[]) {
-	OptionParser parser("slowcontrol program for setting values via command line");
+	options::parser parser("slowcontrol program for setting values via command line");
 	auto argList = parser.fParse(argc, argv);
 	int uid = 1;
 	auto& request = argList.at(0);

@@ -28,7 +28,7 @@ class testvalue: public slowcontrol::boundCheckerInterface<slowcontrol::measurem
 
 
 int main(int argc, const char *argv[]) {
-	OptionParser parser("slowcontrol program for test purposes");
+	options::parser parser("slowcontrol program for test purposes");
 	parser.fParse(argc, argv);
 
 	auto daemon = new slowcontrol::daemon("testd");

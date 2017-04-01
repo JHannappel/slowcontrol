@@ -242,8 +242,8 @@ bool koradOutValue::fReadCurrentValue() {
 
 
 int main(int argc, const char *argv[]) {
-	OptionParser parser("slowcontrol program controlling korad power supplies");
-	OptionMap<std::string> supplyDevices('d', "device", "power supply name/device pairs");
+	options::parser parser("slowcontrol program controlling korad power supplies");
+	options::map<std::string> supplyDevices('d', "device", "power supply name/device pairs");
 	parser.fParse(argc, argv);
 	auto daemon = new slowcontrol::daemon("korad_d");
 

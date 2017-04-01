@@ -9,11 +9,11 @@
 
 
 int main(int argc, const char *argv[]) {
-	OptionParser parser("slowcontrol program for test purposes");
-	OptionMap<unsigned int> inPinNumbers('i', "inpin", "input pin name/number pairs");
-	OptionMap<unsigned int> outPinNumbers('o', "outpin", "output pin name/number pairs");
-	OptionMap<unsigned int> durationInPinNumbers('I', "durationIn", "input pin name/number pairs for duration measurements");
-	OptionMap<unsigned int> durationOutPinNumbers('O', "durationOut", "output pin name/number pairs  for duration measurements");
+	options::parser parser("slowcontrol program for test purposes");
+	options::map<unsigned int> inPinNumbers('i', "inpin", "input pin name/number pairs");
+	options::map<unsigned int> outPinNumbers('o', "outpin", "output pin name/number pairs");
+	options::map<unsigned int> durationInPinNumbers('I', "durationIn", "input pin name/number pairs for duration measurements");
+	options::map<unsigned int> durationOutPinNumbers('O', "durationOut", "output pin name/number pairs  for duration measurements");
 	parser.fParse(argc, argv);
 
 	auto daemon = new slowcontrol::daemon("gpiod");

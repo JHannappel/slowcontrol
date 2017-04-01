@@ -938,7 +938,7 @@ class dataTable {
 
 
 int main(int argc, const char *argv[]) {
-	OptionParser parser("slowcontrol program for processing rules");
+	options::parser parser("slowcontrol program for processing rules");
 	parser.fParse(argc, argv);
 
 	ruleNode::fRegisterNodeTypeCreator<ruleNodeOr>("or");

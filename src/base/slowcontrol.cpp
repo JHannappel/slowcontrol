@@ -34,7 +34,7 @@ namespace slowcontrol {
 	std::map<std::thread::id, PGconn *> base::gConnections;
 	std::string base::gHostname;
 
-	static Option<const char*> gDatabaseString('\0', "dataBaseString", "connection info for database");
+	static options::single<const char*> gDatabaseString('\0', "dataBaseString", "connection info for database");
 
 	PGconn *base::fGetDbconn() {
 		auto it = gConnections.find(std::this_thread::get_id());

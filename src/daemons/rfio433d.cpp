@@ -52,10 +52,10 @@ class rslSender: public rslTrigger, public slowcontrol::writeValue {
 //"send 6 20 240 0 6 1 5 B92F3680" // switch on
 
 int main(int argc, const char *argv[]) {
-	OptionParser parser("slowcontrol daemon for 433MHz RF data");
-	Option<std::string> device('d', "device", "serial device with rfio433MHz-avr");
-	OptionMap<unsigned int> rslCommands('r', "rslcommand", "rsl command name/number pairs");
-	OptionMap<unsigned int> rslSenders('s', "sendrslcommand", "sendable rsl command name/number pairs");
+	options::parser parser("slowcontrol daemon for 433MHz RF data");
+	options::single<std::string> device('d', "device", "serial device with rfio433MHz-avr");
+	options::map<unsigned int> rslCommands('r', "rslcommand", "rsl command name/number pairs");
+	options::map<unsigned int> rslSenders('s', "sendrslcommand", "sendable rsl command name/number pairs");
 	parser.fParse(argc, argv);
 
 	slowcontrol::serialLine serial(device, 500000);

@@ -40,9 +40,9 @@ class presence: public slowcontrol::measurement<bool>,
 
 
 int main(int argc, const char *argv[]) {
-	OptionMap< std::string> btAdresses('a', "address", "bluetooth adresses");
+	options::map< std::string> btAdresses('a', "address", "bluetooth adresses");
 
-	OptionParser parser("slowcontrol program for detecting presence of bluetooth devices");
+	options::parser parser("slowcontrol program for detecting presence of bluetooth devices");
 	parser.fParse(argc, argv);
 
 	auto daemon = new slowcontrol::daemon("bluetoothPresenced");

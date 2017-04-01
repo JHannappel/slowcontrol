@@ -76,7 +76,7 @@ static void populateThermometers() {
 
 
 int main(int argc, const char *argv[]) {
-	OptionParser parser("slowcontrol program for reading one-wire devices via owfs");
+	options::parser parser("slowcontrol program for reading one-wire devices via owfs");
 	parser.fParse(argc, argv);
 
 

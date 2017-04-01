@@ -102,9 +102,9 @@ class hih6131moisture: public slowcontrol::boundCheckerInterface<slowcontrol::me
 };
 
 int main(int argc, const char *argv[]) {
-	Option<const char*> deviceName('d', "device", "name of the i2c device", "/dev/i2c-1");
-	Option<const char*> measurementName('n', "name", "name base of the measurement");
-	OptionParser parser("slowcontrol program for reading hih6131 moisture sensors");
+	options::single<const char*> deviceName('d', "device", "name of the i2c device", "/dev/i2c-1");
+	options::single<const char*> measurementName('n', "name", "name base of the measurement");
+	options::parser parser("slowcontrol program for reading hih6131 moisture sensors");
 	parser.fParse(argc, argv);
 
 

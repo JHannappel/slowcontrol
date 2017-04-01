@@ -121,12 +121,12 @@ class cameraRecording: public slowcontrol::measurement<bool> {
 };
 
 int main(int argc, const char *argv[]) {
-	OptionParser parser("slowcontrol program for test purposes");
-	Option<std::string> name('n', "name", "camera and support base name");
-	Option<unsigned int> lightPin('l', "lightPin", "gpiopin to switch on light", 17);
-	Option<unsigned int> darknessInPin('d', "darkIn", "gpiopin for darkness det (in)", 22);
-	Option<unsigned int> darknessOutPin('D', "darkOut", "gpiopin for darkness det (out)", 27);
-	Option<unsigned int> motionPin('m', "motionPin", "gpiopin for motion detector", 18);
+	options::parser parser("slowcontrol program for test purposes");
+	options::single<std::string> name('n', "name", "camera and support base name");
+	options::single<unsigned int> lightPin('l', "lightPin", "gpiopin to switch on light", 17);
+	options::single<unsigned int> darknessInPin('d', "darkIn", "gpiopin for darkness det (in)", 22);
+	options::single<unsigned int> darknessOutPin('D', "darkOut", "gpiopin for darkness det (out)", 27);
+	options::single<unsigned int> motionPin('m', "motionPin", "gpiopin for motion detector", 18);
 
 	parser.fParse(argc, argv);
 

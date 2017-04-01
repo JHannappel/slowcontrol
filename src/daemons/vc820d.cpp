@@ -139,8 +139,8 @@ class dvmReadout: public slowcontrol::measurement<float>,
 
 
 int main(int argc, const char *argv[]) {
-	OptionParser parser("slowcontrol program for readingc VC820/840 DVMs");
-	OptionMap<std::string> dvms('d', "device", "DVM name/device pairs");
+	options::parser parser("slowcontrol program for readingc VC820/840 DVMs");
+	options::map<std::string> dvms('d', "device", "DVM name/device pairs");
 	parser.fParse(argc, argv);
 
 	auto daemon = new slowcontrol::daemon("vc820d");

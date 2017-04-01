@@ -290,7 +290,7 @@ static void populateFswatches(int aHostCompound) {
 }
 
 int main(int argc, const char *argv[]) {
-	OptionParser parser("slowcontrol program for checking comuter health");
+	options::parser parser("slowcontrol program for checking comuter health");
 	parser.fParse(argc, argv);
 	auto maassend = new slowcontrol::daemon("maassend");
 	auto compound = base::fGetCompoundId(base::fGetHostName().c_str(), base::fGetHostName().c_str());
