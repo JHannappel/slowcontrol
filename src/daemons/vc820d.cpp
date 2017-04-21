@@ -4,7 +4,7 @@
 #include <Options.h>
 #include <termios.h>
 #include <sys/ioctl.h>
-
+#include <string.h>
 
 class dvmReadout: public slowcontrol::measurement<float>,
 	public slowcontrol::pollReaderInterface,

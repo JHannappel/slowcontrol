@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <signal.h>
+#include <string.h>
 
 namespace slowcontrol {
 	static std::map<std::chrono::system_clock::time_point, writeValue::request*> gScheduledWriteRequests;
