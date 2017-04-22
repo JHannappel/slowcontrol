@@ -2,6 +2,8 @@
 #include "slowcontrol.h"
 #include <set>
 #include <iostream>
+#include <OptionsChrono.h>
+
 namespace slowcontrol {
 	void configValueBase::fSave(const char *aTable, const char *aIdColumn, int aId, const char *aComment) const {
 		std::string query("INSERT INTO ");
@@ -79,5 +81,15 @@ namespace slowcontrol {
 				it.second->fSave(aTable, aIdColumn, aId, "later default");
 			}
 		}
+	}
+	void configValue<std::chrono::system_clock::duration>::fSetFromString(const char *aString) {
+		std::chrono::system_clock::duration dur; // buffer needed due to atomicity of lValue
+		options::internal::parseDurationString(dur, aString);
+		lValue = dur;
+	}
+	void configValue<std::chrono::system_clock::duration>::fAsString(std::string& aString) const {
+		auto a = std::to_string(std::chrono::duration_cast<std::chrono::duration<double>>(lValue.load()).count());
+		aString += a;
+		aString += " s";
 	}
 } // namespace slowcontrol

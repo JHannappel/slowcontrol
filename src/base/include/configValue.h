@@ -79,15 +79,8 @@ namespace slowcontrol {
 		virtual void fSetValue(std::chrono::system_clock::duration aValue) {
 			lValue = aValue;
 		}
-		virtual void fSetFromString(const char *aString) {
-			double d = std::stod(aString);
-			std::chrono::microseconds tmp(static_cast<long long>(d * 1E6));
-			lValue = tmp;
-		}
-		virtual void fAsString(std::string& aString) const {
-			auto a = std::to_string(std::chrono::duration_cast<std::chrono::duration<double>>(lValue.load()).count());
-			aString += a;
-		}
+		virtual void fSetFromString(const char *aString);
+		virtual void fAsString(std::string& aString) const;
 	};
 
 	template <> class configValue<std::string>: public configValueBase {
