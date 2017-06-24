@@ -8,6 +8,7 @@
 #include <chrono>
 #include <thread>
 #include <mutex>
+#include <cmath>
 #include <algorithm>
 #include <iostream>
 #include <poll.h>
