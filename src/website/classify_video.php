@@ -102,7 +102,11 @@ while(false !== ($e = $d->read())) {
 	echo "<td colspan=2>Remove from <input type=\"submit\" name=\"deldir\" value=\"$e\" ></td><td> has ${s['nlink']} places to live</td>\n";}
     } else {
       if (isset($previous)) {
-	echo "<td>Add to <input type=\"submit\" name=\"olddirprev\" value=\"$e\" > and goto previous</td>\n";
+	      if ($e == "nix") {
+	echo "<td>Add to <input type=\"submit\" name=\"olddirprev\" value=\"$e\" accesskey=\"n\"> and goto previous</td>\n";
+	      } else {
+		      echo "<td>Add to <input type=\"submit\" name=\"olddirprev\" value=\"$e\"> and goto previous</td>\n";
+	      }
       }
       echo "<td>Add to <input type=\"submit\" name=\"olddir\" value=\"$e\" ></td>\n";
       if (isset($next)) {
