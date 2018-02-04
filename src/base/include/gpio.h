@@ -33,6 +33,8 @@ namespace slowcontrol {
 			public pollReaderInterface {
 		  protected:
 			input lInPin;
+			configValue<measurementBase::durationType> lReadDelay;
+			configValue<bool> lInvert;
 		  public:
 			input_value(const std::string &aName,
 			            unsigned int aPinNumber);
