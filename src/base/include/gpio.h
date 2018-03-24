@@ -12,6 +12,7 @@ namespace slowcontrol {
 			int lValueFd;
 		  public:
 			pin_base(unsigned int aPinNumber);
+			bool fRead();
 			int fGetFd() {
 				return lValueFd;
 			};
@@ -20,7 +21,6 @@ namespace slowcontrol {
 		class input: public pin_base {
 		  public:
 			input(unsigned int aPinNumber);
-			bool fRead();
 		};
 		class output: public pin_base {
 		  public:

@@ -18,6 +18,14 @@ namespace slowcontrol {
 			lDirPath = "/sys/class/gpio/gpio";
 			lDirPath += std::to_string(lPinNumber);
 		}
+		bool pin_base::fRead() {
+			lseek(lValueFd, 0, SEEK_SET);
+			char buffer;
+			if (read(lValueFd, &buffer, 1) < 1) {
+				throw slowcontrol::exception("can't read gpio", slowcontrol::exception::level::kContinue);
+			}
+			return buffer == '1';
+		};
 
 		input::input(unsigned int aPinNumber) : pin_base(aPinNumber) {
 			{
@@ -32,14 +40,6 @@ namespace slowcontrol {
 			valuepath += "/value";
 			lValueFd = open(valuepath.c_str(), O_RDONLY);
 		};
-		bool input::fRead() {
-			lseek(lValueFd, 0, SEEK_SET);
-			char buffer;
-			if (read(lValueFd, &buffer, 1) < 1) {
-				throw slowcontrol::exception("can't read gpio", slowcontrol::exception::level::kContinue);
-			}
-			return buffer == '1';
-		};
 
 		output::output(unsigned int aPinNumber) : pin_base(aPinNumber) {
 			{
@@ -48,7 +48,7 @@ namespace slowcontrol {
 			}
 			std::string valuepath(lDirPath);
 			valuepath += "/value";
-			lValueFd = open(valuepath.c_str(), O_WRONLY);
+			lValueFd = open(valuepath.c_str(), O_RDWR);
 		}
 
 		void output::fWrite(bool aValue) {
@@ -95,8 +95,13 @@ namespace slowcontrol {
 			auto req = dynamic_cast<const requestWithType*>(aRequest);
 			if (req != nullptr) {
 				lOutPin.fWrite(req->lGoalValue);
-				fStore(req->lGoalValue);
-				aResponse = "done.";
+				auto result = lOutPin.fRead();
+				fStore(result);
+				if (result == req->lGoalValue) {
+					aResponse = "done.";
+				} else {
+					aResponse = "failed.";
+				}
 				return true;
 			}
 			aResponse = "can't cast request";
