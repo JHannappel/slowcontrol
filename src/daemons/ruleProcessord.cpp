@@ -484,6 +484,25 @@ class ruleNodeEqual: public ruleNodeLogical<> {
 };
 
 
+class ruleNodeLatest: public ruleNodeLogical<> {
+  public:
+	ruleNodeLatest(const std::string& aName, int aNodeId):
+		ruleNodeLogical(aName, aNodeId) {
+	};
+	class ruleNodeCreator: public ruleNode::ruleNodeCreatorTemplate<ruleNodeLatest, ruleNodeLogical<>> {
+	};
+	void fProcess() override {
+		for (auto parent : lParents) {
+			if (lTime < parent->fGetTime()) {
+				fSetTime(parent->fGetTime());
+				lValue = parent->fGetValueAsBool();
+			}
+		}
+		ruleNode::fProcess();
+	}
+};
+
+
 
 
 template <unsigned nParents = 0> class ruleNodeArithmetic: public ruleNodeWithParents<nParents> {
@@ -952,6 +971,9 @@ int main(int argc, const char *argv[]) {
 	ruleNode::fRegisterNodeTypeCreator<ruleNodeGreater>("greater");
 	ruleNode::fRegisterNodeTypeCreator<ruleNodeEqual>("equal");
 
+	ruleNode::fRegisterNodeTypeCreator<ruleNodeLatest>("latest");
+
+	
 	ruleNode::fRegisterNodeTypeCreator<ruleNodeSum>("sum");
 	ruleNode::fRegisterNodeTypeCreator<ruleNodeProduct>("product");
 	ruleNode::fRegisterNodeTypeCreator<ruleNodeQuotient>("quotient");
