@@ -7,6 +7,8 @@
 #include <dirent.h>
 #include <iostream>
 #include <limits>
+#include <algorithm>
+#include <list>
 #include <string.h>
 #include <sys/vfs.h>
 using namespace slowcontrol;
@@ -27,7 +29,6 @@ class cpuTemperature: public boundCheckerInterface<measurement<float>, false, tr
 		lDeadBand.fSetValue(1);
 		fInitializeUid(name);
 		fConfigure();
-		std::cerr << __func__ << " size is " << sizeof(*this) << std::endl;
 	};
 	bool fReadCurrentValue() override {
 		std::ifstream thermometer(lPath.c_str());
@@ -76,7 +77,6 @@ class freeMemory: public boundCheckerInterface<measurement<float>, true, false>,
 		fInitializeUid(description);
 		fConfigure();
 		slowcontrol::base::fAddToCompound(aHostCompound, fGetUid(), "freeMemory");
-		std::cerr << __func__ << " size is " << sizeof(*this) << std::endl;
 	}
 	bool fReadCurrentValue() override {
 		bool valueHasChanged = false;
@@ -122,7 +122,6 @@ class fsSize: public boundCheckerInterface<measurement<float>, true, false>,
 		lName.fSetValue(description);
 		fConfigure();
 		slowcontrol::base::fAddToCompound(aHostCompound, fGetUid(), description);
-		std::cerr << __func__ << " size is " << sizeof(*this) << std::endl;
 	};
 	bool fReadCurrentValue() override {
 		struct statfs buf;
@@ -134,7 +133,7 @@ class fsSize: public boundCheckerInterface<measurement<float>, true, false>,
 };
 
 class diskwatch {
-  private:
+  protected:
 	std::string lCommand;
 	std::string lFamily;
 	std::string lModel;
@@ -142,6 +141,7 @@ class diskwatch {
 	std::map <int, diskValue*>values;
 	int id;
 	int lHostCompound;
+	virtual void readValue(const char *line);
   public:
 	diskwatch(const std::string& aPath, int aHostCompound);
 	void read();
@@ -161,7 +161,13 @@ void diskwatch::read() {
 		if (fgets(line, sizeof(line), p) == nullptr) {
 			break;
 		}
-		if (sscanf(line, "Model Family: %[^\n\r]", buf) == 1) { // found drive model family
+
+		if (sscanf(line, "Model Number: %[^\n\r]", buf) == 1) { // found drive model family
+			if (lModel.compare(buf) != 0) {
+				drive_changed = true;
+				lModel = buf;
+			}
+		} else if (sscanf(line, "Model Family: %[^\n\r]", buf) == 1) { // found drive model family
 			if (lFamily.compare(buf) != 0) {
 				drive_changed = true;
 				lFamily = buf;
@@ -179,31 +185,7 @@ void diskwatch::read() {
 				}
 			}
 		} else if (id > 0) { // only if we know the disk look for individual values
-			int ID, flag, value, worst, thresh;
-			double raw;
-			char buf2[1024];
-			int items;
-			bool found = false;
-			items = sscanf(line, "%d %s %x %d %d --- %*s %*s %s %lf",
-			               &ID, buf2, &flag, &value, &worst, buf, &raw);
-			if (items == 7) { // we could not get thresholds, so assume fine
-				thresh = 0;
-				found = true;
-			} else {
-				items = sscanf(line, "%d %s %x %d %d %d %*s %*s %s %lf",
-				               &ID, buf2, &flag, &value, &worst, &thresh, buf, &raw);
-				if (items == 8) {
-					found = true;
-				}
-			}
-			if (found) {// attribute read sucessfully
-				auto it = values.find(ID);
-				if (it == values.end()) {
-					auto bla = values.emplace(ID, new diskValue(lSerial, ID, buf2, id));
-					it = bla.first;
-				}
-				it->second->fStore(raw);
-			}
+			readValue(line);
 		}
 	}
 	pclose(p);
@@ -218,6 +200,79 @@ void diskwatch::read() {
 		slowcontrol::base::fAddSubCompound(lHostCompound, id, "disk");
 	}
 }
+
+void diskwatch::readValue(const char *line) {
+	int ID, flag, value, worst, thresh;
+	double raw;
+	char buf[1024];
+	char buf2[1024];
+	int items;
+	bool found = false;
+
+	items = sscanf(line, "%d %s %x %d %d --- %*s %*s %s %lf",
+	               &ID, buf2, &flag, &value, &worst, buf, &raw);
+	if (items == 7) { // we could not get thresholds, so assume fine
+		thresh = 0;
+		found = true;
+	} else {
+		items = sscanf(line, "%d %s %x %d %d %d %*s %*s %s %lf",
+		               &ID, buf2, &flag, &value, &worst, &thresh, buf, &raw);
+		if (items == 8) {
+			found = true;
+		}
+	}
+	if (found) {// attribute read sucessfully
+		auto it = values.find(ID);
+		if (it == values.end()) {
+			auto bla = values.emplace(ID, new diskValue(lSerial, ID, buf2, id));
+			it = bla.first;
+		}
+		it->second->fStore(raw);
+	}
+}
+
+class nvmewatch: public diskwatch {
+  protected:
+	void readValue(const char *line) override;
+  public:
+	nvmewatch(const std::string& aPath, int aHostCompound):
+		diskwatch(aPath, aHostCompound) {
+		lCommand += " | tr -d ','";
+	};
+};
+void nvmewatch::readValue(const char *line) {
+	long long value;
+	char buf[1024];
+	int items;
+
+	items = sscanf(line, "%[^:]: %Ld",
+	               buf, &value);
+	if (items == 2) { // we could not get thresholds, so assume fine
+		static const std::vector<std::string> accepted({"Namespace 1 Utilization",
+		        "Temperature",
+		        "Percentage Used",
+		        "Data Units Read",
+		        "Data Units Written",
+		        "Host Read Commands",
+		        "Host Write Commands",
+		        "Power Cycles",
+		        "Power On Hours",
+		        "Unsafe Shutdowns",
+		        "Media and Data Integrity Errors"});
+		for (unsigned ID = 0; ID < accepted.size(); ID++) {
+			if (accepted.at(ID).compare(buf) == 0) {
+				auto it = values.find(ID);
+				if (it == values.end()) {
+					auto bla = values.emplace(ID, new diskValue(lSerial, 1, buf, id));
+					it = bla.first;
+				}
+				it->second->fStore(value);
+				break;
+			}
+		}
+	}
+}
+
 
 static void populateTemperature(int aCompound) {
 	if (system("modprobe coretemp") != 0) {
@@ -259,6 +314,19 @@ static void populateDiskwatches(int aCompund, std::vector<diskwatch*>& aDiskwatc
 				dw->read();
 				aDiskwatches.push_back(dw);
 				std::cerr << name << " found as hard disk" << std::endl;
+			} else {
+				std::cerr << name << " seems to be no proper disk" << std::endl;
+			}
+		} else if (strncmp("nvme", de->d_name, 4) == 0 && strlen(de->d_name) == 5) {
+			std::string name("/dev/");
+			name += de->d_name;
+			std::string testcmd("smartctl -s on ");
+			testcmd += name;
+			if (system(testcmd.c_str()) == 0) {
+				auto dw = new nvmewatch(name, aCompund);
+				dw->read();
+				aDiskwatches.push_back(dw);
+				std::cerr << name << " found as nvme disk" << std::endl;
 			} else {
 				std::cerr << name << " seems to be no proper disk" << std::endl;
 			}
