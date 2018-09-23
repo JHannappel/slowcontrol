@@ -233,13 +233,24 @@ void diskwatch::readValue(const char *line) {
 
 class nvmewatch: public diskwatch {
   protected:
+	class nvmeValue {
+	  public:
+		std::string name;
+		int ID;
+		nvmeValue(int aID, const std::string& aName):
+			name(aName), ID(aID) {};
+	};
+
 	void readValue(const char *line) override;
+
   public:
 	nvmewatch(const std::string& aPath, int aHostCompound):
 		diskwatch(aPath, aHostCompound) {
 		lCommand += " | tr -d ','";
 	};
 };
+
+
 void nvmewatch::readValue(const char *line) {
 	long long value;
 	char buf[1024];
@@ -248,27 +259,26 @@ void nvmewatch::readValue(const char *line) {
 	items = sscanf(line, "%[^:]: %Ld",
 	               buf, &value);
 	if (items == 2) { // we could not get thresholds, so assume fine
-		static const std::vector<std::string> accepted({"Namespace 1 Utilization",
-		        "Temperature",
-		        "Percentage Used",
-		        "Data Units Read",
-		        "Data Units Written",
-		        "Host Read Commands",
-		        "Host Write Commands",
-		        "Power Cycles",
-		        "Power On Hours",
-		        "Unsafe Shutdowns",
-		        "Media and Data Integrity Errors"});
-		for (unsigned ID = 0; ID < accepted.size(); ID++) {
-			if (accepted.at(ID).compare(buf) == 0) {
-				auto it = values.find(ID);
-				if (it == values.end()) {
-					auto bla = values.emplace(ID, new diskValue(lSerial, 1, buf, id));
-					it = bla.first;
-				}
-				it->second->fStore(value);
-				break;
+		static const std::map<std::string, int> accepted({
+			{"Namespace 1 Utilization", 1001},
+			{"Temperature", 194},
+			{"Percentage Used", 5},
+			{"Data Units Read", 242},
+			{"Data Units Written", 241},
+			{"Host Read Commands", 1002},
+			{"Host Write Commands", 1003},
+			{"Power Cycles", 12},
+			{"Power On Hours", 9},
+			{"Unsafe Shutdowns", 1004},
+			{"Media and Data Integrity Errors", 198}});
+		auto item = accepted.find(buf);
+		if (item != accepted.end()) {
+			auto it = values.find(item->second);
+			if (it == values.end()) {
+				auto bla = values.emplace(item->second, new diskValue(lSerial, item->second, buf, id));
+				it = bla.first;
 			}
+			it->second->fStore(value);
 		}
 	}
 }
@@ -333,6 +343,9 @@ static void populateDiskwatches(int aCompund, std::vector<diskwatch*>& aDiskwatc
 		}
 	}
 	closedir(devdir);
+	for (auto dw : aDiskwatches) {
+		dw->read();
+	}
 }
 
 static void populateFswatches(int aHostCompound) {
