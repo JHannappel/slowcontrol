@@ -2,12 +2,18 @@
 -- PostgreSQL database dump
 --
 
+-- Dumped from database version 9.4.19
+-- Dumped by pg_dump version 10.5
+
 SET statement_timeout = 0;
 SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
 SET client_encoding = 'UTF8';
 SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
 SET check_function_bodies = false;
 SET client_min_messages = warning;
+SET row_security = off;
 
 --
 -- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: 
@@ -23,8 +29,6 @@ CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
 COMMENT ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
 
 
-SET search_path = public, pg_catalog;
-
 SET default_tablespace = '';
 
 SET default_with_oids = false;
@@ -32,7 +36,7 @@ SET default_with_oids = false;
 --
 --
 
-CREATE TABLE comments (
+CREATE TABLE public.comments (
     uid integer,
     comment text,
     "time" timestamp with time zone DEFAULT now()
@@ -43,7 +47,7 @@ CREATE TABLE comments (
 --
 --
 
-CREATE TABLE compound_families (
+CREATE TABLE public.compound_families (
     parent_id integer NOT NULL,
     child_id integer NOT NULL,
     child_name text
@@ -54,7 +58,7 @@ CREATE TABLE compound_families (
 --
 --
 
-CREATE TABLE compound_list (
+CREATE TABLE public.compound_list (
     name text NOT NULL,
     description text,
     id integer NOT NULL
@@ -65,7 +69,7 @@ CREATE TABLE compound_list (
 --
 --
 
-CREATE SEQUENCE compound_list_id_seq
+CREATE SEQUENCE public.compound_list_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -77,13 +81,13 @@ CREATE SEQUENCE compound_list_id_seq
 --
 --
 
-ALTER SEQUENCE compound_list_id_seq OWNED BY compound_list.id;
+ALTER SEQUENCE public.compound_list_id_seq OWNED BY public.compound_list.id;
 
 
 --
 --
 
-CREATE TABLE compound_uids (
+CREATE TABLE public.compound_uids (
     id integer NOT NULL,
     uid integer NOT NULL,
     child_name text
@@ -94,7 +98,7 @@ CREATE TABLE compound_uids (
 --
 --
 
-CREATE TABLE daemon_heartbeat (
+CREATE TABLE public.daemon_heartbeat (
     daemonid integer,
     daemon_time timestamp with time zone,
     server_time timestamp with time zone DEFAULT now(),
@@ -107,7 +111,7 @@ WITH (fillfactor='10');
 --
 --
 
-CREATE TABLE daemon_list (
+CREATE TABLE public.daemon_list (
     daemonid integer NOT NULL,
     description text NOT NULL,
     name text,
@@ -119,7 +123,7 @@ CREATE TABLE daemon_list (
 --
 --
 
-CREATE SEQUENCE daemon_list_daemonid_seq
+CREATE SEQUENCE public.daemon_list_daemonid_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -131,13 +135,13 @@ CREATE SEQUENCE daemon_list_daemonid_seq
 --
 --
 
-ALTER SEQUENCE daemon_list_daemonid_seq OWNED BY daemon_list.daemonid;
+ALTER SEQUENCE public.daemon_list_daemonid_seq OWNED BY public.daemon_list.daemonid;
 
 
 --
 --
 
-CREATE TABLE latest_measurements_bool (
+CREATE TABLE public.latest_measurements_bool (
     uid integer NOT NULL,
     "time" timestamp with time zone,
     value boolean
@@ -148,7 +152,7 @@ CREATE TABLE latest_measurements_bool (
 --
 --
 
-CREATE TABLE latest_measurements_float (
+CREATE TABLE public.latest_measurements_float (
     uid integer NOT NULL,
     "time" timestamp with time zone,
     value real
@@ -159,7 +163,7 @@ CREATE TABLE latest_measurements_float (
 --
 --
 
-CREATE TABLE latest_measurements_int2 (
+CREATE TABLE public.latest_measurements_int2 (
     uid integer NOT NULL,
     "time" timestamp with time zone,
     value smallint
@@ -170,7 +174,7 @@ CREATE TABLE latest_measurements_int2 (
 --
 --
 
-CREATE TABLE latest_measurements_int4 (
+CREATE TABLE public.latest_measurements_int4 (
     uid integer NOT NULL,
     "time" timestamp with time zone,
     value integer
@@ -181,7 +185,7 @@ CREATE TABLE latest_measurements_int4 (
 --
 --
 
-CREATE TABLE latest_measurements_int8 (
+CREATE TABLE public.latest_measurements_int8 (
     uid integer NOT NULL,
     "time" timestamp with time zone,
     value bigint
@@ -192,7 +196,7 @@ CREATE TABLE latest_measurements_int8 (
 --
 --
 
-CREATE TABLE latest_measurements_trigger (
+CREATE TABLE public.latest_measurements_trigger (
     uid integer NOT NULL,
     "time" timestamp with time zone
 );
@@ -202,7 +206,7 @@ CREATE TABLE latest_measurements_trigger (
 --
 --
 
-CREATE TABLE measurements_bool (
+CREATE TABLE public.measurements_bool (
     uid integer NOT NULL,
     "time" timestamp with time zone NOT NULL,
     value boolean
@@ -213,7 +217,7 @@ CREATE TABLE measurements_bool (
 --
 --
 
-CREATE TABLE measurements_float (
+CREATE TABLE public.measurements_float (
     uid integer NOT NULL,
     "time" timestamp with time zone NOT NULL,
     value real NOT NULL
@@ -224,7 +228,18 @@ CREATE TABLE measurements_float (
 --
 --
 
-CREATE TABLE measurements_int2 (
+CREATE TABLE public.measurements_float_old (
+    uid integer NOT NULL,
+    "time" timestamp with time zone NOT NULL,
+    value real NOT NULL
+);
+
+
+
+--
+--
+
+CREATE TABLE public.measurements_int2 (
     uid integer NOT NULL,
     "time" timestamp with time zone NOT NULL,
     value smallint
@@ -235,7 +250,7 @@ CREATE TABLE measurements_int2 (
 --
 --
 
-CREATE TABLE measurements_int4 (
+CREATE TABLE public.measurements_int4 (
     uid integer NOT NULL,
     "time" timestamp with time zone NOT NULL,
     value integer
@@ -246,7 +261,7 @@ CREATE TABLE measurements_int4 (
 --
 --
 
-CREATE TABLE measurements_int8 (
+CREATE TABLE public.measurements_int8 (
     uid integer NOT NULL,
     "time" timestamp with time zone NOT NULL,
     value bigint
@@ -257,7 +272,7 @@ CREATE TABLE measurements_int8 (
 --
 --
 
-CREATE TABLE measurements_trigger (
+CREATE TABLE public.measurements_trigger (
     uid integer NOT NULL,
     "time" timestamp with time zone NOT NULL
 );
@@ -267,7 +282,7 @@ CREATE TABLE measurements_trigger (
 --
 --
 
-CREATE TABLE node_types (
+CREATE TABLE public.node_types (
     type text NOT NULL,
     nparents integer,
     comment text,
@@ -279,7 +294,7 @@ CREATE TABLE node_types (
 --
 --
 
-CREATE SEQUENCE node_types_typeid_seq
+CREATE SEQUENCE public.node_types_typeid_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -291,13 +306,13 @@ CREATE SEQUENCE node_types_typeid_seq
 --
 --
 
-ALTER SEQUENCE node_types_typeid_seq OWNED BY node_types.typeid;
+ALTER SEQUENCE public.node_types_typeid_seq OWNED BY public.node_types.typeid;
 
 
 --
 --
 
-CREATE TABLE rule_config_history (
+CREATE TABLE public.rule_config_history (
     nodeid integer,
     name text,
     value text,
@@ -311,7 +326,7 @@ CREATE TABLE rule_config_history (
 --
 --
 
-CREATE TABLE rule_configs (
+CREATE TABLE public.rule_configs (
     nodeid integer NOT NULL,
     name text NOT NULL,
     value text,
@@ -324,7 +339,7 @@ CREATE TABLE rule_configs (
 --
 --
 
-CREATE TABLE rule_node_parents (
+CREATE TABLE public.rule_node_parents (
     nodeid integer NOT NULL,
     parent integer NOT NULL,
     slot text
@@ -335,7 +350,7 @@ CREATE TABLE rule_node_parents (
 --
 --
 
-CREATE TABLE rule_nodes (
+CREATE TABLE public.rule_nodes (
     nodetype text NOT NULL,
     nodename text NOT NULL,
     nodeid integer NOT NULL
@@ -346,7 +361,7 @@ CREATE TABLE rule_nodes (
 --
 --
 
-CREATE SEQUENCE rule_nodes_nodeid_seq
+CREATE SEQUENCE public.rule_nodes_nodeid_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -358,13 +373,13 @@ CREATE SEQUENCE rule_nodes_nodeid_seq
 --
 --
 
-ALTER SEQUENCE rule_nodes_nodeid_seq OWNED BY rule_nodes.nodeid;
+ALTER SEQUENCE public.rule_nodes_nodeid_seq OWNED BY public.rule_nodes.nodeid;
 
 
 --
 --
 
-CREATE TABLE setvalue_requests (
+CREATE TABLE public.setvalue_requests (
     uid integer,
     request text NOT NULL,
     response text,
@@ -381,7 +396,7 @@ WITH (fillfactor='30');
 --
 --
 
-CREATE SEQUENCE setvalue_requests_id_seq
+CREATE SEQUENCE public.setvalue_requests_id_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -393,13 +408,13 @@ CREATE SEQUENCE setvalue_requests_id_seq
 --
 --
 
-ALTER SEQUENCE setvalue_requests_id_seq OWNED BY setvalue_requests.id;
+ALTER SEQUENCE public.setvalue_requests_id_seq OWNED BY public.setvalue_requests.id;
 
 
 --
 --
 
-CREATE TABLE site_links (
+CREATE TABLE public.site_links (
     url text,
     name text,
     context text,
@@ -411,7 +426,7 @@ CREATE TABLE site_links (
 --
 --
 
-CREATE TABLE state_types (
+CREATE TABLE public.state_types (
     typename text NOT NULL,
     explanation text,
     type integer NOT NULL,
@@ -423,7 +438,7 @@ CREATE TABLE state_types (
 --
 --
 
-CREATE SEQUENCE state_types_type_seq
+CREATE SEQUENCE public.state_types_type_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -435,13 +450,13 @@ CREATE SEQUENCE state_types_type_seq
 --
 --
 
-ALTER SEQUENCE state_types_type_seq OWNED BY state_types.type;
+ALTER SEQUENCE public.state_types_type_seq OWNED BY public.state_types.type;
 
 
 --
 --
 
-CREATE TABLE time_intervals (
+CREATE TABLE public.time_intervals (
     tdiff interval,
     name text
 );
@@ -451,7 +466,7 @@ CREATE TABLE time_intervals (
 --
 --
 
-CREATE TABLE uid_config_history (
+CREATE TABLE public.uid_config_history (
     uid integer,
     name text,
     value text,
@@ -465,7 +480,7 @@ CREATE TABLE uid_config_history (
 --
 --
 
-CREATE TABLE uid_configs (
+CREATE TABLE public.uid_configs (
     uid integer NOT NULL,
     name text NOT NULL,
     value text,
@@ -478,7 +493,7 @@ CREATE TABLE uid_configs (
 --
 --
 
-CREATE TABLE uid_daemon_connection (
+CREATE TABLE public.uid_daemon_connection (
     uid integer,
     daemonid integer
 );
@@ -488,7 +503,7 @@ CREATE TABLE uid_daemon_connection (
 --
 --
 
-CREATE TABLE uid_list (
+CREATE TABLE public.uid_list (
     description text NOT NULL,
     uid integer NOT NULL,
     data_table text,
@@ -500,7 +515,7 @@ CREATE TABLE uid_list (
 --
 --
 
-CREATE SEQUENCE uid_list_uid_seq
+CREATE SEQUENCE public.uid_list_uid_seq
     START WITH 1
     INCREMENT BY 1
     NO MINVALUE
@@ -512,13 +527,13 @@ CREATE SEQUENCE uid_list_uid_seq
 --
 --
 
-ALTER SEQUENCE uid_list_uid_seq OWNED BY uid_list.uid;
+ALTER SEQUENCE public.uid_list_uid_seq OWNED BY public.uid_list.uid;
 
 
 --
 --
 
-CREATE TABLE uid_state_history (
+CREATE TABLE public.uid_state_history (
     uid integer,
     type integer,
     valid_from timestamp with time zone,
@@ -531,7 +546,7 @@ CREATE TABLE uid_state_history (
 --
 --
 
-CREATE TABLE uid_states (
+CREATE TABLE public.uid_states (
     uid integer NOT NULL,
     type integer,
     valid_from timestamp with time zone,
@@ -543,273 +558,273 @@ CREATE TABLE uid_states (
 --
 --
 
-ALTER TABLE ONLY compound_list ALTER COLUMN id SET DEFAULT nextval('compound_list_id_seq'::regclass);
+ALTER TABLE ONLY public.compound_list ALTER COLUMN id SET DEFAULT nextval('public.compound_list_id_seq'::regclass);
 
 
 --
 --
 
-ALTER TABLE ONLY daemon_list ALTER COLUMN daemonid SET DEFAULT nextval('daemon_list_daemonid_seq'::regclass);
+ALTER TABLE ONLY public.daemon_list ALTER COLUMN daemonid SET DEFAULT nextval('public.daemon_list_daemonid_seq'::regclass);
 
 
 --
 --
 
-ALTER TABLE ONLY node_types ALTER COLUMN typeid SET DEFAULT nextval('node_types_typeid_seq'::regclass);
+ALTER TABLE ONLY public.node_types ALTER COLUMN typeid SET DEFAULT nextval('public.node_types_typeid_seq'::regclass);
 
 
 --
 --
 
-ALTER TABLE ONLY rule_nodes ALTER COLUMN nodeid SET DEFAULT nextval('rule_nodes_nodeid_seq'::regclass);
+ALTER TABLE ONLY public.rule_nodes ALTER COLUMN nodeid SET DEFAULT nextval('public.rule_nodes_nodeid_seq'::regclass);
 
 
 --
 --
 
-ALTER TABLE ONLY setvalue_requests ALTER COLUMN id SET DEFAULT nextval('setvalue_requests_id_seq'::regclass);
+ALTER TABLE ONLY public.setvalue_requests ALTER COLUMN id SET DEFAULT nextval('public.setvalue_requests_id_seq'::regclass);
 
 
 --
 --
 
-ALTER TABLE ONLY state_types ALTER COLUMN type SET DEFAULT nextval('state_types_type_seq'::regclass);
+ALTER TABLE ONLY public.state_types ALTER COLUMN type SET DEFAULT nextval('public.state_types_type_seq'::regclass);
 
 
 --
 --
 
-ALTER TABLE ONLY uid_list ALTER COLUMN uid SET DEFAULT nextval('uid_list_uid_seq'::regclass);
+ALTER TABLE ONLY public.uid_list ALTER COLUMN uid SET DEFAULT nextval('public.uid_list_uid_seq'::regclass);
 
 
 --
 --
 
-ALTER TABLE ONLY compound_families
+ALTER TABLE ONLY public.compound_families
     ADD CONSTRAINT compound_families_pkey PRIMARY KEY (parent_id, child_id);
 
 
 --
 --
 
-ALTER TABLE ONLY compound_list
+ALTER TABLE ONLY public.compound_list
     ADD CONSTRAINT compound_list_id_key UNIQUE (id);
 
 
 --
 --
 
-ALTER TABLE ONLY compound_list
+ALTER TABLE ONLY public.compound_list
     ADD CONSTRAINT compound_list_pkey PRIMARY KEY (name);
 
 
 --
 --
 
-ALTER TABLE ONLY compound_uids
+ALTER TABLE ONLY public.compound_uids
     ADD CONSTRAINT compound_uids_pkey PRIMARY KEY (id, uid);
 
 
 --
 --
 
-ALTER TABLE ONLY daemon_heartbeat
+ALTER TABLE ONLY public.daemon_heartbeat
     ADD CONSTRAINT daemon_heartbeat_daemonid_key UNIQUE (daemonid);
 
 
 --
 --
 
-ALTER TABLE ONLY daemon_list
+ALTER TABLE ONLY public.daemon_list
     ADD CONSTRAINT daemon_list_daemonid_key UNIQUE (daemonid);
 
 
 --
 --
 
-ALTER TABLE ONLY daemon_list
+ALTER TABLE ONLY public.daemon_list
     ADD CONSTRAINT daemon_list_pkey PRIMARY KEY (description);
 
 
 --
 --
 
-ALTER TABLE ONLY latest_measurements_bool
+ALTER TABLE ONLY public.latest_measurements_bool
     ADD CONSTRAINT latest_measurements_bool_pkey PRIMARY KEY (uid);
 
 
 --
 --
 
-ALTER TABLE ONLY latest_measurements_float
+ALTER TABLE ONLY public.latest_measurements_float
     ADD CONSTRAINT latest_measurements_float_pkey PRIMARY KEY (uid);
 
 
 --
 --
 
-ALTER TABLE ONLY latest_measurements_int2
+ALTER TABLE ONLY public.latest_measurements_int2
     ADD CONSTRAINT latest_measurements_int2_pkey PRIMARY KEY (uid);
 
 
 --
 --
 
-ALTER TABLE ONLY latest_measurements_int4
+ALTER TABLE ONLY public.latest_measurements_int4
     ADD CONSTRAINT latest_measurements_int4_pkey PRIMARY KEY (uid);
 
 
 --
 --
 
-ALTER TABLE ONLY latest_measurements_int8
+ALTER TABLE ONLY public.latest_measurements_int8
     ADD CONSTRAINT latest_measurements_int8_pkey PRIMARY KEY (uid);
 
 
 --
 --
 
-ALTER TABLE ONLY latest_measurements_trigger
+ALTER TABLE ONLY public.latest_measurements_trigger
     ADD CONSTRAINT latest_measurements_trigger_pkey PRIMARY KEY (uid);
 
 
 --
 --
 
-ALTER TABLE ONLY node_types
+ALTER TABLE ONLY public.node_types
     ADD CONSTRAINT node_types_pkey PRIMARY KEY (type);
 
 
 --
 --
 
-ALTER TABLE ONLY rule_configs
+ALTER TABLE ONLY public.rule_configs
     ADD CONSTRAINT rule_configs_pkey PRIMARY KEY (nodeid, name);
 
 
 --
 --
 
-ALTER TABLE ONLY rule_node_parents
+ALTER TABLE ONLY public.rule_node_parents
     ADD CONSTRAINT rule_node_parents_pkey PRIMARY KEY (nodeid, parent);
 
 
 --
 --
 
-ALTER TABLE ONLY rule_nodes
+ALTER TABLE ONLY public.rule_nodes
     ADD CONSTRAINT rule_nodes_pkey PRIMARY KEY (nodetype, nodename);
 
 
 --
 --
 
-ALTER TABLE ONLY setvalue_requests
+ALTER TABLE ONLY public.setvalue_requests
     ADD CONSTRAINT setvalue_requests_pkey PRIMARY KEY (id);
 
 
 --
 --
 
-ALTER TABLE ONLY state_types
+ALTER TABLE ONLY public.state_types
     ADD CONSTRAINT state_types_pkey PRIMARY KEY (typename);
 
 
 --
 --
 
-ALTER TABLE ONLY state_types
+ALTER TABLE ONLY public.state_types
     ADD CONSTRAINT state_types_type_key UNIQUE (type);
 
 
 --
 --
 
-ALTER TABLE ONLY uid_configs
+ALTER TABLE ONLY public.uid_configs
     ADD CONSTRAINT uid_configs_pkey PRIMARY KEY (uid, name);
 
 
 --
 --
 
-ALTER TABLE ONLY uid_daemon_connection
+ALTER TABLE ONLY public.uid_daemon_connection
     ADD CONSTRAINT uid_daemon_connection_uid_key UNIQUE (uid);
 
 
 --
 --
 
-ALTER TABLE ONLY uid_list
+ALTER TABLE ONLY public.uid_list
     ADD CONSTRAINT uid_list_pkey PRIMARY KEY (description);
 
 
 --
 --
 
-ALTER TABLE ONLY uid_list
+ALTER TABLE ONLY public.uid_list
     ADD CONSTRAINT uid_list_uid_key UNIQUE (uid);
 
 
 --
 --
 
-ALTER TABLE ONLY uid_states
+ALTER TABLE ONLY public.uid_states
     ADD CONSTRAINT uid_states_pkey PRIMARY KEY (uid);
 
 
 --
 --
 
-CREATE INDEX measurements_bool_uid_time_idx ON measurements_bool USING btree (uid, "time");
+CREATE INDEX measurements_bool_uid_time_idx ON public.measurements_bool USING btree (uid, "time");
 
 
 --
 --
 
-CREATE INDEX measurements_float_uid_time_idx ON measurements_float USING btree (uid, "time");
+CREATE INDEX measurements_float_uid_time_idx ON public.measurements_float USING btree (uid, "time");
 
 
 --
 --
 
-CREATE INDEX measurements_int2_uid_time_idx ON measurements_int2 USING btree (uid, "time");
+CREATE INDEX measurements_int2_uid_time_idx ON public.measurements_int2 USING btree (uid, "time");
 
 
 --
 --
 
-CREATE INDEX measurements_int4_uid_time_idx ON measurements_int4 USING btree (uid, "time");
+CREATE INDEX measurements_int4_uid_time_idx ON public.measurements_int4 USING btree (uid, "time");
 
 
 --
 --
 
-CREATE INDEX measurements_int8_uid_time_idx ON measurements_int8 USING btree (uid, "time");
+CREATE INDEX measurements_int8_uid_time_idx ON public.measurements_int8 USING btree (uid, "time");
 
 
 --
 --
 
-CREATE INDEX measurements_trigger_uid_time_idx ON measurements_trigger USING btree (uid, "time");
+CREATE INDEX measurements_trigger_uid_time_idx ON public.measurements_trigger USING btree (uid, "time");
 
 
 --
 --
 
-CREATE INDEX setvalue_requests_uid_index ON setvalue_requests USING btree (uid);
+CREATE INDEX setvalue_requests_uid_index ON public.setvalue_requests USING btree (uid);
 
 
 --
 --
 
-CREATE INDEX uid_daemon_connection_daemonid_index ON uid_daemon_connection USING btree (daemonid);
+CREATE INDEX uid_daemon_connection_daemonid_index ON public.uid_daemon_connection USING btree (daemonid);
 
 
 --
 --
 
 CREATE RULE daemon_list_to_heartbeart AS
-    ON INSERT TO daemon_list DO  INSERT INTO daemon_heartbeat (daemonid)
+    ON INSERT TO public.daemon_list DO  INSERT INTO public.daemon_heartbeat (daemonid)
   VALUES (new.daemonid);
 
 
@@ -817,7 +832,7 @@ CREATE RULE daemon_list_to_heartbeart AS
 --
 
 CREATE RULE lastest_measurements_bool_updater AS
-    ON INSERT TO measurements_bool DO  UPDATE latest_measurements_bool SET "time" = new."time", value = new.value
+    ON INSERT TO public.measurements_bool DO  UPDATE public.latest_measurements_bool SET "time" = new."time", value = new.value
   WHERE (latest_measurements_bool.uid = new.uid);
 
 
@@ -825,7 +840,7 @@ CREATE RULE lastest_measurements_bool_updater AS
 --
 
 CREATE RULE lastest_measurements_float_updater AS
-    ON INSERT TO measurements_float DO  UPDATE latest_measurements_float SET "time" = new."time", value = new.value
+    ON INSERT TO public.measurements_float DO  UPDATE public.latest_measurements_float SET "time" = new."time", value = new.value
   WHERE (latest_measurements_float.uid = new.uid);
 
 
@@ -833,7 +848,7 @@ CREATE RULE lastest_measurements_float_updater AS
 --
 
 CREATE RULE lastest_measurements_int2_updater AS
-    ON INSERT TO measurements_int2 DO  UPDATE latest_measurements_int2 SET "time" = new."time", value = new.value
+    ON INSERT TO public.measurements_int2 DO  UPDATE public.latest_measurements_int2 SET "time" = new."time", value = new.value
   WHERE (latest_measurements_int2.uid = new.uid);
 
 
@@ -841,7 +856,7 @@ CREATE RULE lastest_measurements_int2_updater AS
 --
 
 CREATE RULE lastest_measurements_int4_updater AS
-    ON INSERT TO measurements_int4 DO  UPDATE latest_measurements_int4 SET "time" = new."time", value = new.value
+    ON INSERT TO public.measurements_int4 DO  UPDATE public.latest_measurements_int4 SET "time" = new."time", value = new.value
   WHERE (latest_measurements_int4.uid = new.uid);
 
 
@@ -849,7 +864,7 @@ CREATE RULE lastest_measurements_int4_updater AS
 --
 
 CREATE RULE lastest_measurements_int8_updater AS
-    ON INSERT TO measurements_int8 DO  UPDATE latest_measurements_int8 SET "time" = new."time", value = new.value
+    ON INSERT TO public.measurements_int8 DO  UPDATE public.latest_measurements_int8 SET "time" = new."time", value = new.value
   WHERE (latest_measurements_int8.uid = new.uid);
 
 
@@ -857,7 +872,7 @@ CREATE RULE lastest_measurements_int8_updater AS
 --
 
 CREATE RULE lastest_measurements_trigger_updater AS
-    ON INSERT TO measurements_trigger DO  UPDATE latest_measurements_trigger SET "time" = new."time"
+    ON INSERT TO public.measurements_trigger DO  UPDATE public.latest_measurements_trigger SET "time" = new."time"
   WHERE (latest_measurements_trigger.uid = new.uid);
 
 
@@ -865,7 +880,7 @@ CREATE RULE lastest_measurements_trigger_updater AS
 --
 
 CREATE RULE rule_config_history_saver AS
-    ON UPDATE TO rule_configs DO  INSERT INTO rule_config_history (nodeid, name, value, comment, valid_from)
+    ON UPDATE TO public.rule_configs DO  INSERT INTO public.rule_config_history (nodeid, name, value, comment, valid_from)
   VALUES (old.nodeid, old.name, old.value, old.comment, old.last_change);
 
 
@@ -873,7 +888,7 @@ CREATE RULE rule_config_history_saver AS
 --
 
 CREATE RULE ruleprocessornotify AS
-    ON INSERT TO measurements_trigger DO
+    ON INSERT TO public.measurements_trigger DO
  NOTIFY ruleprocessor_measurements_trigger;
 
 
@@ -881,7 +896,7 @@ CREATE RULE ruleprocessornotify AS
 --
 
 CREATE RULE ruleprocessornotify AS
-    ON INSERT TO measurements_float DO
+    ON INSERT TO public.measurements_float DO
  NOTIFY ruleprocessor_measurements_float;
 
 
@@ -889,7 +904,7 @@ CREATE RULE ruleprocessornotify AS
 --
 
 CREATE RULE ruleprocessornotify AS
-    ON INSERT TO measurements_bool DO
+    ON INSERT TO public.measurements_bool DO
  NOTIFY ruleprocessor_measurements_bool;
 
 
@@ -897,7 +912,7 @@ CREATE RULE ruleprocessornotify AS
 --
 
 CREATE RULE setvalue_resquest_notify AS
-    ON INSERT TO setvalue_requests DO
+    ON INSERT TO public.setvalue_requests DO
  NOTIFY setvalue_request;
 
 
@@ -905,7 +920,7 @@ CREATE RULE setvalue_resquest_notify AS
 --
 
 CREATE RULE setvalue_update_notify AS
-    ON UPDATE TO setvalue_requests DO
+    ON UPDATE TO public.setvalue_requests DO
  NOTIFY setvalue_update;
 
 
@@ -913,7 +928,7 @@ CREATE RULE setvalue_update_notify AS
 --
 
 CREATE RULE uid_config_history_saver AS
-    ON UPDATE TO uid_configs DO  INSERT INTO uid_config_history (uid, name, value, comment, valid_from)
+    ON UPDATE TO public.uid_configs DO  INSERT INTO public.uid_config_history (uid, name, value, comment, valid_from)
   VALUES (old.uid, old.name, old.value, old.comment, old.last_change);
 
 
@@ -921,7 +936,7 @@ CREATE RULE uid_config_history_saver AS
 --
 
 CREATE RULE uid_config_notify AS
-    ON UPDATE TO uid_configs DO
+    ON UPDATE TO public.uid_configs DO
  NOTIFY uid_configs_update;
 
 
@@ -929,89 +944,89 @@ CREATE RULE uid_config_notify AS
 --
 
 CREATE RULE uid_state_history_saver AS
-    ON UPDATE TO uid_states DO  INSERT INTO uid_state_history (uid, type, valid_from, valid_to, reason)
+    ON UPDATE TO public.uid_states DO  INSERT INTO public.uid_state_history (uid, type, valid_from, valid_to, reason)
   VALUES (old.uid, old.type, old.valid_from, new.valid_from, old.reason);
 
 
 --
 --
 
-ALTER TABLE ONLY compound_families
-    ADD CONSTRAINT compound_families_child_id_fkey FOREIGN KEY (child_id) REFERENCES compound_list(id);
+ALTER TABLE ONLY public.compound_families
+    ADD CONSTRAINT compound_families_child_id_fkey FOREIGN KEY (child_id) REFERENCES public.compound_list(id);
 
 
 --
 --
 
-ALTER TABLE ONLY compound_families
-    ADD CONSTRAINT compound_families_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES compound_list(id);
+ALTER TABLE ONLY public.compound_families
+    ADD CONSTRAINT compound_families_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.compound_list(id);
 
 
 --
 --
 
-ALTER TABLE ONLY compound_uids
-    ADD CONSTRAINT compound_uids_id_fkey FOREIGN KEY (id) REFERENCES compound_list(id);
+ALTER TABLE ONLY public.compound_uids
+    ADD CONSTRAINT compound_uids_id_fkey FOREIGN KEY (id) REFERENCES public.compound_list(id);
 
 
 --
 --
 
-ALTER TABLE ONLY compound_uids
-    ADD CONSTRAINT compound_uids_uid_fkey FOREIGN KEY (uid) REFERENCES uid_list(uid);
+ALTER TABLE ONLY public.compound_uids
+    ADD CONSTRAINT compound_uids_uid_fkey FOREIGN KEY (uid) REFERENCES public.uid_list(uid);
 
 
 --
 --
 
-ALTER TABLE ONLY setvalue_requests
-    ADD CONSTRAINT setvalue_requests_uid_fkey FOREIGN KEY (uid) REFERENCES uid_list(uid);
+ALTER TABLE ONLY public.setvalue_requests
+    ADD CONSTRAINT setvalue_requests_uid_fkey FOREIGN KEY (uid) REFERENCES public.uid_list(uid);
 
 
 --
 --
 
-ALTER TABLE ONLY uid_daemon_connection
-    ADD CONSTRAINT uid_daemon_connection_daemonid_fkey FOREIGN KEY (daemonid) REFERENCES daemon_list(daemonid);
+ALTER TABLE ONLY public.uid_daemon_connection
+    ADD CONSTRAINT uid_daemon_connection_daemonid_fkey FOREIGN KEY (daemonid) REFERENCES public.daemon_list(daemonid);
 
 
 --
 --
 
-ALTER TABLE ONLY uid_daemon_connection
-    ADD CONSTRAINT uid_daemon_connection_uid_fkey FOREIGN KEY (uid) REFERENCES uid_list(uid);
+ALTER TABLE ONLY public.uid_daemon_connection
+    ADD CONSTRAINT uid_daemon_connection_uid_fkey FOREIGN KEY (uid) REFERENCES public.uid_list(uid);
 
 
 --
 --
 
-ALTER TABLE ONLY uid_state_history
-    ADD CONSTRAINT uid_state_history_type_fkey FOREIGN KEY (type) REFERENCES state_types(type);
+ALTER TABLE ONLY public.uid_state_history
+    ADD CONSTRAINT uid_state_history_type_fkey FOREIGN KEY (type) REFERENCES public.state_types(type);
 
 
 --
 --
 
-ALTER TABLE ONLY uid_state_history
-    ADD CONSTRAINT uid_state_history_uid_fkey FOREIGN KEY (uid) REFERENCES uid_list(uid);
+ALTER TABLE ONLY public.uid_state_history
+    ADD CONSTRAINT uid_state_history_uid_fkey FOREIGN KEY (uid) REFERENCES public.uid_list(uid);
 
 
 --
 --
 
-ALTER TABLE ONLY uid_states
-    ADD CONSTRAINT uid_states_type_fkey FOREIGN KEY (type) REFERENCES state_types(type);
+ALTER TABLE ONLY public.uid_states
+    ADD CONSTRAINT uid_states_type_fkey FOREIGN KEY (type) REFERENCES public.state_types(type);
 
 
 --
 --
 
-ALTER TABLE ONLY uid_states
-    ADD CONSTRAINT uid_states_uid_fkey FOREIGN KEY (uid) REFERENCES uid_list(uid);
+ALTER TABLE ONLY public.uid_states
+    ADD CONSTRAINT uid_states_uid_fkey FOREIGN KEY (uid) REFERENCES public.uid_list(uid);
 
 
 --
--- Name: public; Type: ACL; Schema: -; Owner: postgres
+-- Name: SCHEMA public; Type: ACL; Schema: -; Owner: postgres
 --
 
 REVOKE ALL ON SCHEMA public FROM PUBLIC;
