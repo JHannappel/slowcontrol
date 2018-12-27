@@ -66,8 +66,8 @@ namespace slowcontrol {
 		input_value::input_value(const std::string &aName,
 		                         unsigned int aPinNumber):
 			lInPin(aPinNumber),
-			lReadDelay("readDelay",lConfigValues, measurementBase::durationType::zero()),	
-			lInvert("invert",lConfigValues, false) {	
+			lReadDelay("readDelay", lConfigValues, measurementBase::durationType::zero()),
+			lInvert("invert", lConfigValues, false) {
 			lClassName.fSetFromString(__func__);
 			fInitializeUid(aName);
 			fConfigure();
@@ -78,7 +78,7 @@ namespace slowcontrol {
 			aPollfd->events = POLLPRI | POLLERR;
 		}
 		bool input_value:: fProcessData(short /*aRevents*/) {
-			if (lReadDelay.fGetValue().count()!=0) {
+			if (lReadDelay.fGetValue().count() != 0) {
 				std::this_thread::sleep_for(lReadDelay.fGetValue());
 			}
 			return fStore(lInvert ? !lInPin.fRead() : lInPin.fRead());

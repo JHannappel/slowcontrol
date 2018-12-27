@@ -203,7 +203,7 @@ namespace slowcontrol {
 		return true;
 	}
 
-	int serialLine::fRead(char *aBuffer, int aBuffsize , durationType aTimeout) {
+	int serialLine::fRead(char *aBuffer, int aBuffsize, durationType aTimeout) {
 		char* replyptr = aBuffer;
 		struct pollfd pollfds[1];
 		pollfds[0].fd = lFd;
