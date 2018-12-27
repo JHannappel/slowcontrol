@@ -973,7 +973,7 @@ int main(int argc, const char *argv[]) {
 
 	ruleNode::fRegisterNodeTypeCreator<ruleNodeLatest>("latest");
 
-	
+
 	ruleNode::fRegisterNodeTypeCreator<ruleNodeSum>("sum");
 	ruleNode::fRegisterNodeTypeCreator<ruleNodeProduct>("product");
 	ruleNode::fRegisterNodeTypeCreator<ruleNodeQuotient>("quotient");

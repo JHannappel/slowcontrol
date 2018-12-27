@@ -87,7 +87,7 @@ int main(int argc, const char *argv[]) {
 		char buffer[512];
 		if (serial.fRead(buffer, sizeof(buffer), std::chrono::seconds(1)) > 0) {
 			if (strncmp(buffer, "found ", 6) == 0) {
-				auto number = std::stoul(buffer + 6, nullptr , 16);
+				auto number = std::stoul(buffer + 6, nullptr, 16);
 				if (number == last_number) {
 					occurences++;
 					if (occurences == 3) {
