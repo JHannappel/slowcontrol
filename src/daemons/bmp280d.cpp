@@ -55,10 +55,10 @@ class bmp280temperature: public slowcontrol::boundCheckerInterface<slowcontrol::
 int main(int argc, const char *argv[]) {
 	options::single<std::string> pressureDevice('p', "pressure-devive",
 	        "name of the pressure device",
-	        "device0/in_pressure_input");
+	        "/sys/bus/i2c/devices/1-0076/iio:device0/in_pressure_input");
 	options::single<std::string> temperatureDevice('t', "temperature-devive",
 	        "name of the temperature device",
-	        "device0/in_temp_input");
+	        "/sys/bus/i2c/devices/1-0076/iio:device0/in_temp_input");
 
 	options::single<std::string> measurementName('n', "name", "name base of the measurement");
 
