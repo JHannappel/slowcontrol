@@ -43,12 +43,12 @@ class bh1750brightness: public slowcontrol::boundCheckerInterface<slowcontrol::m
 	bool fReadCurrentValue() override {
 		unsigned char buf[4];
 		buf[0] = 0x01;
-		if (write(fd, buf, 0) < 0) {
+		if (write(fd, buf, 1) < 0) {
 			throw slowcontrol::exception("can't wake bh1750", slowcontrol::exception::level::kStop);
 		}
 		usleep(100);
 		buf[0] = 0x20;
-		if (write(fd, buf, 0) < 0) {
+		if (write(fd, buf, 1) < 0) {
 			throw slowcontrol::exception("can't start bh1750", slowcontrol::exception::level::kStop);
 		}
 		usleep(120000);
@@ -62,7 +62,7 @@ class bh1750brightness: public slowcontrol::boundCheckerInterface<slowcontrol::m
 	};
 };
 
-class displayBrighnessRead: public slowcontrol::boundCheckerInterface<slowcontrol::measurement<float>, false, true>,
+class displayBrighnessRead: public slowcontrol::boundCheckerInterface<slowcontrol::measurement<short>, false, true>,
 	public slowcontrol::defaultReaderInterface {
   protected:
 	std::string lPath;
@@ -81,13 +81,13 @@ class displayBrighnessRead: public slowcontrol::boundCheckerInterface<slowcontro
 	};
 	bool fReadCurrentValue() override {
 		std::ifstream file(lPath.c_str());
-		float value;
+		short value;
 		file >> value;
 		return fStore(value);
 	};
 };
-class displayBrighnessWrite: public slowcontrol::measurement<float>,
-	public slowcontrol::writeValueWithType<float> {
+class displayBrighnessWrite: public slowcontrol::measurement<short>,
+	public slowcontrol::writeValueWithType<short> {
   protected:
 	std::string lPath;
   public:
@@ -129,6 +129,10 @@ int main(int argc, const char *argv[]) {
 	auto daemon = new slowcontrol::daemon("rpiBrightnessd");
 
 	new bh1750brightness(deviceName, measurementName);
+	
+	displayBrighnessWrite bw("/sys/class/backlight/rpi_backlight/brightness");
+
+	displayBrighnessRead br("/sys/class/backlight/rpi_backlight/actual_brightness");
 
 	daemon->fStartThreads();
 	daemon->fWaitForThreads();
