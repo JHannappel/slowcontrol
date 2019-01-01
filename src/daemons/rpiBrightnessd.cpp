@@ -129,7 +129,7 @@ int main(int argc, const char *argv[]) {
 	auto daemon = new slowcontrol::daemon("rpiBrightnessd");
 
 	new bh1750brightness(deviceName, measurementName);
-	
+
 	displayBrighnessWrite bw("/sys/class/backlight/rpi_backlight/brightness");
 
 	displayBrighnessRead br("/sys/class/backlight/rpi_backlight/actual_brightness");
