@@ -1,0 +1,5 @@
+# file installed from ${CMAKE_CURRENT_SOURCE_DIR_DIR}
+# udev rule for korad power supplies. Note that the serial is not a real serial
+# but rather a string identifying the power supply model range
+# it is seen on different models of korad power supplies
+KERNEL=="ttyUSB*",ATTRS{serial}=="A1068E41",ENV{SYSTEMD_WANTS}="vc820d.service",SYMLINK+="ttyVC820", OPTIONS="last_rule"
