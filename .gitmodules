@@ -1,0 +1,3 @@
+[submodule "3rdParty/BMP280_driver"]
+	path = 3rdParty/BMP280_driver
+	url = https://github.com/BoschSensortec/BMP280_driver.git
