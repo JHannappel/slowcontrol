@@ -46,18 +46,26 @@ class bh1750brightness: public slowcontrol::boundCheckerInterface<slowcontrol::m
 		if (write(fd, buf, 1) < 0) {
 			throw slowcontrol::exception("can't wake bh1750", slowcontrol::exception::level::kStop);
 		}
-		usleep(100);
-		buf[0] = 0x20;
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		buf[0] = 0x4F;
+		if (write(fd, buf, 1) < 0) {
+			throw slowcontrol::exception("can't set bh1750 mt high nibble", slowcontrol::exception::level::kStop);
+		}
+		buf[0] = 0x6E;
+		if (write(fd, buf, 1) < 0) {
+			throw slowcontrol::exception("can't set bh1750 mt low nibble", slowcontrol::exception::level::kStop);
+		}
+		buf[0] = 0x21;
 		if (write(fd, buf, 1) < 0) {
 			throw slowcontrol::exception("can't start bh1750", slowcontrol::exception::level::kStop);
 		}
-		usleep(120000);
+		std::this_thread::sleep_for(std::chrono::milliseconds(800));
 		if (read(fd, buf, 2) < 2) {
 			throw slowcontrol::exception("can't read 2 bytes from bh1750", slowcontrol::exception::level::kContinue);
 		}
 		unsigned int brightness;
-		brightness = buf[0];
-		brightness |= buf[1] << 8;
+		brightness = buf[1];
+		brightness |= buf[0] << 8;
 		return fStore(brightness);
 	};
 };
