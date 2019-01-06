@@ -62,7 +62,7 @@ class bh1750brightness: public slowcontrol::boundCheckerInterface<slowcontrol::m
 		if (read(fd, buf, 2) < 2) {
 			throw slowcontrol::exception("can't read 2 bytes from bh1750", slowcontrol::exception::level::kContinue);
 		}
-		unsigned int brightness;
+		unsigned short brightness;
 		brightness = buf[1];
 		brightness |= buf[0] << 8;
 		return fStore(brightness);
