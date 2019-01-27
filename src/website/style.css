@@ -112,6 +112,17 @@ span.old {
     background : #ffaa20;
 }
 
+
+.grid-container {
+    display: grid;
+    grid-template-columns: auto auto;
+  grid-gap: 10px;
+  padding: 10px;
+  font-size: 10vh;
+}
+
+
+
 blink {
     display: inline;
     color: inherit;
