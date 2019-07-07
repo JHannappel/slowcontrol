@@ -1,0 +1,4 @@
+#!/bin/bash
+export DISPLAY=":0"
+sudo -u hannappe xset dpms force on
+sudo -u hannappe xdotool key F5
