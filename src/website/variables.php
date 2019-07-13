@@ -1,6 +1,6 @@
 <?php
 
-$dbstring="host=raspberrypi dbname=testdb user=hannappe";
+$dbstring="host=localhost dbname=testdb user=hannappe";
 
 if (!function_exists("http_redirect")) {
         function http_redirect($url, $params, $session = false , $status = 0 ) {

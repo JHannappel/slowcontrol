@@ -6,7 +6,7 @@ if (!$dbconn) {
 	die('Could not connect: ' . pg_last_error());
 };
 
-page_head("value config history");
+page_head($dbconn,"value config history");
 
 if (isset($_GET["uid"])) {
 	$ids=explode(",",$_GET["uid"]);
