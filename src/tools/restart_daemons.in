@@ -7,7 +7,7 @@
 while read name dummy host; do
     if [ ! -z "${name}" -a ! -z "${host}" ]; then
 	echo "${name} on host ${host} seems to be dead"
-	ssh ${host} sudo systemctl restart ${name}
+	ssh -n ${host} sudo systemctl restart ${name} || ssh -n ${host}w sudo systemctl restart ${name}
 fi
 done < <(psql -q -t "${dataBaseString}" <<EOF
 SELECT description FROM daemon_heartbeat NATURAL INNER JOIN daemon_list
