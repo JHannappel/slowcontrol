@@ -96,6 +96,26 @@ function page_head($dbconn,$name,$refreshable=true) {
 	  echo "<li><a href=\"${row['url']}\">${row['name']}</a>\n";
 	}
        	echo "</ul>\n";
+
+	if ((include 'suncalc-php/suncalc.php')==TRUE) {
+	   include 'heredef.php';
+	   $sc=new AurorasLive\SunCalc(new DateTime(), $latitude, $longitude);
+	   $sunTimes = $sc->getSunTimes();
+       echo 'True noon: ';echo $sunTimes['solarNoon']->format('H:i');
+       echo "<br>\n";
+	   echo '<img src="sun.svg" class="fontsized"/>';	
+       echo ' &uarr;'; echo  $sunTimes['sunrise']->format('H:i');				
+	   echo ' &darr;'; echo  $sunTimes['sunset']->format('H:i');
+	   $moonTimes = $sc->getMoonTimes();
+       echo "<br>\n";
+       $moonIllumination=$sc->getMoonIllumination();
+       $pom=$moonIllumination['phase'];
+	   echo "<img src=\"moon.php?phase=$pom\" class=\"fontsized\"/>";	
+	   echo ' &uarr;'; echo $moonTimes['moonrise']->format('H:i');
+	   echo ' &darr;'; echo $moonTimes['moonset']->format('H:i');
+       echo "<br>\n";
+	}
+
 	echo "</NAV>\n";
 	echo "<DIV id=\"content\">\n";
 

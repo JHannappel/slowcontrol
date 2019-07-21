@@ -1,0 +1,3 @@
+[submodule "src/website/suncalc-php"]
+	path = src/website/suncalc-php
+	url = https://github.com/gregseth/suncalc-php.git

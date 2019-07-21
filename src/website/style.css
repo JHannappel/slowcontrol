@@ -305,3 +305,8 @@ nav a {
                 color: #000000;
         }
 }
+
+.fontsized {
+    height: 1em; 
+    width: 1em;
+}
