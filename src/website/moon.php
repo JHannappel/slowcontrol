@@ -26,8 +26,8 @@ if ($pom < 0.25) {
     $second="white";
     $rectcol="white";
 } else if ($pom < 0.75) {
-    $clip="left";
-    $rectx="100";
+    $clip="right";
+    $rectx="0";
     $phase=300-$pom*400;
     $first="black";
     $second="white";
