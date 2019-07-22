@@ -111,8 +111,12 @@ function page_head($dbconn,$name,$refreshable=true) {
        $moonIllumination=$sc->getMoonIllumination();
        $pom=$moonIllumination['phase'];
 	   echo "<img src=\"moon.php?phase=$pom\" class=\"fontsized\"/>";	
-	   echo ' &uarr;'; echo $moonTimes['moonrise']->format('H:i');
-	   echo ' &darr;'; echo $moonTimes['moonset']->format('H:i');
+	   if (isset($moonTimes['moonrise'])) {
+           echo ' &uarr;'; echo $moonTimes['moonrise']->format('H:i');
+       }
+	   if (isset($moonTimes['moonset'])) {
+           echo ' &darr;'; echo $moonTimes['moonset']->format('H:i');
+       }
        echo "<br>\n";
 	}
 
