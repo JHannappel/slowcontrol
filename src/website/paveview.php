@@ -27,7 +27,7 @@ echo "<div class=\"grid-container\">\n";
 
 while ($row = pg_fetch_assoc($result)) {
 	$uid=$row['uid'];
-	$result2 = pg_query($dbconn,"SELECT * FROM ${row['data_table']} WHERE uid=$uid ORDER BY time desc limit 1;");
+	$result2 = pg_query($dbconn,"SELECT *,(SELECT regr_slope(value,time) as trend FROM (SELECT value,EXTRACT(EPOCH FROM time) as time from ${row['data_table']} WHERE uid=$uid ORDER BY time desc limit 10) as foo) FROM ${row['data_table']} WHERE uid=$uid ORDER BY time desc limit 1;");
   $value=pg_fetch_assoc($result2);
 	$result2 = pg_query($dbconn,"SELECT valid_from,reason,typename,explanation,class FROM uid_states INNER JOIN state_types USING (type) WHERE uid = $uid;");
   $state=pg_fetch_assoc($result2);
@@ -40,6 +40,13 @@ while ($row = pg_fetch_assoc($result)) {
 	}
 	echo "</a></span></br>\n";
 	echo "<span class=\"${state['class']}\"><a href=\"dressed_graph.php?uid=$uid\"> ${value['value']} ${row['unit']} </a></span>";
+    if ($value['trend'] > 0) {
+        echo ' &nearr; ';
+    } else if ($value['trend'] < 0) {
+        echo ' &searr; ';
+    } else {
+        echo ' &rarr; ';
+    }
 	echo "<span><input type=\"checkbox\" name=\"u$uid\" $checkstate></span>\n";
 	echo "<span class=\"${state['class']}\">${state['typename']}</span>\n";
 	
