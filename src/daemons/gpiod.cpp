@@ -5,21 +5,21 @@
 #include <Options.h>
 
 class scriptSwitch: public slowcontrol::gpio::input_value {
-protected:
-  slowcontrol::configValue<std::string> lScript;
-public:
-  scriptSwitch(const std::string &aName,
-	       unsigned int aPinNumber) : input_value(aName, aPinNumber),
-					  lScript("script",lConfigValues,"/bin/true") {
-    fConfigure();
-  }
-  bool fProcessData(short aRevents) {
-    auto retval = input_value::fProcessData(aRevents);
-    if (fGetCurrentValue() && ! lScript.fGetValue().empty()) {
-      system(lScript.fGetValue().c_str());
-    }
-    return retval;
-  }
+  protected:
+	slowcontrol::configValue<std::string> lScript;
+  public:
+	scriptSwitch(const std::string &aName,
+	             unsigned int aPinNumber) : input_value(aName, aPinNumber),
+		lScript("script", lConfigValues, "/bin/true") {
+		fConfigure();
+	}
+	bool fProcessData(short aRevents) {
+		auto retval = input_value::fProcessData(aRevents);
+		if (fGetCurrentValue() && ! lScript.fGetValue().empty()) {
+			system(lScript.fGetValue().c_str());
+		}
+		return retval;
+	}
 };
 
 
@@ -35,7 +35,7 @@ int main(int argc, const char *argv[]) {
 	auto daemon = new slowcontrol::daemon("gpiod");
 
 	for (auto it : inPinNumbers) {
-	  new scriptSwitch(it.first, it.second);
+		new scriptSwitch(it.first, it.second);
 	}
 	for (auto it : outPinNumbers) {
 		new slowcontrol::gpio::output_value(it.first, it.second);

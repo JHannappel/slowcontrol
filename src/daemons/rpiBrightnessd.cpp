@@ -107,15 +107,15 @@ class displayBrighnessWrite: public slowcontrol::measurement<short>,
 		fInitializeUid(name);
 		fConfigure();
 	};
-  void fSet(short value) {
-			std::ofstream file(lPath.c_str());
-			file << value;
-			fStore(value);
-  };
+	void fSet(short value) {
+		std::ofstream file(lPath.c_str());
+		file << value;
+		fStore(value);
+	};
 	bool fProcessRequest(const writeValue::request* aRequest, std::string& aResponse) override {
 		auto req = dynamic_cast<const requestWithType*>(aRequest);
 		if (req != nullptr) {
-		  fSet(req->lGoalValue);
+			fSet(req->lGoalValue);
 			aResponse = "done.";
 			return true;
 		}
@@ -132,10 +132,10 @@ int main(int argc, const char *argv[]) {
 	options::single<const char*> deviceName('d', "device", "name of the i2c device", "/dev/i2c-1");
 	options::single<const char*> measurementName('n', "name", "name base of the measurement");
 	options::single<unsigned int> motionPin('m', "motionPin", "gpiopin for motion detector", 27);
-	options::single<std::string> startCmd('s', "startCmd","startCommand");
-	options::single<std::string> stopCmd('S', "stopCmd","startCommand");
+	options::single<std::string> startCmd('s', "startCmd", "startCommand");
+	options::single<std::string> stopCmd('S', "stopCmd", "startCommand");
 
-	
+
 	options::parser parser("slowcontrol program for reading bh1750 brightness sensors");
 	parser.fParse(argc, argv);
 
@@ -151,34 +151,34 @@ int main(int argc, const char *argv[]) {
 
 	slowcontrol::watch_pack watchPack;
 	slowcontrol::watched_measurement<slowcontrol::gpio::input_value>  motionDet(watchPack,
-										  
-										    [](slowcontrol::gpio::input_value * aThat) {
-										      return aThat->fGetCurrentValue();
-										    },
-										    "DisplayPIRSense", motionPin);
-       
-	
+
+	[](slowcontrol::gpio::input_value * aThat) {
+		return aThat->fGetCurrentValue();
+	},
+	"DisplayPIRSense", motionPin);
+
+
 	daemon->fStartThreads();
 
 	auto lastPresenceTime = std::chrono::system_clock::now();
-	bool present=false;
+	bool present = false;
 	while (!daemon->fGetStopRequested()) {
-	  if (watchPack.fWaitForChange()) { // motion detected
-	    lastPresenceTime = std::chrono::system_clock::now();
-	    if (!present) { // someone just appeared
-	      present = true;
-	      system(startCmd.c_str());
-	    }
-	  } else if (present) { // no motion, just timeout (or presence vanished)
-	    auto now = std::chrono::system_clock::now();
-	    if (now - lastPresenceTime > std::chrono::seconds(60)) {
-	      present = false;
-	      system(stopCmd.c_str());
+		if (watchPack.fWaitForChange()) { // motion detected
+			lastPresenceTime = std::chrono::system_clock::now();
+			if (!present) { // someone just appeared
+				present = true;
+				system(startCmd.c_str());
+			}
+		} else if (present) { // no motion, just timeout (or presence vanished)
+			auto now = std::chrono::system_clock::now();
+			if (now - lastPresenceTime > std::chrono::seconds(60)) {
+				present = false;
+				system(stopCmd.c_str());
 				bw.fSet(0);
-	    }
-	  }
+			}
+		}
 		if (present) {
-			short requestBrighness=12; // minimum non-zero value
+			short requestBrighness = 12; // minimum non-zero value
 			requestBrighness += bh1750.fGetCurrentValue();
 			if (requestBrighness > 255) {
 				requestBrighness = 255;
@@ -186,6 +186,6 @@ int main(int argc, const char *argv[]) {
 			bw.fSet(requestBrighness);
 		}
 	}
-	
+
 	daemon->fWaitForThreads();
 }

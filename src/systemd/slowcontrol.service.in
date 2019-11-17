@@ -10,6 +10,7 @@ PIDFile=/var/run/${DAEMON}.pid
 Environment="HOME=/root"
 ExecStart=/bin/bash -c '${CMAKE_INSTALL_PREFIX}/bin/${DAEMON} --pidFile /var/run/${DAEMON}.pid &> /tmp/${DAEMON}.log'
 KillMode=mixed
+Restart=always
 ${SERVICE_EXTRALINES}
 
 [Install]
