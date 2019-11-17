@@ -6,7 +6,7 @@ if (!$dbconn) {
 	die('Could not connect: ' . pg_last_error());
 };
 
-page_head($dbconn,"valuelist");
+page_head($dbconn,"paveview");
 
 if (isset($_GET['uid'])) {
 	$condition="WHERE uid IN (".get_int_list('uid').")";
@@ -22,44 +22,37 @@ if (pg_num_rows($result) < 5) {
 }
 echo "<form action=dressed_graph.php method=get>\n";
 
-echo "<table>\n";
-echo "<thead>\n";
-echo "<tr>\n";
-echo "<th> variable</th>\n";
-echo "<th> value </th>\n";
-echo "<th> gr? </th>\n";
-echo "<th> last measured </th>\n";
-echo "<th colspan=3> state </th>\n";
-echo "<th> since </th>\n";
-echo "</tr>\n";
-echo "<tbody>\n";
+echo "<div class=\"grid-container\">\n";
 
 
 while ($row = pg_fetch_assoc($result)) {
 	$uid=$row['uid'];
-	$result2 = pg_query($dbconn,"SELECT * FROM ${row['data_table']} WHERE uid=$uid ORDER BY time desc limit 1;");
+	$result2 = pg_query($dbconn,"SELECT *,(SELECT regr_slope(value,time) as trend FROM (SELECT value,EXTRACT(EPOCH FROM time) as time from ${row['data_table']} WHERE uid=$uid ORDER BY time desc limit 10) as foo) FROM ${row['data_table']} WHERE uid=$uid ORDER BY time desc limit 1;");
   $value=pg_fetch_assoc($result2);
 	$result2 = pg_query($dbconn,"SELECT valid_from,reason,typename,explanation,class FROM uid_states INNER JOIN state_types USING (type) WHERE uid = $uid;");
   $state=pg_fetch_assoc($result2);
-	echo "<tr>\n";
-	echo "<td> <a href=\"valueconfig.php?uid=$uid\">";
+	echo "<div class=\"grid-item\">\n";
+	echo "<span> <a href=\"valueconfig.php?uid=$uid\">";
 	if ($row['name']=="") {
 		echo $row['description'];
 	}	else {
 		echo $row['name'];
 	}
-	echo "</a></td>\n";
-	echo "<td class=\"${state['class']}\"><a href=\"dressed_graph.php?uid=$uid\"> ${value['value']} ${row['unit']} </a></td>";
-	echo "<td><input type=\"checkbox\" name=\"u$uid\" $checkstate></td>\n";
-	echo "<td class=\"${state['class']}\">${value['time']}</td>\n";
-	echo "<td class=\"${state['class']}\">${state['typename']}</td>\n";
-	echo "<td class=\"${state['class']}\">${state['reason']}</td>\n";
-	echo "<td class=\"${state['class']}\">${state['explanation']}</td>\n";
-	echo "<td class=\"${state['class']}\">${state['valid_from']}</td>\n";
+	echo "</a></span></br>\n";
+	echo "<span class=\"${state['class']}\"><a href=\"dressed_graph.php?uid=$uid\"> ${value['value']} ${row['unit']} </a></span>";
+    if ($value['trend'] > 0) {
+        echo ' &nearr; ';
+    } else if ($value['trend'] < 0) {
+        echo ' &searr; ';
+    } else {
+        echo ' &rarr; ';
+    }
+	echo "<span><input type=\"checkbox\" name=\"u$uid\" $checkstate></span>\n";
+	echo "<span class=\"${state['class']}\">${state['typename']}</span>\n";
 	
- echo "</tr>\n";
+ echo "</div>\n";
  }
-echo "</table>\n";
+echo "</div>\n";
 echo "<input type=\"submit\" value=\"yesterday\" name=\"starttime\">\n";
 echo "</form>\n";
 page_foot();

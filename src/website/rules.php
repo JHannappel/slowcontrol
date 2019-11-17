@@ -6,7 +6,7 @@ if (!$dbconn) {
 	die('Could not connect: ' . pg_last_error());
 };
 
-page_head("rules");
+page_head($dbconn,"rules");
 
 $graphurl="rulegraph.php";
 echo "<a href=\"$graphurl\"><image src=\"$graphurl\"></a>\n";

@@ -6,7 +6,7 @@ if (!$dbconn) {
 	die('Could not connect: ' . pg_last_error());
 };
 
-page_head("compounds");
+page_head($dbconn,"compounds");
 
 if (isset($_GET['id'])) {
   $ids=$_GET['id'];

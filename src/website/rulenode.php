@@ -14,7 +14,7 @@ $nodeid=$_GET['nodeid'];
 $result = pg_query($dbconn,"SELECT *, (SELECT value FROM uid_list INNER JOIN uid_configs USING (uid) WHERE description = rule_nodes.nodename AND name = 'name') AS name, (SELECT uid FROM uid_list WHERE description = rule_nodes.nodename) as uid FROM rule_nodes WHERE nodeid=$nodeid;");
 $nodedata = pg_fetch_assoc($result);
 
-page_head("rule node $nodeid ${nodedata['nodename']} ${nodedata['name']}");
+page_head($dbconn,"rule node $nodeid ${nodedata['nodename']} ${nodedata['name']}");
 
 echo "<h1>node $nodeid ${nodedata['nodename']} ${nodedata['name']}</h1>\n";
 
