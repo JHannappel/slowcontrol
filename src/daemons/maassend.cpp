@@ -38,6 +38,11 @@ class cpuTemperature: public boundCheckerInterface<measurement<float>, false, tr
 	};
 };
 
+
+static options::single<std::string> smartopts('s',"smartopts",
+					      "extra options to smartctl");
+
+
 class diskValue: public boundCheckerInterface<measurement<float>> {
   public:
 	diskValue(const std::string& aSerial,
@@ -148,6 +153,7 @@ class diskwatch {
 };
 diskwatch::diskwatch(const std::string& aPath, int aHostCompound) {
 	lCommand = "smartctl -s on -i -A ";
+	lCommand += smartopts;
 	lCommand += aPath;
 	id = 0;
 	lHostCompound = aHostCompound;
@@ -317,7 +323,8 @@ static void populateDiskwatches(int aCompund, std::vector<diskwatch*>& aDiskwatc
 		if (strncmp("sd", de->d_name, 2) == 0 && strlen(de->d_name) == 3) {
 			std::string name("/dev/");
 			name += de->d_name;
-			std::string testcmd("smartctl -s on ");
+			std::string testcmd("smartctl -s on");
+			testcmd += smartopts;
 			testcmd += name;
 			if (system(testcmd.c_str()) == 0) {
 				auto dw = new diskwatch(name, aCompund);
