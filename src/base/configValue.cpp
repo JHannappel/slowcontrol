@@ -63,7 +63,8 @@ namespace slowcontrol {
 				auto valueInDb = PQgetvalue(result, i, PQfnumber(result, "value"));
 				cfgVal->fAsString(valueRaw);
 				std::string comment(PQgetvalue(result, i, PQfnumber(result, "comment")));
-				if (comment.ends_with("default")
+				if (comment.size() > 7
+				        && comment.rfind("default") == comment.size() - 7
 				        && valueRaw.compare(valueInDb) != 0) {
 					cfgVal->fUpdate(aTable, aIdColumn, aId, "changed default");
 				} else {

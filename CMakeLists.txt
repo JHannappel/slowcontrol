@@ -18,12 +18,12 @@ ENDIF(NOT CMAKE_BUILD_TYPE)
 MESSAGE("Selected build type: ${CMAKE_BUILD_TYPE}")
 
 
-CHECK_CXX_COMPILER_FLAG("-std=c++2a" COMPILER_SUPPORTS_CXX2a)
+CHECK_CXX_COMPILER_FLAG("-std=c++17" COMPILER_SUPPORTS_CXX17)
 
-if(COMPILER_SUPPORTS_CXX2a)
-  SET(CXX_STD_FLAG "-std=c++2a")
+if(COMPILER_SUPPORTS_CXX17)
+  SET(CXX_STD_FLAG "-std=c++17")
 else()
-  message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++2a support. Please use a different C++ compiler.")
+  message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++17 support. Please use a different C++ compiler.")
 endif()
 
 find_package(OptionParser)
@@ -42,7 +42,7 @@ IF ( "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
 ENDIF ()
 
 # Set variables for packaging. 
-SET(PROJECT_DESCRIPTION "slowcontrol system written in C++2a")
+SET(PROJECT_DESCRIPTION "slowcontrol system written in C++17")
 SET(PROJECT_VERSION "${${CMAKE_PROJECT_NAME}_LATEST_TAG}")
 
 # Write and install pkg-config file. 
