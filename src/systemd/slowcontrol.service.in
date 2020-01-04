@@ -2,6 +2,7 @@
 [Unit]
 Description=Slowcontrol ${DAEMON} start
 After=network.target nss-lookup.target time-sync.target
+${UNIT_EXTRALINES}
 
 [Service]
 Type=forking
