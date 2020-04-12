@@ -30,7 +30,6 @@ class channelPair {
 		//ioctl(fd, I2C_SLAVE, addr);
 		unsigned char buf[2] = {reg, value};
 		write(fd, buf, 2);
-		std::cerr << "set reg " << static_cast<unsigned int>(reg) << " to " << std::hex << (unsigned int) value << "\n";
 	}
 
   public:
@@ -46,7 +45,10 @@ class channelPair {
 		if (value == 0.0) { // set to off
 			ls0 = (ls0 & (channel ? 0x03 : 0x0C)) | (channel ? 0x04 : 0x01);
 			setRegister(5, ls0);
-		} else {
+		} if (value == 1.0) {
+			ls0 = (ls0 & (channel ? 0x03 : 0x0C));
+			setRegister(5, ls0);
+		}else {
 			ls0 = (ls0 & (channel ? 0x03 : 0x0C)) | (channel ? 0x0C : 0x02);
 			setRegister(5, ls0);
 			unsigned char pwm = 255 - value * 255;
@@ -156,9 +158,9 @@ class rgbw {
 				blue.set(0,false);
 			} else {
 				white.set(1, false);
-				red.set((v-0.5)*2);
-				green.set((v-0.5)*2);
-				blue.set((v-0.5)*2);
+				red.set((v-0.5)*2,false);
+				green.set((v-0.5)*2,false);
+				blue.set((v-0.5)*2,false);
 			}
       return;
    }
@@ -179,24 +181,64 @@ class rgbw {
 		 r = v; g = p; b = q; break;
    }
 	 auto min = std::min(r,std::min(g,b));
-	 white.set(min,false);
-	 red.set(r-min, false);
-	 green.set(g-min, false);
-	 blue.set(b-min, false);
+	 if (min > 0.5) {
+		 min = 0.5;
+	 }
+	 white.set(2*min,false);
+	 red.set(2*(r-min), false);
+	 green.set(2*(g-min), false);
+	 blue.set(2*(b-min), false);
 	}
-	void rgbToHsv() {};
+	void rgbToHsv() {
+		auto w=white.fGetCurrentValue() * 0.5;
+		auto r=red.fGetCurrentValue() * 0.5 + w;
+		auto g=green.fGetCurrentValue() *0.5 + w;
+		auto b=blue.fGetCurrentValue() * 0.5 +w;
+		float min, max, delta;
+		min = std::min(r, std::min(g, b ));
+		max = std::max(r, std::max(g, b ));
+		value.set(max, false);
+		delta = max - min;
+		if( max != 0 ) {
+			saturation.set(delta / max, false);
+		} else {                           // r = g = b = 0
+      saturation.set(0.0, false);
+			hue.set(0.0, false);
+			return;
+   }
+   if (max == min) {                // hier ist alles Grau
+		 hue.set(0.0,false);
+		 saturation.set(0.0,false);
+		 return;
+   }
+	 float h;
+   if( r == max ) {
+		 h = ( g - b ) / delta;       // zwischen Gelb und Magenta
+	 } else if( g == max ) {
+     h = 2 + ( b - r ) / delta;   // zwischen Cyan und Gelb
+   } else {
+		 h = 4 + ( r - g ) / delta;   // zwischen Magenta und Zyan
+	 }
+	 h *= 60;                     // degrees
+   if( h < 0 ) {
+      h += 360;
+	 }
+	 hue.set(h,false);
+	};
 };
 
 
 void lightChannel::set(float aValue, bool recalc) {
 	pair.set(channel, aValue);
 	fStore(aValue);
+	fFlush(true);
 	if (recalc) {
 		master.rgbToHsv();
 	}
 }
 void modelChannel::set(float aValue, bool recalc) {
 	fStore(aValue);
+	fFlush(true);
 	if (recalc) {
 		master.hsvToRgb();
 	}
