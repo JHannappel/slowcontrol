@@ -139,7 +139,7 @@ int main(int argc, const char *argv[]) {
 	[](slowcontrol::gpio::input_value * aThat) {
 		return aThat->fGetCurrentValue();
 	},
-	name.fGetValue() + "_motion", motionPin);
+	name.fGetValue() + "_motion", motionPin.fGetValue());
 	slowcontrol::gpio::output_value lightSwitch(name.fGetValue() + "_light", lightPin);
 	slowcontrol::gpio::timediff_value darknessDet(name.fGetValue() + "_darkness", darknessInPin, darknessOutPin);
 

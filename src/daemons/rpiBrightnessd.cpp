@@ -155,7 +155,7 @@ int main(int argc, const char *argv[]) {
 	[](slowcontrol::gpio::input_value * aThat) {
 		return aThat->fGetCurrentValue();
 	},
-	"DisplayPIRSense", motionPin);
+	"DisplayPIRSense", motionPin.fGetValue());
 
 
 	daemon->fStartThreads();
