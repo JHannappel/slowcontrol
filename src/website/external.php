@@ -16,7 +16,7 @@ if (isset($_GET['ext'])) {
 page_head($dbconn,"external $externalUrl");
 
 
-echo "<iframe width=\"100%\" height=\"600\" title=\"external link $externalUrl\" sandbox src=\"$externalUrl\"></iframe>\n";
+echo "<iframe width=\"100%\" height=\"600\" title=\"external link $externalUrl\"  src=\"$externalUrl\"></iframe>\n";
 
 
 page_foot();
