@@ -27,7 +27,8 @@ class channelPair {
 	int fd;
 	unsigned char ls0;
 	void setRegister(unsigned char reg, unsigned char value) {
-		//ioctl(fd, I2C_SLAVE, addr);
+		//		std::cerr << "set reg " << static_cast<unsigned int>(reg) << " to " << std::hex << (unsigned int) value << "\n";
+
 		unsigned char buf[2] = {reg, value};
 		write(fd, buf, 2);
 	}
@@ -42,13 +43,13 @@ class channelPair {
 		setRegister(3, 0); // pwm0 to full speed
 	};
 	void set(int channel, float value) {
-		if (value == 0.0) { // set to off
+		if (value < 1.0/256) { // set to off
 			ls0 = (ls0 & (channel ? 0x03 : 0x0C)) | (channel ? 0x04 : 0x01);
 			setRegister(5, ls0);
-		} if (value == 1.0) {
+		} else if (value > 1.0 - 1.0/255 ) {
 			ls0 = (ls0 & (channel ? 0x03 : 0x0C));
 			setRegister(5, ls0);
-		}else {
+		} else {
 			ls0 = (ls0 & (channel ? 0x03 : 0x0C)) | (channel ? 0x0C : 0x02);
 			setRegister(5, ls0);
 			unsigned char pwm = 255 - value * 255;
@@ -71,6 +72,7 @@ class lightChannel: public slowcontrol::measurement<float>, public slowcontrol::
 	             const std::string& colour,
 	             channelPair& aPair,
 	             int aChannel) : measurement(0), master(aMaster), pair(aPair), channel(aChannel) {
+		lClassName.fSetFromString(__func__);
 		fInitializeUid(baseName + colour);
 		fConfigure();
 	}
@@ -94,6 +96,7 @@ class modelChannel: public slowcontrol::measurement<float>, public slowcontrol::
 	modelChannel(rgbw& aMaster,
 							 const std::string& baseName,
 	             const std::string& channelName) : measurement(0), master(aMaster) {
+		lClassName.fSetFromString(__func__);
 		fInitializeUid(baseName + channelName);
 		fConfigure();
 	}
@@ -114,6 +117,7 @@ class rgbw {
   protected:
 	channelPair pair0;
 	channelPair pair1;
+  public:
 	lightChannel red;
 	lightChannel green;
 	lightChannel blue;
@@ -121,7 +125,6 @@ class rgbw {
 	modelChannel hue;
 	modelChannel value;
 	modelChannel saturation;
-  public:
 	rgbw(const std::string& i2cDevname,
 	     const std::string& nameBase):
 		pair0(i2cDevname, 0x62),
@@ -147,6 +150,7 @@ class rgbw {
 		slowcontrol::base::fAddToCompound(compound,value.fGetUid(), "value");
 	}
 	void hsvToRgb() {
+		std::cerr << __func__ << "\n";
 		auto h=hue.fGetCurrentValue();
 		auto s=saturation.fGetCurrentValue();
 		auto v=value.fGetCurrentValue();
@@ -190,6 +194,7 @@ class rgbw {
 	 blue.set(2*(b-min), false);
 	}
 	void rgbToHsv() {
+		std::cerr << __func__ << "\n";
 		auto w=white.fGetCurrentValue() * 0.5;
 		auto r=red.fGetCurrentValue() * 0.5 + w;
 		auto g=green.fGetCurrentValue() *0.5 + w;
@@ -244,6 +249,78 @@ void modelChannel::set(float aValue, bool recalc) {
 	}
 }
 
+
+
+class stateButton {
+	bool value;
+	int fd;
+public:
+	stateButton(unsigned int pin) {
+		{
+			std::ofstream exporter("/sys/class/gpio/export");
+			exporter << pin << "\n";
+		}
+		std::string path("/sys/class/gpio/gpio");
+		path += std::to_string(pin);
+		{
+			std::ofstream director(path + "/direction");
+			director << "in\n";
+		}
+		path += "/value";
+		fd = open(path.c_str(), O_RDONLY);
+	}
+	void update() {
+		lseek(fd, 0, SEEK_SET);
+		char buffer;
+		if (read(fd, &buffer, 1) < 1) {
+			throw slowcontrol::exception("can't read gpio", slowcontrol::exception::level::kContinue);
+		}
+		value = buffer == '0'; // we are active low...
+	}
+	operator bool() const {
+		return value;
+	}
+};
+
+class pushButton {
+	bool value;
+	int fd;
+public:
+	pushButton(unsigned int pin) {
+		{
+			std::ofstream exporter("/sys/class/gpio/export");
+			exporter << pin << "\n";
+		}
+		std::string path("/sys/class/gpio/gpio");
+		path += std::to_string(pin);
+		{
+			std::ofstream director(path + "/direction");
+			director << "in\n";
+		}
+		{
+			std::ofstream director(path + "/edge");
+			director << "both\n";
+		}
+		path += "/value";
+		fd = open(path.c_str(), O_RDONLY);
+	}
+	void update() {
+		lseek(fd, 0, SEEK_SET);
+		char buffer;
+		if (read(fd, &buffer, 1) < 1) {
+			throw slowcontrol::exception("can't read gpio", slowcontrol::exception::level::kContinue);
+		}
+		value = buffer == '0'; // we are active low...
+	}
+	int getFd() const {
+		return fd;
+	}
+	operator bool() const {
+		return value;
+	}
+};
+
+
 int main(int argc, const char *argv[]) {
 	options::single<std::string> deviceName('d', "device", "name of the i2c device", "/dev/i2c-1");
 	options::single<std::string> baseName('n', "name", "name base of the controls");
@@ -254,8 +331,43 @@ int main(int argc, const char *argv[]) {
 
 	auto daemon = new slowcontrol::daemon("rgbwPCA9533d");
 
-	rgbw conroller(deviceName, baseName);
+	rgbw controller(deviceName, baseName);
 
 	daemon->fStartThreads();
+	std::vector<stateButton> buttons({17,27,22});
+	auto& redButton=buttons.at(0);
+	auto& greenButton=buttons.at(1);
+	auto& blueButton=buttons.at(2);
+	std::vector<pushButton> push({13,6,5,26,19});
+	auto& onOff=push.at(0); 
+	std::vector<struct pollfd> pfds(push.size());
+	for (int i=0; i<push.size(); i++) {
+	  pfds.at(i).fd = push.at(i).getFd();
+	}
+	float oldValue = 1;
+	while (!daemon->fGetStopRequested()) {
+		auto result = poll(pfds.data(), pfds.size(), 1000);
+		if (result > 0) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(1)); // stabilize input
+			if (pfds.at(0).revents != 0) {
+				onOff.update();
+				if (onOff) {
+					std::cerr << "onOff pressed\n";
+					if (controller.value.fGetCurrentValue() > 0.0) {
+						oldValue = controller.value.fGetCurrentValue();
+						controller.value.set(0);
+					} else {
+						controller.value.set(oldValue);
+					}
+				} else {
+					std::cerr << "onOff relased\n";
+				}
+			}
+			for (auto& b: buttons) {
+				b.update();
+			}
+		}
+	}
+	
 	daemon->fWaitForThreads();
 }
