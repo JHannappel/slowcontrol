@@ -72,7 +72,17 @@ table {
     char: ".";
     border-collapse: collapse;
 }
-
+table.light {
+    width: 100%;
+    font-size: 3vh;
+}
+td.lightset {
+    width=100pt;
+}
+input.lightset {
+    width=100pt;
+    font-size: 6vh;
+}
 tr:nth-child(even) {
     background: #FFF
 }
