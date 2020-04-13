@@ -92,10 +92,12 @@ class lightChannel: public slowcontrol::measurement<float>, public slowcontrol::
 class modelChannel: public slowcontrol::measurement<float>, public slowcontrol::writeValueWithType<float> {
   protected:
 	rgbw& master;
+	float maxValue;
   public:
 	modelChannel(rgbw& aMaster,
 							 const std::string& baseName,
-	             const std::string& channelName) : measurement(0), master(aMaster) {
+	             const std::string& channelName,
+							 float aMax=1.0) : measurement(0), master(aMaster), maxValue(aMax) {
 		lClassName.fSetFromString(__func__);
 		fInitializeUid(baseName + channelName);
 		fConfigure();
@@ -113,6 +115,38 @@ class modelChannel: public slowcontrol::measurement<float>, public slowcontrol::
 	}
 };
 
+class setbit: public slowcontrol::measurement<bool>,
+							public slowcontrol::writeValueWithType<bool> {
+protected:
+	bool value;
+	bool fProcessRequest(const writeValue::request* aRequest, std::string& aResponse) override {
+		auto req = dynamic_cast<const requestWithType*>(aRequest);
+		if (req != nullptr) {
+			fSet(req->lGoalValue);
+			aResponse = "done";
+			return true;
+		}
+		aResponse = "can't cast request";
+		return false;
+	}
+	
+	void fSet(bool aValue) {
+		value = aValue;
+		fStore(value);
+	}
+public:
+	setbit(const std::string& baseName, const std::string& name) {
+		lClassName.fSetFromString(__func__);
+		fInitializeUid(baseName + name);
+		fConfigure();
+	}
+	operator bool() const {
+		return value;
+	}
+};
+
+
+
 class rgbw {
   protected:
 	channelPair pair0;
@@ -125,6 +159,7 @@ class rgbw {
 	modelChannel hue;
 	modelChannel value;
 	modelChannel saturation;
+	setbit autoHue;
 	rgbw(const std::string& i2cDevname,
 	     const std::string& nameBase):
 		pair0(i2cDevname, 0x62),
@@ -133,9 +168,10 @@ class rgbw {
 		green(*this,nameBase, "green", pair0, 1),
 		blue(*this,nameBase, "blue", pair1, 1),
 		white(*this,nameBase, "white", pair0, 0),
-		hue(*this,nameBase, "hue"),
+		hue(*this,nameBase, "hue",360.0),
 		value(*this,nameBase, "value"),
-	  saturation(*this,nameBase, "saturation")
+	  saturation(*this,nameBase, "saturation"),
+		autoHue(nameBase,"autoHue")
 	{
 		std::string compoundName(nameBase);
 		compoundName += "light";
@@ -148,6 +184,7 @@ class rgbw {
 		slowcontrol::base::fAddToCompound(compound,hue.fGetUid(), "hue");
 		slowcontrol::base::fAddToCompound(compound,saturation.fGetUid(), "saturation");
 		slowcontrol::base::fAddToCompound(compound,value.fGetUid(), "value");
+		slowcontrol::base::fAddToCompound(compound,autoHue.fGetUid(), "autoHue");
 	}
 	void hsvToRgb() {
 		std::cerr << __func__ << "\n";
@@ -234,16 +271,18 @@ class rgbw {
 
 
 void lightChannel::set(float aValue, bool recalc) {
+  aValue = std::max(aValue,0.0f);
+	aValue = std::min(aValue,1.0f);
 	pair.set(channel, aValue);
 	fStore(aValue);
-	fFlush(true);
 	if (recalc) {
 		master.rgbToHsv();
 	}
 }
 void modelChannel::set(float aValue, bool recalc) {
+  aValue = std::max(aValue,0.0f);
+	aValue = std::min(aValue,maxValue);
 	fStore(aValue);
-	fFlush(true);
 	if (recalc) {
 		master.hsvToRgb();
 	}
@@ -332,7 +371,7 @@ int main(int argc, const char *argv[]) {
 	auto daemon = new slowcontrol::daemon("rgbwPCA9533d");
 
 	rgbw controller(deviceName, baseName);
-
+	
 	daemon->fStartThreads();
 	std::vector<stateButton> buttons({17,27,22});
 	auto& redButton=buttons.at(0);
@@ -341,10 +380,12 @@ int main(int argc, const char *argv[]) {
 	std::vector<pushButton> push({13,6,5,26,19});
 	auto& onOff=push.at(0); 
 	std::vector<struct pollfd> pfds(push.size());
-	for (int i=0; i<push.size(); i++) {
+	for (unsigned int i=0; i<push.size(); i++) {
 	  pfds.at(i).fd = push.at(i).getFd();
 	}
 	float oldValue = 1;
+	auto lastAutoHueSet=std::chrono::system_clock::now();
+	
 	while (!daemon->fGetStopRequested()) {
 		auto result = poll(pfds.data(), pfds.size(), 1000);
 		if (result > 0) {
@@ -367,6 +408,30 @@ int main(int argc, const char *argv[]) {
 				b.update();
 			}
 		}
+		if (controller.autoHue) {
+			auto now = std::chrono::system_clock::now();
+			if (now - lastAutoHueSet > std::chrono::minutes(5)) {
+				auto nowAsTime_t = std::chrono::system_clock::to_time_t(now);
+				auto lt=localtime(&nowAsTime_t);
+				float hour =lt->tm_hour + lt->tm_min/60.0 + lt->tm_sec/3600.0;
+				if (hour > 18.0) {
+					auto phase = (hour - 18.0)/(24.-18.);
+					controller.hue.set((1-phase)*60);
+					controller.saturation.set(phase);
+				} else if (hour < 6.0) {
+					controller.hue.set(0);
+					controller.saturation.set(1);
+				} else if (hour < 8.0) {
+					auto phase = (hour - 6.0)/(8.0-6.0);
+					controller.hue.set(phase*60);
+					controller.saturation.set(1-phase);
+				} else {
+					controller.saturation.set(0);
+				}
+				lastAutoHueSet = now;
+			}
+		}
+		
 	}
 	
 	daemon->fWaitForThreads();
