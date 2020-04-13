@@ -83,6 +83,12 @@ input.lightset {
     width=100pt;
     font-size: 6vh;
 }
+input.color {
+    padding: 0;
+    border: none;
+    min-height: 10vh;
+    min-width: 50vh;
+}
 tr:nth-child(even) {
     background: #FFF
 }
