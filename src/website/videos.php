@@ -15,7 +15,7 @@ if (isset($_GET['dir'])) {
 
 foreach ($videodirs as $videodir) {
 
-	$videos=scandir("/data".$videodir);
+	$videos=scandir("/data".$videodir, SCANDIR_SORT_DESCENDING);
 
 	echo "<h1>Unclassified Videos in $videodir</h1>\n";
 	foreach ($videos as $video) {
