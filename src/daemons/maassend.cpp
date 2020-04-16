@@ -3,7 +3,7 @@
 #include "slowcontrolDaemon.h"
 #include <fstream>
 #include <Options.h>
-
+#include <set>
 #include <dirent.h>
 #include <iostream>
 #include <limits>
@@ -361,6 +361,7 @@ static void populateFswatches(int aHostCompound) {
 	std::string mountpoint;
 	std::string fstype;
 	std::cerr << "start read mtab \n";
+	std::set<std::string> devices;
 	while (!mtab.eof() && !mtab.bad()) {
 		mtab >> device;
 		mtab >> mountpoint;
@@ -371,7 +372,12 @@ static void populateFswatches(int aHostCompound) {
 		        || fstype.compare("ext4") == 0
 		        || fstype.compare("btrfs") == 0) {
 			std::cerr << "found " << device << " mounted on " << mountpoint << std::endl;
-			new fsSize(aHostCompound, device, mountpoint);
+			auto result = devices.emplace(device);
+			if (result.second) {
+				new fsSize(aHostCompound, device, mountpoint);
+			} else {
+				std::cerr << "ignoring " << mountpoint << " for " << device << "\n";
+			}
 		}
 	}
 	std::cerr << "stop read mtab \n";
