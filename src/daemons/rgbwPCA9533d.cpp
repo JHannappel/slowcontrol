@@ -58,16 +58,18 @@ class rgbw;
 
 
 class channelBase: public slowcontrol::measurement<float>,
-									 public slowcontrol::writeValueWithType<float> {
-protected:
+	public slowcontrol::writeValueWithType<float> {
+  protected:
 	rgbw& master;
 	const float maxValue;
-public:
+  public:
 	channelBase(rgbw& aMaster, float aMax): measurement(0),
-																					master(aMaster),
-																					maxValue(aMax) {};
+		master(aMaster),
+		maxValue(aMax) {};
 	virtual void set(float aValue, bool recalc = true) = 0;
-	float getMax() const {return maxValue;};
+	float getMax() const {
+		return maxValue;
+	};
 };
 
 
@@ -81,8 +83,8 @@ class lightChannel: public channelBase {
 	             const std::string& colour,
 	             channelPair& aPair,
 	             int aChannel) : channelBase(aMaster, 1.0),
-															 pair(aPair),
-															 channel(aChannel) {
+		pair(aPair),
+		channel(aChannel) {
 		lClassName.fSetFromString(__func__);
 		fInitializeUid(baseName + colour);
 		fConfigure();
@@ -105,7 +107,7 @@ class modelChannel: public channelBase {
 	modelChannel(rgbw& aMaster,
 	             const std::string& baseName,
 	             const std::string& channelName,
-	             float aMax = 1.0) : channelBase(aMaster,aMax) {
+	             float aMax = 1.0) : channelBase(aMaster, aMax) {
 		lClassName.fSetFromString(__func__);
 		fInitializeUid(baseName + channelName);
 		fConfigure();
@@ -194,28 +196,28 @@ class rgbw {
 		slowcontrol::base::fAddToCompound(compound, autoHue.fGetUid(), "autoHue");
 	}
 	channelBase& getChannel(bool r, bool g, bool b) {
-		unsigned bits = (r ? 1 : 0 ) | (g ? 2 : 0) | (b ? 4: 0);
+		unsigned bits = (r ? 1 : 0 ) | (g ? 2 : 0) | (b ? 4 : 0);
 		switch (bits) {
-		case 0:
-			return value;
-		case 1: // red
-			return red;
-		case 2: // green
-			return green;
-		case 3: // red and green
-			return hue;
-		case 4: // blue
-			return blue;
-		case 5: // read and blue
-			return saturation;
-		case 6: // green and blue
-			return hue;
-		case 7: // red, green and blue
-			return white;
+			case 0:
+				return value;
+			case 1: // red
+				return red;
+			case 2: // green
+				return green;
+			case 3: // red and green
+				return hue;
+			case 4: // blue
+				return blue;
+			case 5: // read and blue
+				return saturation;
+			case 6: // green and blue
+				return hue;
+			case 7: // red, green and blue
+				return white;
 		}
 		return value;
 	}
-	
+
 	void hsvToRgb() {
 		std::cerr << __func__ << "\n";
 		auto h = hue.fGetCurrentValue();
@@ -344,7 +346,7 @@ void modelChannel::set(float aValue, bool recalc) {
 
 
 class stateButton {
-protected:
+  protected:
 	bool value;
 	int fd;
 	std::string pathBase;
@@ -392,13 +394,17 @@ class pushButton: public stateButton {
 };
 
 class rotary {
-protected:
+  protected:
 	pushButton& a;
 	pushButton& b;
-public:
+  public:
 	rotary(pushButton& A, pushButton& B): a(A), b(B) {};
-	int getFdA() const {return a.getFd();};
-	int getFdB() const {return b.getFd();};
+	int getFdA() const {
+		return a.getFd();
+	};
+	int getFdB() const {
+		return b.getFd();
+	};
 	float getIncrement(int pushFd, float step) {
 		a.update();
 		b.update();
@@ -454,11 +460,11 @@ int main(int argc, const char *argv[]) {
 	auto& blueButton = buttons.at(2);
 	std::vector<pushButton> push({13, 6, 5, 26, 19});
 	auto& onOff = push.at(0);
-	std::vector<rotary> rot({{push.at(1),push.at(2)},{push.at(3),push.at(4)}});
-	std::map<int,rotary&> fdRotMap;
-	for (auto& r: rot) {
-		fdRotMap.emplace(r.getFdA(),r);
-		fdRotMap.emplace(r.getFdB(),r);
+	std::vector<rotary> rot({{push.at(1), push.at(2)}, {push.at(3), push.at(4)}});
+	std::map<int, rotary&> fdRotMap;
+	for (auto& r : rot) {
+		fdRotMap.emplace(r.getFdA(), r);
+		fdRotMap.emplace(r.getFdB(), r);
 	}
 	std::vector<struct pollfd> pfds(push.size());
 	for (unsigned int i = 0; i < push.size(); i++) {
@@ -466,8 +472,8 @@ int main(int argc, const char *argv[]) {
 	}
 	float oldValue = 1;
 	auto lastAutoHueSet = std::chrono::system_clock::now();
-	auto lastRotTick=lastAutoHueSet;
-	
+	auto lastRotTick = lastAutoHueSet;
+
 	while (!daemon->fGetStopRequested()) {
 		auto result = poll(pfds.data(), pfds.size(), 1000);
 		if (result > 0) {
@@ -489,8 +495,8 @@ int main(int argc, const char *argv[]) {
 			for (auto& b : buttons) {
 				b.update();
 			}
-			auto& channel = controller.getChannel(redButton,greenButton,blueButton);
-			for (auto& pfd: pfds) {
+			auto& channel = controller.getChannel(redButton, greenButton, blueButton);
+			for (auto& pfd : pfds) {
 				if (pfd.fd == pfds.at(0).fd) {
 					continue;
 				}
@@ -499,7 +505,7 @@ int main(int argc, const char *argv[]) {
 					auto dt = now - lastRotTick;
 					lastRotTick = now;
 					auto it = fdRotMap.find(pfd.fd);
-					auto incr = it->second.getIncrement(pfd.fd,channel.getMax() / 512);
+					auto incr = it->second.getIncrement(pfd.fd, channel.getMax() / 512);
 					if (dt < std::chrono::seconds(1)) {
 						incr /= std::chrono::duration_cast<std::chrono::duration<float>>(dt).count();
 					}
@@ -511,10 +517,10 @@ int main(int argc, const char *argv[]) {
 			auto now = std::chrono::system_clock::now();
 			if (now - lastAutoHueSet > std::chrono::minutes(5)) {
 				auto nowAsTime_t = std::chrono::system_clock::to_time_t(now);
-				auto lt=localtime(&nowAsTime_t);
-				float hour =lt->tm_hour + lt->tm_min/60.0 + lt->tm_sec/3600.0;
+				auto lt = localtime(&nowAsTime_t);
+				float hour = lt->tm_hour + lt->tm_min / 60.0 + lt->tm_sec / 3600.0;
 				if (hour > 20.0) {
-					auto phase = (hour - 20.0)/(24.-20.);
+					auto phase = (hour - 20.0) / (24. - 20.);
 					controller.hue.set(0);
 					controller.saturation.set(phase);
 				} else if (hour < 6.0) {
