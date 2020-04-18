@@ -1,26 +1,19 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <linux/i2c.h>
 #include <fcntl.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <linux/i2c-dev.h>
 
 #include "measurement.h"
 #include "slowcontrolDaemon.h"
 #include <Options.h>
 #include <iostream>
 #include <array>
-/* Puffer fuer die RTC-Daten */
-#define BUFSIZE 7
 
-/* Verwende I2C 1 */
-#define I2CADDR "/dev/i2c-1"
-
-/* defined in <linux/i2c-dev.h> */
-#define I2C_SLAVE 0x703
 
 class channelPair {
   protected:
@@ -414,9 +407,9 @@ int main(int argc, const char *argv[]) {
 				auto nowAsTime_t = std::chrono::system_clock::to_time_t(now);
 				auto lt=localtime(&nowAsTime_t);
 				float hour =lt->tm_hour + lt->tm_min/60.0 + lt->tm_sec/3600.0;
-				if (hour > 18.0) {
-					auto phase = (hour - 18.0)/(24.-18.);
-					controller.hue.set((1-phase)*60);
+				if (hour > 20.0) {
+					auto phase = (hour - 20.0)/(24.-20.);
+					controller.hue.set(0);
 					controller.saturation.set(phase);
 				} else if (hour < 6.0) {
 					controller.hue.set(0);
