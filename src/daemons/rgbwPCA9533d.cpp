@@ -23,7 +23,9 @@ class channelPair {
 		//		std::cerr << "set reg " << static_cast<unsigned int>(reg) << " to " << std::hex << (unsigned int) value << "\n";
 
 		unsigned char buf[2] = {reg, value};
-		write(fd, buf, 2);
+		if (write(fd, buf, 2) != 2) {
+			throw slowcontrol::exception("can't write i2c", slowcontrol::exception::level::kContinue);
+		};
 	}
 
   public:
@@ -54,9 +56,23 @@ class channelPair {
 
 class rgbw;
 
-class lightChannel: public slowcontrol::measurement<float>, public slowcontrol::writeValueWithType<float> {
-  protected:
+
+class channelBase: public slowcontrol::measurement<float>,
+									 public slowcontrol::writeValueWithType<float> {
+protected:
 	rgbw& master;
+	const float maxValue;
+public:
+	channelBase(rgbw& aMaster, float aMax): measurement(0),
+																					master(aMaster),
+																					maxValue(aMax) {};
+	virtual void set(float aValue, bool recalc = true) = 0;
+	float getMax() const {return maxValue;};
+};
+
+
+class lightChannel: public channelBase {
+  protected:
 	channelPair& pair;
 	int channel;
   public:
@@ -64,12 +80,14 @@ class lightChannel: public slowcontrol::measurement<float>, public slowcontrol::
 	             const std::string& baseName,
 	             const std::string& colour,
 	             channelPair& aPair,
-	             int aChannel) : measurement(0), master(aMaster), pair(aPair), channel(aChannel) {
+	             int aChannel) : channelBase(aMaster, 1.0),
+															 pair(aPair),
+															 channel(aChannel) {
 		lClassName.fSetFromString(__func__);
 		fInitializeUid(baseName + colour);
 		fConfigure();
 	}
-	void set(float aValue, bool recalc = true);
+	void set(float aValue, bool recalc = true) override;
 	bool fProcessRequest(const request* aRequest, std::string& aResponse) override {
 		auto req = dynamic_cast<const requestWithType*>(aRequest);
 		if (req != nullptr) {
@@ -82,20 +100,17 @@ class lightChannel: public slowcontrol::measurement<float>, public slowcontrol::
 	}
 };
 
-class modelChannel: public slowcontrol::measurement<float>, public slowcontrol::writeValueWithType<float> {
-  protected:
-	rgbw& master;
-	float maxValue;
+class modelChannel: public channelBase {
   public:
 	modelChannel(rgbw& aMaster,
 	             const std::string& baseName,
 	             const std::string& channelName,
-	             float aMax = 1.0) : measurement(0), master(aMaster), maxValue(aMax) {
+	             float aMax = 1.0) : channelBase(aMaster,aMax) {
 		lClassName.fSetFromString(__func__);
 		fInitializeUid(baseName + channelName);
 		fConfigure();
 	}
-	void set(float aValue, bool recalc = true);
+	void set(float aValue, bool recalc = true) override;
 	bool fProcessRequest(const request* aRequest, std::string& aResponse) override {
 		auto req = dynamic_cast<const requestWithType*>(aRequest);
 		if (req != nullptr) {
@@ -178,6 +193,29 @@ class rgbw {
 		slowcontrol::base::fAddToCompound(compound, value.fGetUid(), "value");
 		slowcontrol::base::fAddToCompound(compound, autoHue.fGetUid(), "autoHue");
 	}
+	channelBase& getChannel(bool r, bool g, bool b) {
+		unsigned bits = (r ? 1 : 0 ) | (g ? 2 : 0) | (b ? 4: 0);
+		switch (bits) {
+		case 0:
+			return value;
+		case 1: // red
+			return red;
+		case 2: // green
+			return green;
+		case 3: // red and green
+			return hue;
+		case 4: // blue
+			return blue;
+		case 5: // read and blue
+			return saturation;
+		case 6: // green and blue
+			return hue;
+		case 7: // red, green and blue
+			return white;
+		}
+		return value;
+	}
+	
 	void hsvToRgb() {
 		std::cerr << __func__ << "\n";
 		auto h = hue.fGetCurrentValue();
@@ -306,20 +344,22 @@ void modelChannel::set(float aValue, bool recalc) {
 
 
 class stateButton {
+protected:
 	bool value;
 	int fd;
+	std::string pathBase;
   public:
-	stateButton(unsigned int pin) {
+	stateButton(unsigned int pin): pathBase("/sys/class/gpio/gpio") {
 		{
 			std::ofstream exporter("/sys/class/gpio/export");
 			exporter << pin << "\n";
 		}
-		std::string path("/sys/class/gpio/gpio");
-		path += std::to_string(pin);
+		pathBase += std::to_string(pin);
 		{
-			std::ofstream director(path + "/direction");
+			std::ofstream director(pathBase + "/direction");
 			director << "in\n";
 		}
+		std::string path(pathBase);
 		path += "/value";
 		fd = open(path.c_str(), O_RDONLY);
 	}
@@ -336,41 +376,61 @@ class stateButton {
 	}
 };
 
-class pushButton {
+class pushButton: public stateButton {
 	bool value;
 	int fd;
   public:
-	pushButton(unsigned int pin) {
+	pushButton(unsigned int pin): stateButton(pin) {
 		{
-			std::ofstream exporter("/sys/class/gpio/export");
-			exporter << pin << "\n";
-		}
-		std::string path("/sys/class/gpio/gpio");
-		path += std::to_string(pin);
-		{
-			std::ofstream director(path + "/direction");
-			director << "in\n";
-		}
-		{
-			std::ofstream director(path + "/edge");
+			std::ofstream director(pathBase + "/edge");
 			director << "both\n";
 		}
-		path += "/value";
-		fd = open(path.c_str(), O_RDONLY);
-	}
-	void update() {
-		lseek(fd, 0, SEEK_SET);
-		char buffer;
-		if (read(fd, &buffer, 1) < 1) {
-			throw slowcontrol::exception("can't read gpio", slowcontrol::exception::level::kContinue);
-		}
-		value = buffer == '0'; // we are active low...
 	}
 	int getFd() const {
 		return fd;
 	}
-	operator bool() const {
-		return value;
+};
+
+class rotary {
+protected:
+	pushButton& a;
+	pushButton& b;
+public:
+	rotary(pushButton& A, pushButton& B): a(A), b(B) {};
+	int getFdA() const {return a.getFd();};
+	int getFdB() const {return b.getFd();};
+	float getIncrement(int pushFd, float step) {
+		a.update();
+		b.update();
+		if (pushFd == a.getFd()) {
+			if (a) { // rising edge
+				if (b) { // ccw
+					return -step;
+				} else { // cw
+					return step;
+				}
+			} else {
+				if (b) { // cw
+					return step;
+				} else { // ccw
+					return -step;
+				}
+			}
+		} else {
+			if (b) { // riding edge
+				if (a) { // cw
+					return step;
+				} else { // ccw
+					return -step;
+				}
+			} else {
+				if (a) { // ccw
+					return -step;
+				} else { // cw
+					return step;
+				}
+			}
+		}
 	}
 };
 
@@ -394,13 +454,20 @@ int main(int argc, const char *argv[]) {
 	auto& blueButton = buttons.at(2);
 	std::vector<pushButton> push({13, 6, 5, 26, 19});
 	auto& onOff = push.at(0);
+	std::vector<rotary> rot({{push.at(1),push.at(2)},{push.at(3),push.at(4)}});
+	std::map<int,rotary&> fdRotMap;
+	for (auto& r: rot) {
+		fdRotMap.emplace(r.getFdA(),r);
+		fdRotMap.emplace(r.getFdB(),r);
+	}
 	std::vector<struct pollfd> pfds(push.size());
 	for (unsigned int i = 0; i < push.size(); i++) {
 		pfds.at(i).fd = push.at(i).getFd();
 	}
 	float oldValue = 1;
 	auto lastAutoHueSet = std::chrono::system_clock::now();
-
+	auto lastRotTick=lastAutoHueSet;
+	
 	while (!daemon->fGetStopRequested()) {
 		auto result = poll(pfds.data(), pfds.size(), 1000);
 		if (result > 0) {
@@ -421,6 +488,23 @@ int main(int argc, const char *argv[]) {
 			}
 			for (auto& b : buttons) {
 				b.update();
+			}
+			auto& channel = controller.getChannel(redButton,greenButton,blueButton);
+			for (auto& pfd: pfds) {
+				if (pfd.fd == pfds.at(0).fd) {
+					continue;
+				}
+				if (pfd.revents != 0) {
+					auto now = std::chrono::system_clock::now();
+					auto dt = now - lastRotTick;
+					lastRotTick = now;
+					auto it = fdRotMap.find(pfd.fd);
+					auto incr = it->second.getIncrement(pfd.fd,channel.getMax() / 512);
+					if (dt < std::chrono::seconds(1)) {
+						incr /= std::chrono::duration_cast<std::chrono::duration<float>>(dt).count();
+					}
+					channel.set(channel.fGetCurrentValue() + incr);
+				}
 			}
 		}
 		if (controller.autoHue) {
