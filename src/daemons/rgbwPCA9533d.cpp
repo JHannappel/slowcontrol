@@ -62,13 +62,18 @@ class channelBase: public slowcontrol::measurement<float>,
   protected:
 	rgbw& master;
 	const float maxValue;
+	std::string name;
   public:
-	channelBase(rgbw& aMaster, float aMax): measurement(0),
+	channelBase(rgbw& aMaster, float aMax, const std::string& aName): measurement(0),
 		master(aMaster),
-		maxValue(aMax) {};
+																																		maxValue(aMax),
+																																		name(aName) {};
 	virtual void set(float aValue, bool recalc = true) = 0;
 	float getMax() const {
 		return maxValue;
+	};
+	const std::string& getName() const {
+		return name;
 	};
 };
 
@@ -82,7 +87,7 @@ class lightChannel: public channelBase {
 	             const std::string& baseName,
 	             const std::string& colour,
 	             channelPair& aPair,
-	             int aChannel) : channelBase(aMaster, 1.0),
+	             int aChannel) : channelBase(aMaster, 1.0, colour),
 		pair(aPair),
 		channel(aChannel) {
 		lClassName.fSetFromString(__func__);
@@ -107,7 +112,7 @@ class modelChannel: public channelBase {
 	modelChannel(rgbw& aMaster,
 	             const std::string& baseName,
 	             const std::string& channelName,
-	             float aMax = 1.0) : channelBase(aMaster, aMax) {
+	             float aMax = 1.0) : channelBase(aMaster, aMax, channelName) {
 		lClassName.fSetFromString(__func__);
 		fInitializeUid(baseName + channelName);
 		fConfigure();
@@ -364,11 +369,14 @@ class stateButton {
 		std::string path(pathBase);
 		path += "/value";
 		fd = open(path.c_str(), O_RDONLY);
+		if (fd < 0) {
+			throw slowcontrol::exception("can't open gpio", slowcontrol::exception::level::kStop);
+		}
 	}
 	void update() {
-		lseek(fd, 0, SEEK_SET);
+		//		lseek(fd, 0, SEEK_SET);
 		char buffer;
-		if (read(fd, &buffer, 1) < 1) {
+		if (pread(fd, &buffer, 1,0) < 1) {
 			throw slowcontrol::exception("can't read gpio", slowcontrol::exception::level::kContinue);
 		}
 		value = buffer == '0'; // we are active low...
@@ -376,17 +384,19 @@ class stateButton {
 	operator bool() const {
 		return value;
 	}
+	const std::string& getName() const {
+		return pathBase;
+	}
 };
 
 class pushButton: public stateButton {
-	bool value;
-	int fd;
   public:
 	pushButton(unsigned int pin): stateButton(pin) {
 		{
 			std::ofstream director(pathBase + "/edge");
 			director << "both\n";
 		}
+		std::cerr << "pin " << pin << " fd " << fd << "\n";
 	}
 	int getFd() const {
 		return fd;
@@ -406,9 +416,8 @@ class rotary {
 		return b.getFd();
 	};
 	float getIncrement(int pushFd, float step) {
-		a.update();
-		b.update();
 		if (pushFd == a.getFd()) {
+			std::cerr << "trig a " << a.getName() << ": " << a << " " << b.getName() << ": " <<b << "\n";
 			if (a) { // rising edge
 				if (b) { // ccw
 					return -step;
@@ -423,6 +432,8 @@ class rotary {
 				}
 			}
 		} else {
+			std::cerr << "trig b " << a.getName() << ": " << a << " " << b.getName() << ": " <<b << "\n";
+
 			if (b) { // riding edge
 				if (a) { // cw
 					return step;
@@ -469,6 +480,8 @@ int main(int argc, const char *argv[]) {
 	std::vector<struct pollfd> pfds(push.size());
 	for (unsigned int i = 0; i < push.size(); i++) {
 		pfds.at(i).fd = push.at(i).getFd();
+		pfds.at(i).events = POLLPRI | POLLERR;
+		std::cerr << pfds.at(i).fd << "\n";
 	}
 	float oldValue = 1;
 	auto lastAutoHueSet = std::chrono::system_clock::now();
@@ -477,9 +490,32 @@ int main(int argc, const char *argv[]) {
 	while (!daemon->fGetStopRequested()) {
 		auto result = poll(pfds.data(), pfds.size(), 1000);
 		if (result > 0) {
-			std::this_thread::sleep_for(std::chrono::milliseconds(1)); // stabilize input
+			std::cerr << "result " << result << " ";
+			for (auto& pfd:pfds) {
+				std::cerr << pfd.fd << ": ";
+				if (pfd.revents & POLLIN) { std::cerr<< "IN|";}
+				if (pfd.revents & POLLPRI) { std::cerr<< "PRI|";}
+				if (pfd.revents & POLLOUT) { std::cerr<< "OUT|";}
+				if (pfd.revents & POLLERR) { std::cerr<< "ERR|";}
+				if (pfd.revents & POLLNVAL) { std::cerr<< "NVAL|";}
+			}
+			std::cerr << "\tc";
+			std::this_thread::sleep_for(std::chrono::milliseconds(20)); // stabilize input
+			for (auto& b : buttons) {
+				b.update();
+				std::cerr << b << " ";
+			}
+			bool something = false;
+			for (auto& b : push) {
+				b.update();
+				something |= b;
+				std::cerr << b << " ";
+			}
+			std::cerr << "\n";
+			if (!something) {
+				continue;
+			}
 			if (pfds.at(0).revents != 0) {
-				onOff.update();
 				if (onOff) {
 					std::cerr << "onOff pressed\n";
 					if (controller.value.fGetCurrentValue() > 0.0) {
@@ -491,11 +527,10 @@ int main(int argc, const char *argv[]) {
 				} else {
 					std::cerr << "onOff relased\n";
 				}
-			}
-			for (auto& b : buttons) {
-				b.update();
+				pfds.at(0).revents = 0;
 			}
 			auto& channel = controller.getChannel(redButton, greenButton, blueButton);
+
 			for (auto& pfd : pfds) {
 				if (pfd.fd == pfds.at(0).fd) {
 					continue;
@@ -509,31 +544,34 @@ int main(int argc, const char *argv[]) {
 					if (dt < std::chrono::seconds(1)) {
 						incr /= std::chrono::duration_cast<std::chrono::duration<float>>(dt).count();
 					}
+					std::cerr << "would set "<< channel.getName() << "to " << channel.fGetCurrentValue() + incr << "\n";
 					channel.set(channel.fGetCurrentValue() + incr);
+					pfd.revents = 0;
 				}
 			}
-		}
-		if (controller.autoHue) {
-			auto now = std::chrono::system_clock::now();
-			if (now - lastAutoHueSet > std::chrono::minutes(5)) {
-				auto nowAsTime_t = std::chrono::system_clock::to_time_t(now);
-				auto lt = localtime(&nowAsTime_t);
-				float hour = lt->tm_hour + lt->tm_min / 60.0 + lt->tm_sec / 3600.0;
-				if (hour > 20.0) {
-					auto phase = (hour - 20.0) / (24. - 20.);
-					controller.hue.set(0);
-					controller.saturation.set(phase);
-				} else if (hour < 6.0) {
-					controller.hue.set(0);
-					controller.saturation.set(1);
-				} else if (hour < 8.0) {
-					auto phase = (hour - 6.0) / (8.0 - 6.0);
-					controller.hue.set(phase * 60);
-					controller.saturation.set(1 - phase);
-				} else {
-					controller.saturation.set(0);
+		} else {
+			if (controller.autoHue) {
+				auto now = std::chrono::system_clock::now();
+				if (now - lastAutoHueSet > std::chrono::minutes(5)) {
+					auto nowAsTime_t = std::chrono::system_clock::to_time_t(now);
+					auto lt = localtime(&nowAsTime_t);
+					float hour = lt->tm_hour + lt->tm_min / 60.0 + lt->tm_sec / 3600.0;
+					if (hour > 20.0) {
+						auto phase = (hour - 20.0) / (24. - 20.);
+						controller.hue.set(0);
+						controller.saturation.set(phase);
+					} else if (hour < 6.0) {
+						controller.hue.set(0);
+						controller.saturation.set(1);
+					} else if (hour < 8.0) {
+						auto phase = (hour - 6.0) / (8.0 - 6.0);
+						controller.hue.set(phase * 60);
+						controller.saturation.set(1 - phase);
+					} else {
+						controller.saturation.set(0);
+					}
+					lastAutoHueSet = now;
 				}
-				lastAutoHueSet = now;
 			}
 		}
 
