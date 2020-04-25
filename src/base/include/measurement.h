@@ -213,7 +213,7 @@ namespace slowcontrol {
 			lMinValueIndex = 0;
 			lMaxValueIndex = 0;
 		};
-		T fGetCurrentValue() {
+		T fGetCurrentValue() const {
 			return lCurrentValue.load();
 		};
 		virtual void fFlush(bool aFlushSingleValue) {
