@@ -661,12 +661,30 @@ class ruleNodeConstant: public ruleNode {
 };
 
 class ruleNodeMeasurement: public ruleNode {
+protected:
+  std::string lQuery;
   public:
 	ruleNodeMeasurement(const std::string& aName, int aNodeId) :
 		ruleNode(aName, aNodeId) {
 	};
 	virtual void fSetFromString(const char* aString) = 0;
 	virtual const char *fGetValueExpression() = 0;
+  void setUpQuery(const std::string& table, slowcontrol::base::uidType uid) {
+    lQuery = "SELECT EXTRACT('epoch' from time AT TIME ZONE 'UTC') AS time, ";
+    lQuery += fGetValueExpression();
+    lQuery += " FROM ";
+    lQuery += table;
+    lQuery += " WHERE uid = ";
+    lQuery += std::to_string(uid);
+    lQuery += " ORDER BY time DESC LIMIT 1;";
+  }
+  void getFromDb() {
+    auto result = PQexec(slowcontrol::base::fGetDbconn(),lQuery.c_str());
+    fSetFromString(PQgetvalue(result,0,PQfnumber(result,"value")));
+    slowcontrol::measurementBase::timeType time(std::chrono::duration_cast<slowcontrol::measurementBase::timeType::duration>(std::chrono::duration<double>(std::stod(PQgetvalue(result, 0, PQfnumber(result, "time"))))));
+    fSetTime(time);
+    PQclear(result);
+  }
 };
 
 template <typename T> class ruleNodeTypedMeasurement: public ruleNodeMeasurement {
@@ -884,74 +902,6 @@ class ruleNodeDerivedBool : public ruleNodeDerivedValue<bool> {
 	};
 };
 
-class dataTable {
-  protected:
-	std::map<slowcontrol::base::uidType, ruleNodeMeasurement*> lMeasurements;
-	std::string lTableName;
-	std::string lValueExpression;
-	std::string lQuery;
-	slowcontrol::measurementBase::timeType lLastQueryTime;
-  public:
-	void fAddMeasurement(slowcontrol::base::uidType aUid,
-	                     ruleNodeMeasurement *aMeasurement,
-	                     const std::string& aTableName,
-	                     const std::string& aValueExpression) {
-		lMeasurements.emplace(aUid, aMeasurement);
-		lTableName = aTableName;
-		lValueExpression = aValueExpression;
-	};
-	void fInit() {
-		std::string query("CREATE OR REPLACE RULE ruleProcessorNotify AS ON INSERT TO ");
-		query += lTableName;
-		query += " DO ALSO NOTIFY ruleProcessor_";
-		query += lTableName;
-		query += "; LISTEN ruleProcessor_";
-		query += lTableName;
-		query += ";";
-		auto result = PQexec(slowcontrol::base::fGetDbconn(), query.c_str());
-		PQclear(result);
-
-		lQuery = "SELECT uid, EXTRACT('epoch' from time AT TIME ZONE 'UTC') AS time, ";
-		lQuery += lValueExpression;
-		lQuery += " FROM ";
-		lQuery += lTableName;
-		lQuery += " WHERE uid in (";
-		for (auto it = lMeasurements.begin(); it != lMeasurements.end(); ++it) {
-			if (it != lMeasurements.begin()) {
-				lQuery += ",";
-			}
-			lQuery += std::to_string(it->first);
-		}
-		lQuery += ") AND EXTRACT('epoch' from time AT TIME ZONE 'UTC') > ";
-		fProcess(false);
-	};
-	void fProcess(bool aCallProcess = true) {
-		std::string query = lQuery;
-		query += std::to_string((std::chrono::duration<double, std::milli>(lLastQueryTime.time_since_epoch()).count() + 1) / 1000.);
-		query += ";";
-		std::cout << query << "\n";
-		auto result = PQexec(slowcontrol::base::fGetDbconn(), query.c_str());
-
-		for (int i = 0; i < PQntuples(result); i++) {
-			auto uid = std::stoi(PQgetvalue(result, i, PQfnumber(result, "uid")));
-			auto seconds = std::stod(PQgetvalue(result, i, PQfnumber(result, "time")));
-			slowcontrol::measurementBase::timeType time(std::chrono::microseconds(static_cast<long long>(seconds * 1000000)));
-			if (time > lLastQueryTime ) {
-				lLastQueryTime = time;
-			}
-			auto it = lMeasurements.find(uid);
-			if (it != lMeasurements.end()) {
-				auto measurement = it->second;
-				measurement->fSetTime(time);
-				measurement->fSetFromString(PQgetvalue(result, i, PQfnumber(result, "value")));
-				if (aCallProcess) {
-					measurement->fProcess();
-				}
-			}
-		}
-		PQclear(result);
-	};
-};
 
 
 
@@ -999,7 +949,7 @@ int main(int argc, const char *argv[]) {
 	auto daemon = new slowcontrol::daemon("ruleProcessord");
 
 
-	std::map<std::string, dataTable*> dataTables;
+	std::map<slowcontrol::base::uidType, ruleNodeMeasurement*> measurements;
 	{
 		auto result = PQexec(slowcontrol::base::fGetDbconn(), "SELECT nodetype, nodename,nodeid FROM rule_nodes;");
 		for (int i = 0; i < PQntuples(result); ++i) {
@@ -1020,12 +970,8 @@ int main(int argc, const char *argv[]) {
 					if (isMeasurement) {
 						auto node = ruleNode::fCreateNode(table, name, id);
 						auto measurement = dynamic_cast<ruleNodeMeasurement*>(node);
-						auto it = dataTables.find(table);
-						if (it == dataTables.end()) {
-							auto res = dataTables.emplace(table, new dataTable);
-							it = res.first;
-						}
-						it->second->fAddMeasurement(uid, measurement, table, measurement->fGetValueExpression());
+						measurement->setUpQuery(table, uid);
+						measurements.emplace(uid,measurement);
 					} else { // it must be an action
 						std::string detailled_type(table);
 						detailled_type.replace(0, strlen("measurements"), "actions");
@@ -1045,18 +991,21 @@ int main(int argc, const char *argv[]) {
 	}
 
 	ruleNode::fInitAll();
-	for (auto& it : dataTables) {
-		it.second->fInit();
+	{
+	  auto result = PQexec(slowcontrol::base::fGetDbconn(), "LISTEN ruleProcessor_measurements_float; LISTEN ruleProcessor_measurements_bool; LISTEN ruleProcessor_measurements_trigger;");
+	  PQclear(result);
 	}
+	
 
+	
 	timedActionsClass& timedActions(*timedActionsClass::fGetInstance());
 
 	daemon->fStartThreads();
 
 	while (!daemon->fGetStopRequested()) {
 		auto nextTimeinMs = timedActions.fProcess();
-		nextTimeinMs = std::max(nextTimeinMs, 1000);
-		nextTimeinMs = std::min(nextTimeinMs, 10);
+		nextTimeinMs = std::min(nextTimeinMs, 1000);
+		nextTimeinMs = std::max(nextTimeinMs, 10);
 		struct pollfd pfd;
 		pfd.fd = PQsocket(slowcontrol::base::fGetDbconn());
 		pfd.events = POLLIN | POLLPRI;
@@ -1070,12 +1019,14 @@ int main(int argc, const char *argv[]) {
 				if (notification == nullptr) {
 					break;
 				}
-				std::cout << "got notification '" << notification->relname << "'" << std::endl;
+				std::cout << "got notification '" << notification->relname << "' for " << notification->extra << std::endl;
+				auto uid = std::stoi(notification->extra);
 				std::string table(notification->relname + strlen("ruleProcessor_"));
-				std::cout << "checking table '" << table << "'\n";
-				auto it = dataTables.find(table);
-				if (it != dataTables.end()) {
-					it->second->fProcess();
+				auto it = measurements.find(uid);
+				if (it != measurements.end()) {
+				  std::cout << "checking table '" << table << " with " << uid << "'\n";
+				  it->second->getFromDb();
+				  it->second->fProcess();
 				}
 				PQfreemem(notification);
 			}
