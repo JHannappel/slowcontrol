@@ -56,25 +56,40 @@ class channelPair {
 
 class rgbw;
 
-
-class channelBase: public slowcontrol::measurement<float>,
-	public slowcontrol::writeValueWithType<float> {
+class setableChannel {
+protected:
   protected:
 	rgbw& master;
-	const float maxValue;
 	std::string name;
   public:
-	channelBase(rgbw& aMaster, float aMax, const std::string& aName): measurement(0),
+	setableChannel(rgbw& aMaster, const std::string& aName):
 		master(aMaster),
-																																		maxValue(aMax),
-																																		name(aName) {};
+		name(aName) {};
 	virtual void set(float aValue, bool recalc = true) = 0;
-	float getMax() const {
-		return maxValue;
+	virtual float getValue() const = 0;
+	virtual float getMax() const {
+		return 1.0;
 	};
 	const std::string& getName() const {
 		return name;
 	};
+};
+
+class channelBase: public setableChannel,
+									 public slowcontrol::measurement<float>,
+									 public slowcontrol::writeValueWithType<float> {
+  protected:
+	const float maxValue;
+  public:
+	channelBase(rgbw& aMaster, float aMax, const std::string& aName): setableChannel(aMaster,aName),
+																																		measurement(0),
+																																		maxValue(aMax) {};
+	float getMax() const override {
+		return maxValue;
+	};
+	float getValue() const override {
+		return fGetCurrentValue();
+	}
 };
 
 
@@ -130,10 +145,12 @@ class modelChannel: public channelBase {
 	}
 };
 
-class setbit: public slowcontrol::measurement<bool>,
+class setbit: public setableChannel,
+	public slowcontrol::measurement<bool>,
 	public slowcontrol::writeValueWithType<bool> {
   protected:
 	bool value;
+	int fd;
 	bool fProcessRequest(const writeValue::request* aRequest, std::string& aResponse) override {
 		auto req = dynamic_cast<const requestWithType*>(aRequest);
 		if (req != nullptr) {
@@ -148,13 +165,40 @@ class setbit: public slowcontrol::measurement<bool>,
 	void fSet(bool aValue) {
 		value = aValue;
 		fStore(value);
+		char buf = value ? '1' : '0';
+		pwrite(fd,&buf,1,0);
 	}
   public:
-	setbit(const std::string& baseName, const std::string& name) {
+	setbit(rgbw& aMaster,const std::string& baseName, const std::string& aName, int indicatorPin):
+		setableChannel(aMaster,aName) {
 		lClassName.fSetFromString(__func__);
-		fInitializeUid(baseName + name);
+		fInitializeUid(baseName + aName);
 		fConfigure();
+		{
+			std::ofstream exporter("/sys/class/gpio/export");
+			exporter << indicatorPin << "\n";
+		}
+		std::string path("/sys/class/gpio/gpio");
+		path += std::to_string(indicatorPin);
+		{
+			std::ofstream director(path + "/direction");
+			director << "out\n";
+		}
+		path += "/value";
+		fd = open(path.c_str(), O_WRONLY);
+		if (fd < 0) {
+			throw slowcontrol::exception("can't open gpio", slowcontrol::exception::level::kStop);
+		}
 	}
+	float getValue() const override {
+		if (value) {
+			return 1;
+		}
+		return 0;
+	}
+	void set(float aValue, bool recalc = true) override {
+		fSet(aValue > getValue());
+	};
 	operator bool() const {
 		return value;
 	}
@@ -186,7 +230,7 @@ class rgbw {
 		hue(*this, nameBase, "hue", 360.0),
 		value(*this, nameBase, "value"),
 		saturation(*this, nameBase, "saturation"),
-		autoHue(nameBase, "autoHue") {
+		autoHue(*this, nameBase, "autoHue",4) {
 		std::string compoundName(nameBase);
 		compoundName += "light";
 
@@ -200,7 +244,7 @@ class rgbw {
 		slowcontrol::base::fAddToCompound(compound, value.fGetUid(), "value");
 		slowcontrol::base::fAddToCompound(compound, autoHue.fGetUid(), "autoHue");
 	}
-	channelBase& getChannel(bool r, bool g, bool b) {
+	setableChannel& getChannel(bool r, bool g, bool b) {
 		unsigned bits = (r ? 1 : 0 ) | (g ? 2 : 0) | (b ? 4 : 0);
 		switch (bits) {
 			case 0:
@@ -213,10 +257,10 @@ class rgbw {
 				return hue;
 			case 4: // blue
 				return blue;
-			case 5: // read and blue
+			case 5: // red and blue
 				return saturation;
 			case 6: // green and blue
-				return hue;
+				return autoHue;
 			case 7: // red, green and blue
 				return white;
 		}
@@ -486,7 +530,7 @@ int main(int argc, const char *argv[]) {
 	float oldValue = 1;
 	auto lastAutoHueSet = std::chrono::system_clock::now();
 	auto lastRotTick = lastAutoHueSet;
-
+	bool wasIncreasing = true;
 	while (!daemon->fGetStopRequested()) {
 		auto result = poll(pfds.data(), pfds.size(), 1000);
 		if (result > 0) {
@@ -500,7 +544,7 @@ int main(int argc, const char *argv[]) {
 				if (pfd.revents & POLLNVAL) { std::cerr<< "NVAL|";}
 			}
 			std::cerr << "\tc";
-			std::this_thread::sleep_for(std::chrono::milliseconds(20)); // stabilize input
+			std::this_thread::sleep_for(std::chrono::milliseconds(1)); // stabilize input
 			for (auto& b : buttons) {
 				b.update();
 				std::cerr << b << " ";
@@ -538,14 +582,20 @@ int main(int argc, const char *argv[]) {
 				if (pfd.revents != 0) {
 					auto now = std::chrono::system_clock::now();
 					auto dt = now - lastRotTick;
-					lastRotTick = now;
-					auto it = fdRotMap.find(pfd.fd);
-					auto incr = it->second.getIncrement(pfd.fd, channel.getMax() / 512);
-					if (dt < std::chrono::seconds(1)) {
-						incr /= std::chrono::duration_cast<std::chrono::duration<float>>(dt).count();
-					}
-					std::cerr << "would set "<< channel.getName() << "to " << channel.fGetCurrentValue() + incr << "\n";
-					channel.set(channel.fGetCurrentValue() + incr);
+					std::cerr << std::chrono::duration_cast<std::chrono::duration<float>>(dt).count() << "\n";
+					if (dt > std::chrono::milliseconds(25)) {
+							lastRotTick = now;
+							auto it = fdRotMap.find(pfd.fd);
+							auto incr = it->second.getIncrement(pfd.fd, channel.getMax() / 512);
+							if (dt < std::chrono::seconds(1) &&
+									(incr > 0 == wasIncreasing)) {
+								auto f= 1./std::chrono::duration_cast<std::chrono::duration<float>>(dt).count();
+								incr *= f;
+							}
+							std::cerr << "set "<< channel.getName() << " to " << channel.getValue() + incr <<" dt is " << std::chrono::duration_cast<std::chrono::duration<float>>(dt).count() << "\n";
+							channel.set(channel.getValue() + incr);
+							wasIncreasing = incr > 0;
+						}
 					pfd.revents = 0;
 				}
 			}
