@@ -530,7 +530,7 @@ int main(int argc, const char *argv[]) {
 	float oldValue = 1;
 	auto lastAutoHueSet = std::chrono::system_clock::now();
 	auto lastRotTick = lastAutoHueSet;
-
+	bool wasIncreasing = true;
 	while (!daemon->fGetStopRequested()) {
 		auto result = poll(pfds.data(), pfds.size(), 1000);
 		if (result > 0) {
@@ -544,7 +544,7 @@ int main(int argc, const char *argv[]) {
 				if (pfd.revents & POLLNVAL) { std::cerr<< "NVAL|";}
 			}
 			std::cerr << "\tc";
-			std::this_thread::sleep_for(std::chrono::milliseconds(5)); // stabilize input
+			std::this_thread::sleep_for(std::chrono::milliseconds(1)); // stabilize input
 			for (auto& b : buttons) {
 				b.update();
 				std::cerr << b << " ";
@@ -587,12 +587,14 @@ int main(int argc, const char *argv[]) {
 							lastRotTick = now;
 							auto it = fdRotMap.find(pfd.fd);
 							auto incr = it->second.getIncrement(pfd.fd, channel.getMax() / 512);
-							if (dt < std::chrono::seconds(1)) {
+							if (dt < std::chrono::seconds(1) &&
+									(incr > 0 == wasIncreasing)) {
 								auto f= 1./std::chrono::duration_cast<std::chrono::duration<float>>(dt).count();
 								incr *= f;
 							}
 							std::cerr << "set "<< channel.getName() << " to " << channel.getValue() + incr <<" dt is " << std::chrono::duration_cast<std::chrono::duration<float>>(dt).count() << "\n";
 							channel.set(channel.getValue() + incr);
+							wasIncreasing = incr > 0;
 						}
 					pfd.revents = 0;
 				}
