@@ -29,32 +29,28 @@ namespace slowcontrol {
 			query += ",";
 			query += std::to_string(lState);
 			query += ",'-infinity','initial state');";
-			auto result = PQexec(base::fGetDbconn(), query.c_str());
-			PQclear(result);
+			pgsql::request{query};
 		} else {
 			std::string  query("SELECT type FROM uid_states WHERE uid=");
 			query += std::to_string(fGetUid());
 			query += ";";
-			auto result = PQexec(base::fGetDbconn(), query.c_str());
-			if (PQntuples(result) < 1) {
-				PQclear(result);
+			pgsql::request result(query);
+			if (result.size() < 1) {
 				query = "INSERT INTO uid_states (uid,type,valid_from,reason) VALUES (";
 				query += std::to_string(fGetUid());
 				query += ",";
 				query += std::to_string(lState);
 				query += ",'-infinity','initial state');";
-				result = PQexec(base::fGetDbconn(), query.c_str());
+				pgsql::request{query};
 			} else {
-				lState = std::stol(PQgetvalue(result, 0, 0));
+				lState = std::stol(result.getValue(0, 0));
 			}
-			PQclear(result);
 		}
 		if (dynamic_cast<writeValue*>(this) != nullptr) {
 			std::string query("UPDATE uid_list SET is_write_value='true' WHERE uid=");
 			query += std::to_string(fGetUid());
 			query += ";";
-			auto result = PQexec(base::fGetDbconn(), query.c_str());
-			PQclear(result);
+			pgsql::request{query};
 		}
 		daemon::fGetInstance()->fRegisterMeasurement(this);
 	};
@@ -81,12 +77,11 @@ namespace slowcontrol {
 			std::string query("UPDATE uid_states SET type =");
 			query += std::to_string(newState);
 			query += ", valid_from = now(), reason=";
-			base::fAddEscapedStringToQuery(aReason, query);
+			pgsql::fAddEscapedStringToQuery(aReason, query);
 			query += " WHERE uid=";
 			query += std::to_string(fGetUid());
 			query += ";";
-			auto result = PQexec(base::fGetDbconn(), query.c_str());
-			PQclear(result);
+			pgsql::request{query};
 			lState = newState;
 		}
 		return newState;

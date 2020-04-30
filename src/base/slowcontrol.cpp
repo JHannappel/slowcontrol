@@ -108,7 +108,7 @@ namespace slowcontrol {
 			query += ", ";
 			pgsql::fAddEscapedStringToQuery(aName, query);
 			query += ");";
-			pgsql::request(query);
+			pgsql::request{query};
 		}
 	}
 	void base::fAddSubCompound(int aParent, int aChild, const char* aName) {
@@ -126,7 +126,7 @@ namespace slowcontrol {
 			query += ", ";
 			pgsql::fAddEscapedStringToQuery(aName, query);
 			query += ");";
-			pgsql::request(query);
+			pgsql::request{query};
 		}
 	}
 	void base::fAddToCompound(int aCompound, uidType aUid, const std::string& aName) {
@@ -140,6 +140,7 @@ namespace slowcontrol {
 	bool base::fRequestValueSetting(uidType aUid, const std::string& aRequest,
 	                                const std::string& aComment,
 	                                std::string& aResponse) {
+		pgsql::request("LISTEN setvalue_update;");
 		std::string query("INSERT INTO setvalue_requests (uid,request,comment) VALUES (");
 		query += std::to_string(aUid);
 		query += ",";
@@ -149,17 +150,17 @@ namespace slowcontrol {
 		query += ") RETURNING id;";
 		pgsql::request result(query);
 		auto id = std::stol(result.getValue(0, 0));
-		pgsql::request("LISTEN setvalue_update;");
 		while (true) {
 			struct pollfd pfd;
-			pfd.fd = PQsocket(base::fGetDbconn());
+			pfd.fd = pgsql::getFd();
 			pfd.events = POLLIN | POLLPRI;
 			poll(&pfd, 1, -1);
 			if (pfd.revents & (POLLIN | POLLPRI)) {
 				pgsql::consumeInput();
 				while (auto notification = pgsql::getNotifcation()) {
-					std::cout << "got notification '" << notification->relname << "'" << std::endl;
-					if (strcmp(notification->relname, "setvalue_update") == 0) {
+					auto uid = std::stoi(notification->extra);
+					std::cout << "got notification '" << notification->relname << "' " << uid << std::endl;
+					if (aUid == uid) {
 						query = "SELECT * FROM setvalue_requests WHERE id=";
 						query += std::to_string(id);
 						query += ";";

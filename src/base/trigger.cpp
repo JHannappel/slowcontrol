@@ -26,7 +26,7 @@ namespace slowcontrol {
 			query += std::to_string(std::chrono::duration<double, std::nano>(value.time_since_epoch()).count() / 1E9);
 			query += " * INTERVAL '1 second'));";
 
-			pgsql::request(query);
+			pgsql::request{query};
 		}
 	}
 	bool trigger::fValuesToSend() {

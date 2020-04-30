@@ -39,7 +39,7 @@ namespace slowcontrol {
 		query += " AND name=";
 		pgsql::fAddEscapedStringToQuery(fGetName(), query);
 		query += ";";
-		pgsql::request(query);
+		pgsql::request{query};
 	}
 	void configValueBase::fConfigure(const char *aTable, const char *aIdColumn, int aId, mapType& aMap) {
 		std::string query("SELECT name,value,comment FROM ");
@@ -70,7 +70,7 @@ namespace slowcontrol {
 				}
 				optionsInDb.emplace(name);
 			} else {
-				std::cerr << "unknown cfg option '" << name << "' with value '" << PQgetvalue(result, i, PQfnumber(result, "value")) << "' encountered for " << aIdColumn << " " << aId << std::endl;
+				std::cerr << "unknown cfg option '" << name << "' with value '" << result.getValue(i, "value") << "' encountered for " << aIdColumn << " " << aId << std::endl;
 			}
 		}
 		for (auto it : aMap) {

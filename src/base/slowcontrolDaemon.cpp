@@ -55,11 +55,11 @@ namespace slowcontrol {
 		std::string query("DELETE FROM uid_daemon_connection WHERE daemonid = ");
 		query += std::to_string(lId);
 		query += ";";
-		pgsql::request(base::fGetDbconn(), query);
+		pgsql::request{query};
 		query = "INSERT INTO daemon_heartbeat(daemonid) VALUES (";
 		query += std::to_string(lId);
 		query += ");";
-		pgsql::request(base::fGetDbconn(), query);
+		pgsql::request{query};
 		lHeartBeatPeriod = std::chrono::minutes(1);
 		lHeartBeatSkew = new heartBeatSkew(description);
 		base::fAddToCompound(base::fGetCompoundId("generalSlowcontrol", "slowcontrol internal general stuff"),
@@ -105,7 +105,7 @@ namespace slowcontrol {
 		query += ",";
 		query += std::to_string(lId);
 		query += ");";
-		pgsql::request(base::fGetDbconn(), query);
+		pgsql::request{query};
 
 		auto reader = dynamic_cast<defaultReaderInterface*>(aMeasurement);
 		if (reader != nullptr) {
@@ -146,7 +146,7 @@ namespace slowcontrol {
 		query += " where daemonid=";
 		query += std::to_string(lId);
 		query += " RETURNING extract('epoch' from daemon_time - server_time);";
-		pgsql::request result(base::fGetDbconn(), query);
+		pgsql::request result(query);
 		auto skew = std::stof(result.getValue(0, 0));
 		lHeartBeatSkew->fStore(skew, now);
 		return nextTime;
@@ -369,7 +369,7 @@ namespace slowcontrol {
 				outcome = req->fProcess(response);
 			});
 			std::string query("UPDATE setvalue_requests SET response_time=now(), response=");
-			base::fAddEscapedStringToQuery(response, query);
+			pgsql::fAddEscapedStringToQuery(response, query);
 			query += ",result=";
 			if (outcome) {
 				query += "'true'";
@@ -378,7 +378,7 @@ namespace slowcontrol {
 			}
 			query += " WHERE id=";
 			query += std::to_string(req->fGetRequestId());
-			pgsql::request(base::fGetDbconn(), query);
+			pgsql::request{query};
 			delete req;
 		}
 	}
@@ -388,7 +388,7 @@ namespace slowcontrol {
 		std::string query("UPDATE setvalue_requests SET response='missed', result='false',response_time=now() WHERE response_time IS NULL AND request_time < now() AND uid IN (SELECT uid FROM uid_daemon_connection WHERE daemonid = ");
 		query += std::to_string(lId);
 		query += ");";
-		pgsql::request(base::fGetDbconn(), query);
+		pgsql::request{query};
 	}
 
 	void daemon::fProcessPendingRequests(base::uidType aUid) {
@@ -401,7 +401,7 @@ namespace slowcontrol {
 		std::string query("SELECT uid,request,id,EXTRACT('EPOCH' FROM request_time) AS request_time FROM setvalue_requests WHERE response_time IS NULL AND uid IN (SELECT uid FROM uid_daemon_connection WHERE daemonid = ");
 		query += std::to_string(lId);
 		query += ") ORDER BY request_time;";
-		pgsql::request result(base::fGetDbconn(), query);
+		pgsql::request result(query);
 		for (int i = 0; i < result.size(); i++) {
 			auto uid = std::stol(result.getValue(i, "uid"));
 			std::string request(result.getValue(i, "request"));
@@ -431,7 +431,7 @@ namespace slowcontrol {
 						outcome = req->fProcess(response);
 					});
 					delete req;
-					base::fAddEscapedStringToQuery(response, query);
+					pgsql::fAddEscapedStringToQuery(response, query);
 					if (outcome == true) {
 						query += ",result='true' ";
 					} else {
@@ -442,16 +442,16 @@ namespace slowcontrol {
 			query += "WHERE id = ";
 			query += std::to_string(id);
 			query += ";";
-			pgsql::request(base::fGetDbconn(), query);
+			pgsql::request{query};
 		}
 	}
 
 	void daemon::fConfigChangeListener() {
-		pgsql::request(base::fGetDbconn(), "LISTEN uid_configs_update");
-		pgsql::request(base::fGetDbconn(), "LISTEN setvalue_request");
+		pgsql::request("LISTEN uid_configs_update");
+		pgsql::request("LISTEN setvalue_request");
 		while (true) {
 			struct pollfd pfd;
-			pfd.fd = PQsocket(base::fGetDbconn());
+			pfd.fd = pgsql::getFd();
 			pfd.events = POLLIN | POLLPRI;
 			if (poll(&pfd, 1, 100) == 0) {
 				if (lStopRequested) {
@@ -461,8 +461,8 @@ namespace slowcontrol {
 			}
 
 			if (pfd.revents & (POLLIN | POLLPRI)) {
-				PQconsumeInput(base::fGetDbconn());
-				while (auto notification = pgsql::getNotifcation(base::fGetDbconn())) {
+				pgsql::consumeInput();
+				while (auto notification = pgsql::getNotifcation()) {
 					auto uid = std::stoi(notification->extra);
 					std::cout << "got notification '" << notification->relname << "' " << uid << std::endl;
 					if (strcmp(notification->relname, "uid_configs_update") == 0) {

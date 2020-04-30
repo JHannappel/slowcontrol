@@ -50,7 +50,7 @@ namespace pgsql {
 		}
 		result = PQexec(fGetDbconn(), command.c_str());
 		if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-			std::cerr << PQerrorMessage(conn) << "\n";
+			std::cerr << PQerrorMessage(fGetDbconn()) << "\n";
 		}
 	}
 	const char* request::getValue(int row, int column) {
@@ -62,6 +62,9 @@ namespace pgsql {
 	size_t request::size() const {
 		return PQntuples(result);
 	}
+	int getFd() {
+		return PQsocket(fGetDbconn());
+	}
 	void consumeInput() {
 		PQconsumeInput(fGetDbconn());
 	}
@@ -71,7 +74,7 @@ namespace pgsql {
 	};
 
 	void fAddEscapedStringToQuery(const std::string& aString, std::string& aQuery) {
-		auto escaped = PQescapeLiteral(fGetDbconn(), aString.c_str(), strlen(aString));
+		auto escaped = PQescapeLiteral(fGetDbconn(), aString.c_str(), aString.size());
 		aQuery += escaped;
 		PQfreemem(escaped);
 	}
