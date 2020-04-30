@@ -3,6 +3,7 @@
 #include <string.h>
 #include <poll.h>
 #include <Options.h>
+#include "pgsqlWrapper.h"
 
 /*! \mainpage
 	A slowcontrol system for general use, eg. in home automation.
@@ -26,43 +27,14 @@
 	The main trick is that the measurements are done by a multitude of
   independent daemons each of which tackles a reasonable task, usually
   conected to one piece of hardware.
-	Only after spasification data are sent to the database, keeping the load
+	Only after sparsification data are sent to the database, keeping the load
   low.
  */
 
 namespace slowcontrol {
-	std::map<std::thread::id, PGconn *> base::gConnections;
 	std::string base::gHostname;
 
-	static options::single<const char*> gDatabaseString('\0', "dataBaseString", "connection info for database");
 
-	PGconn *base::fGetDbconn() {
-		auto it = gConnections.find(std::this_thread::get_id());
-		if (it == gConnections.end()) {
-			unsigned int retries = 0;
-			PGconn *dbc = PQconnectdb(gDatabaseString);
-			while (PQstatus(dbc) == CONNECTION_BAD) {
-				std::cerr << PQerrorMessage(dbc) << std::endl;
-				retries = std::min<unsigned int>(retries + 1, 120);
-				sleep(retries);
-				std::cerr << "retry to create db connection in " << std::this_thread::get_id() << std::endl;
-				dbc = PQconnectdb(gDatabaseString);
-			}
-			gConnections[std::this_thread::get_id()] = dbc;
-			return dbc;
-		}
-		auto connection = it->second;
-		unsigned int retries = 0;
-		while (PQstatus(connection) != CONNECTION_OK) {
-			std::cerr << PQerrorMessage(connection) << std::endl;
-			sleep(retries);
-			retries = std::min<unsigned int>(retries + 1, 120);
-			std::cerr << "retry to reset db connection in " << std::this_thread::get_id() << std::endl;
-			PQreset(connection);
-		}
-		return connection;
-
-	}
 	const std::string& base::fGetHostName() {
 		if (gHostname.empty()) {
 			char buf[256];
@@ -86,12 +58,10 @@ namespace slowcontrol {
 		query += " WHERE ";
 		query += aKeyColumn;
 		query += " = ";
-		auto keyValue = PQescapeLiteral(base::fGetDbconn(), aKeyValue, strlen(aKeyValue));
-		query += keyValue;
+		pgsql::fAddEscapedStringToQuery(aKeyValue, query);
 		query += ";";
-		auto result = PQexec(base::fGetDbconn(), query.c_str());
-		if (PQntuples(result) != 1) {
-			PQclear(result);
+		pgsql::request result(query);
+		if (result.size() != 1) {
 			query = "INSERT INTO ";
 			query += aTable;
 			query += " (";
@@ -101,15 +71,15 @@ namespace slowcontrol {
 				query += aExtraColum;
 			}
 			query += ") VALUES (";
-			query += keyValue;
+			pgsql::fAddEscapedStringToQuery(aKeyValue, query);
 			if (aExtraColum != nullptr) {
 				query += ",";
-				fAddEscapedStringToQuery(aExtraValue, query);
+				pgsql::fAddEscapedStringToQuery(aExtraValue, query);
 			}
 			query += ") RETURNING ";
 			query += aIdColumn;
 			query += ";";
-			result = PQexec(base::fGetDbconn(), query.c_str());
+			result.update(query);
 			if (aInsertWasDone != nullptr) {
 				*aInsertWasDone = true;
 			}
@@ -118,9 +88,7 @@ namespace slowcontrol {
 				*aInsertWasDone = false;
 			}
 		}
-		PQfreemem(keyValue);
-		auto id = std::stol(PQgetvalue(result, 0, 0));
-		PQclear(result);
+		auto id = std::stol(result.getValue(0, 0));
 		return id;
 	}
 
@@ -131,19 +99,17 @@ namespace slowcontrol {
 		query += " AND uid= ";
 		query += std::to_string(aUid);
 		query += ";";
-		auto result = PQexec(base::fGetDbconn(), query.c_str());
-		if (PQntuples(result) != 1) {
-			PQclear(result);
+		pgsql::request result(query);
+		if (result.size() != 1) {
 			query = "INSERT INTO compound_uids (id,uid,child_name) VALUES (";
 			query += std::to_string(aCompound);
 			query += ", ";
 			query += std::to_string(aUid);
 			query += ", ";
-			fAddEscapedStringToQuery(aName, query);
+			pgsql::fAddEscapedStringToQuery(aName, query);
 			query += ");";
-			result = PQexec(base::fGetDbconn(), query.c_str());
+			pgsql::request(query);
 		}
-		PQclear(result);
 	}
 	void base::fAddSubCompound(int aParent, int aChild, const char* aName) {
 		std::string query("SELECT * FROM compound_families WHERE parent_id=");
@@ -151,19 +117,17 @@ namespace slowcontrol {
 		query += " AND child_id= ";
 		query += std::to_string(aChild);
 		query += ";";
-		auto result = PQexec(base::fGetDbconn(), query.c_str());
-		if (PQntuples(result) != 1) {
-			PQclear(result);
+		pgsql::request result(query);
+		if (result.size() != 1) {
 			query = "INSERT INTO compound_families (parent_id,child_id,child_name) VALUES (";
 			query += std::to_string(aParent);
 			query += ", ";
 			query += std::to_string(aChild);
 			query += ", ";
-			fAddEscapedStringToQuery(aName, query);
+			pgsql::fAddEscapedStringToQuery(aName, query);
 			query += ");";
-			result = PQexec(base::fGetDbconn(), query.c_str());
+			pgsql::request(query);
 		}
-		PQclear(result);
 	}
 	void base::fAddToCompound(int aCompound, uidType aUid, const std::string& aName) {
 		fAddToCompound(aCompound, aUid, aName.c_str());
@@ -173,50 +137,29 @@ namespace slowcontrol {
 	}
 
 
-	void base::fAddEscapedStringToQuery(const char *aString, std::string& aQuery) {
-		auto escaped = PQescapeLiteral(fGetDbconn(), aString, strlen(aString));
-		aQuery += escaped;
-		PQfreemem(escaped);
-	}
-	void base::fAddEscapedStringToQuery(const std::string& aString, std::string& aQuery) {
-		fAddEscapedStringToQuery(aString.c_str(), aQuery);
-	}
-
 	bool base::fRequestValueSetting(uidType aUid, const std::string& aRequest,
 	                                const std::string& aComment,
 	                                std::string& aResponse) {
 		std::string query("INSERT INTO setvalue_requests (uid,request,comment) VALUES (");
 		query += std::to_string(aUid);
 		query += ",";
-		fAddEscapedStringToQuery(aRequest, query);
+		pgsql::fAddEscapedStringToQuery(aRequest, query);
 		query += ",";
-		fAddEscapedStringToQuery(aComment, query);
+		pgsql::fAddEscapedStringToQuery(aComment, query);
 		query += ") RETURNING id;";
-		auto result = PQexec(fGetDbconn(), query.c_str());
-		auto id = std::stol(PQgetvalue(result, 0, 0));
-		PQclear(result);
-		result = PQexec(fGetDbconn(), "LISTEN setvalue_update;");
-		if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-			std::cerr << "LISTEN command failed" <<  PQerrorMessage(base::fGetDbconn()) << std::endl;
-			PQclear(result);
-			return false;
-		}
-		PQclear(result);
+		pgsql::request result(query);
+		auto id = std::stol(result.getValue(0, 0));
+		pgsql::request("LISTEN setvalue_update;");
 		while (true) {
 			struct pollfd pfd;
 			pfd.fd = PQsocket(base::fGetDbconn());
 			pfd.events = POLLIN | POLLPRI;
 			poll(&pfd, 1, -1);
 			if (pfd.revents & (POLLIN | POLLPRI)) {
-				PQconsumeInput(base::fGetDbconn());
-				while (true) {
-					auto notification = PQnotifies(base::fGetDbconn());
-					if (notification == nullptr) {
-						break;
-					}
+				pgsql::consumeInput();
+				while (auto notification = pgsql::getNotifcation()) {
 					std::cout << "got notification '" << notification->relname << "'" << std::endl;
 					if (strcmp(notification->relname, "setvalue_update") == 0) {
-						PQfreemem(notification);
 						query = "SELECT * FROM setvalue_requests WHERE id=";
 						query += std::to_string(id);
 						query += ";";

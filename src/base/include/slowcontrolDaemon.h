@@ -37,7 +37,7 @@ namespace slowcontrol {
 			                     decltype(lWriter) aWriter) :
 				lBase(aBase), lWriter(aWriter) {};
 		};
-		std::vector<measurementBase*> lMeasurements;
+		std::map<base::uidType, measurementBase*> lMeasurements;
 		std::mutex lMeasurementsMutex;
 		std::vector<defaultReadableMeasurement> lMeasurementsWithDefaultReader;
 		std::mutex lMeasurementsWithReaderMutex;
@@ -84,7 +84,7 @@ namespace slowcontrol {
 		void fRequestStop() {
 			lStopRequested = true;
 		}
-		void fProcessPendingRequests();
+		void fProcessPendingRequests(base::uidType aUid = 0);
 		template <class Clock, class Duration> void fWaitUntil(const std::chrono::time_point<Clock, Duration>& aWhen) {
 			std::unique_lock<std::mutex> lock(lWaitConditionMutex);
 			lWaitCondition.wait_until(lock, aWhen);

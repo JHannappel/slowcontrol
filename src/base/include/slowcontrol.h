@@ -4,7 +4,6 @@
 
 #include <thread>
 #include <map>
-#include <libpq-fe.h>
 #include <unistd.h>
 
 namespace slowcontrol {
@@ -13,10 +12,8 @@ namespace slowcontrol {
 	  public:
 		typedef int32_t uidType;
 	  private:
-		static std::map<std::thread::id, PGconn *> gConnections;
 		static std::string gHostname;
 	  public:
-		static PGconn *fGetDbconn();
 		static const std::string& fGetHostName();
 		static int fGetCompoundId(const char* aName, const char *aDescription = nullptr);
 		static int fSelectOrInsert(const char *aTable, const char *aIdColumn,
@@ -27,8 +24,6 @@ namespace slowcontrol {
 		static void fAddSubCompound(int aParent, int aChild, const char* aName);
 		static void fAddToCompound(int aCompound, uidType aUid, const std::string& aName);
 		static void fAddSubCompound(int aParent, int aChild, const std::string& aName);
-		static void fAddEscapedStringToQuery(const char *aString, std::string& aQuery);
-		static void fAddEscapedStringToQuery(const std::string& aString, std::string& aQuery);
 		static bool fRequestValueSetting(uidType aUid, const std::string& aRequest,
 		                                 const std::string& aComment,
 		                                 std::string& aResponse);

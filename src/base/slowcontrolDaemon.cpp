@@ -10,6 +10,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <string.h>
+#include "pgsqlWrapper.h"
 
 namespace slowcontrol {
 	static std::map<std::chrono::system_clock::time_point, writeValue::request*> gScheduledWriteRequests;
@@ -54,13 +55,11 @@ namespace slowcontrol {
 		std::string query("DELETE FROM uid_daemon_connection WHERE daemonid = ");
 		query += std::to_string(lId);
 		query += ";";
-		auto result = PQexec(base::fGetDbconn(), query.c_str());
-		PQclear(result);
+		pgsql::request(base::fGetDbconn(), query);
 		query = "INSERT INTO daemon_heartbeat(daemonid) VALUES (";
 		query += std::to_string(lId);
 		query += ");";
-		result = PQexec(base::fGetDbconn(), query.c_str());
-		PQclear(result);
+		pgsql::request(base::fGetDbconn(), query);
 		lHeartBeatPeriod = std::chrono::minutes(1);
 		lHeartBeatSkew = new heartBeatSkew(description);
 		base::fAddToCompound(base::fGetCompoundId("generalSlowcontrol", "slowcontrol internal general stuff"),
@@ -99,15 +98,14 @@ namespace slowcontrol {
 	void daemon::fRegisterMeasurement(measurementBase* aMeasurement) {
 		{
 			std::lock_guard<decltype(lMeasurementsMutex)> lock(lMeasurementsMutex);
-			lMeasurements.emplace_back(aMeasurement);
+			lMeasurements.emplace(aMeasurement->fGetUid(), aMeasurement);
 		}
 		std::string query("INSERT INTO uid_daemon_connection (uid, daemonid) VALUES (");
 		query += std::to_string(aMeasurement->fGetUid());
 		query += ",";
 		query += std::to_string(lId);
 		query += ");";
-		auto result = PQexec(base::fGetDbconn(), query.c_str());
-		PQclear(result);
+		pgsql::request(base::fGetDbconn(), query);
 
 		auto reader = dynamic_cast<defaultReaderInterface*>(aMeasurement);
 		if (reader != nullptr) {
@@ -148,10 +146,9 @@ namespace slowcontrol {
 		query += " where daemonid=";
 		query += std::to_string(lId);
 		query += " RETURNING extract('epoch' from daemon_time - server_time);";
-		auto result = PQexec(base::fGetDbconn(), query.c_str());
-		auto skew = std::stof(PQgetvalue(result, 0, 0));
+		pgsql::request result(base::fGetDbconn(), query);
+		auto skew = std::stof(result.getValue(0, 0));
 		lHeartBeatSkew->fStore(skew, now);
-		PQclear(result);
 		return nextTime;
 	}
 
@@ -191,8 +188,8 @@ namespace slowcontrol {
 	}
 
 	void daemon::fFlushAllValues() {
-		for (auto measurement : lMeasurements) {
-			measurement->fFlush();
+		for (auto& measurement : lMeasurements) {
+			measurement.second->fFlush();
 		}
 	}
 
@@ -319,9 +316,9 @@ namespace slowcontrol {
 			std::vector<measurementBase*> measurements;
 			{
 				std::lock_guard < decltype(lMeasurementsMutex) > lock(lMeasurementsMutex);
-				for (auto measurement : lMeasurements) {
-					if (measurement->fValuesToSend()) {
-						measurements.emplace_back(measurement);
+				for (auto& measurement : lMeasurements) {
+					if (measurement.second->fValuesToSend()) {
+						measurements.emplace_back(measurement.second);
 					}
 				}
 			}
@@ -381,8 +378,7 @@ namespace slowcontrol {
 			}
 			query += " WHERE id=";
 			query += std::to_string(req->fGetRequestId());
-			auto result = PQexec(base::fGetDbconn(), query.c_str());
-			PQclear(result);
+			pgsql::request(base::fGetDbconn(), query);
 			delete req;
 		}
 	}
@@ -392,20 +388,25 @@ namespace slowcontrol {
 		std::string query("UPDATE setvalue_requests SET response='missed', result='false',response_time=now() WHERE response_time IS NULL AND request_time < now() AND uid IN (SELECT uid FROM uid_daemon_connection WHERE daemonid = ");
 		query += std::to_string(lId);
 		query += ");";
-		auto result = PQexec(base::fGetDbconn(), query.c_str());
-		PQclear(result);
+		pgsql::request(base::fGetDbconn(), query);
 	}
 
-	void daemon::fProcessPendingRequests() {
+	void daemon::fProcessPendingRequests(base::uidType aUid) {
+		if (aUid != 0) {
+			auto it = lWriteableMeasurements.find(aUid);
+			if (it == lWriteableMeasurements.end()) {
+				return;
+			}
+		}
 		std::string query("SELECT uid,request,id,EXTRACT('EPOCH' FROM request_time) AS request_time FROM setvalue_requests WHERE response_time IS NULL AND uid IN (SELECT uid FROM uid_daemon_connection WHERE daemonid = ");
 		query += std::to_string(lId);
 		query += ") ORDER BY request_time;";
-		auto result = PQexec(base::fGetDbconn(), query.c_str());
-		for (int i = 0; i < PQntuples(result); i++) {
-			auto uid = std::stol(PQgetvalue(result, i, PQfnumber(result, "uid")));
-			std::string request(PQgetvalue(result, i, PQfnumber(result, "request")));
-			auto id = std::stol(PQgetvalue(result, i, PQfnumber(result, "id")));
-			std::chrono::system_clock::time_point request_time(std::chrono::nanoseconds(static_cast<long long>(std::stod(PQgetvalue(result, i, PQfnumber(result, "request_time"))) * 1e9)));
+		pgsql::request result(base::fGetDbconn(), query);
+		for (int i = 0; i < result.size(); i++) {
+			auto uid = std::stol(result.getValue(i, "uid"));
+			std::string request(result.getValue(i, "request"));
+			auto id = std::stol(result.getValue(i, "id"));
+			std::chrono::system_clock::time_point request_time(std::chrono::nanoseconds(static_cast<long long>(std::stod(result.getValue(i, "request_time")) * 1e9)));
 
 			query = "UPDATE setvalue_requests SET response_time=now(), response=";
 			auto it = lWriteableMeasurements.find(uid);
@@ -441,27 +442,13 @@ namespace slowcontrol {
 			query += "WHERE id = ";
 			query += std::to_string(id);
 			query += ";";
-			auto subResult = PQexec(base::fGetDbconn(), query.c_str());
-			PQclear(subResult);
+			pgsql::request(base::fGetDbconn(), query);
 		}
-		PQclear(result);
 	}
 
 	void daemon::fConfigChangeListener() {
-		auto res = PQexec(base::fGetDbconn(), "LISTEN uid_configs_update");
-		if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-			std::cerr << "LISTEN command failed" <<  PQerrorMessage(base::fGetDbconn()) << std::endl;
-			PQclear(res);
-			return;
-		}
-		PQclear(res);
-		res = PQexec(base::fGetDbconn(), "LISTEN setvalue_request");
-		if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-			std::cerr << "LISTEN command failed" <<  PQerrorMessage(base::fGetDbconn()) << std::endl;
-			PQclear(res);
-			return;
-		}
-		PQclear(res);
+		pgsql::request(base::fGetDbconn(), "LISTEN uid_configs_update");
+		pgsql::request(base::fGetDbconn(), "LISTEN setvalue_request");
 		while (true) {
 			struct pollfd pfd;
 			pfd.fd = PQsocket(base::fGetDbconn());
@@ -473,36 +460,21 @@ namespace slowcontrol {
 				}
 			}
 
-			bool gotNotificaton = false;
-
 			if (pfd.revents & (POLLIN | POLLPRI)) {
 				PQconsumeInput(base::fGetDbconn());
-				while (true) {
-					auto notification = PQnotifies(base::fGetDbconn());
-					if (notification == nullptr) {
-						break;
-					}
-					std::cout << "got notification '" << notification->relname << "'" << std::endl;
+				while (auto notification = pgsql::getNotifcation(base::fGetDbconn())) {
+					auto uid = std::stoi(notification->extra);
+					std::cout << "got notification '" << notification->relname << "' " << uid << std::endl;
 					if (strcmp(notification->relname, "uid_configs_update") == 0) {
-						gotNotificaton = true;
+						auto it = lMeasurements.find(uid);
+						if (it != lMeasurements.end()) {
+							it->second->fConfigure();
+						}
 					} else if (strcmp(notification->relname, "setvalue_request") == 0) {
-						fProcessPendingRequests();
+						fProcessPendingRequests(uid);
 					}
-					PQfreemem(notification);
 				}
 			}
-			if (gotNotificaton) {
-				decltype(lMeasurements) measurements;
-				{
-					// copy vector of measurements to decrease time spent in the lock
-					std::lock_guard < decltype(lMeasurementsMutex) > lock(lMeasurementsMutex);
-					measurements = lMeasurements;
-				}
-				for (auto measurement : measurements) {
-					measurement->fConfigure();
-				}
-			}
-
 		}
 	}
 

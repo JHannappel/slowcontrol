@@ -1,4 +1,5 @@
 #include "trigger.h"
+#include "pgsqlWrapper.h"
 
 namespace slowcontrol {
 	trigger::trigger() {
@@ -24,8 +25,8 @@ namespace slowcontrol {
 			query += ", (SELECT TIMESTAMP WITH TIME ZONE 'epoch' + ";
 			query += std::to_string(std::chrono::duration<double, std::nano>(value.time_since_epoch()).count() / 1E9);
 			query += " * INTERVAL '1 second'));";
-			auto result = PQexec(base::fGetDbconn(), query.c_str());
-			PQclear(result);
+
+			pgsql::request(query);
 		}
 	}
 	bool trigger::fValuesToSend() {

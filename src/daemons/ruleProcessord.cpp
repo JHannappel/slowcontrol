@@ -661,30 +661,30 @@ class ruleNodeConstant: public ruleNode {
 };
 
 class ruleNodeMeasurement: public ruleNode {
-protected:
-  std::string lQuery;
+  protected:
+	std::string lQuery;
   public:
 	ruleNodeMeasurement(const std::string& aName, int aNodeId) :
 		ruleNode(aName, aNodeId) {
 	};
 	virtual void fSetFromString(const char* aString) = 0;
 	virtual const char *fGetValueExpression() = 0;
-  void setUpQuery(const std::string& table, slowcontrol::base::uidType uid) {
-    lQuery = "SELECT EXTRACT('epoch' from time AT TIME ZONE 'UTC') AS time, ";
-    lQuery += fGetValueExpression();
-    lQuery += " FROM ";
-    lQuery += table;
-    lQuery += " WHERE uid = ";
-    lQuery += std::to_string(uid);
-    lQuery += " ORDER BY time DESC LIMIT 1;";
-  }
-  void getFromDb() {
-    auto result = PQexec(slowcontrol::base::fGetDbconn(),lQuery.c_str());
-    fSetFromString(PQgetvalue(result,0,PQfnumber(result,"value")));
-    slowcontrol::measurementBase::timeType time(std::chrono::duration_cast<slowcontrol::measurementBase::timeType::duration>(std::chrono::duration<double>(std::stod(PQgetvalue(result, 0, PQfnumber(result, "time"))))));
-    fSetTime(time);
-    PQclear(result);
-  }
+	void setUpQuery(const std::string& table, slowcontrol::base::uidType uid) {
+		lQuery = "SELECT EXTRACT('epoch' from time AT TIME ZONE 'UTC') AS time, ";
+		lQuery += fGetValueExpression();
+		lQuery += " FROM ";
+		lQuery += table;
+		lQuery += " WHERE uid = ";
+		lQuery += std::to_string(uid);
+		lQuery += " ORDER BY time DESC LIMIT 1;";
+	}
+	void getFromDb() {
+		auto result = PQexec(slowcontrol::base::fGetDbconn(), lQuery.c_str());
+		fSetFromString(PQgetvalue(result, 0, PQfnumber(result, "value")));
+		slowcontrol::measurementBase::timeType time(std::chrono::duration_cast<slowcontrol::measurementBase::timeType::duration>(std::chrono::duration<double>(std::stod(PQgetvalue(result, 0, PQfnumber(result, "time"))))));
+		fSetTime(time);
+		PQclear(result);
+	}
 };
 
 template <typename T> class ruleNodeTypedMeasurement: public ruleNodeMeasurement {
@@ -971,7 +971,7 @@ int main(int argc, const char *argv[]) {
 						auto node = ruleNode::fCreateNode(table, name, id);
 						auto measurement = dynamic_cast<ruleNodeMeasurement*>(node);
 						measurement->setUpQuery(table, uid);
-						measurements.emplace(uid,measurement);
+						measurements.emplace(uid, measurement);
 					} else { // it must be an action
 						std::string detailled_type(table);
 						detailled_type.replace(0, strlen("measurements"), "actions");
@@ -992,12 +992,12 @@ int main(int argc, const char *argv[]) {
 
 	ruleNode::fInitAll();
 	{
-	  auto result = PQexec(slowcontrol::base::fGetDbconn(), "LISTEN ruleProcessor_measurements_float; LISTEN ruleProcessor_measurements_bool; LISTEN ruleProcessor_measurements_trigger;");
-	  PQclear(result);
+		auto result = PQexec(slowcontrol::base::fGetDbconn(), "LISTEN ruleProcessor_measurements_float; LISTEN ruleProcessor_measurements_bool; LISTEN ruleProcessor_measurements_trigger;");
+		PQclear(result);
 	}
-	
 
-	
+
+
 	timedActionsClass& timedActions(*timedActionsClass::fGetInstance());
 
 	daemon->fStartThreads();
@@ -1024,9 +1024,9 @@ int main(int argc, const char *argv[]) {
 				std::string table(notification->relname + strlen("ruleProcessor_"));
 				auto it = measurements.find(uid);
 				if (it != measurements.end()) {
-				  std::cout << "checking table '" << table << " with " << uid << "'\n";
-				  it->second->getFromDb();
-				  it->second->fProcess();
+					std::cout << "checking table '" << table << " with " << uid << "'\n";
+					it->second->getFromDb();
+					it->second->fProcess();
 				}
 				PQfreemem(notification);
 			}

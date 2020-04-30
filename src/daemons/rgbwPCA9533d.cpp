@@ -57,7 +57,7 @@ class channelPair {
 class rgbw;
 
 class setableChannel {
-protected:
+  protected:
   protected:
 	rgbw& master;
 	std::string name;
@@ -76,14 +76,14 @@ protected:
 };
 
 class channelBase: public setableChannel,
-									 public slowcontrol::measurement<float>,
-									 public slowcontrol::writeValueWithType<float> {
+	public slowcontrol::measurement<float>,
+	public slowcontrol::writeValueWithType<float> {
   protected:
 	const float maxValue;
   public:
-	channelBase(rgbw& aMaster, float aMax, const std::string& aName): setableChannel(aMaster,aName),
-																																		measurement(0),
-																																		maxValue(aMax) {};
+	channelBase(rgbw& aMaster, float aMax, const std::string& aName): setableChannel(aMaster, aName),
+		measurement(0),
+		maxValue(aMax) {};
 	float getMax() const override {
 		return maxValue;
 	};
@@ -166,11 +166,11 @@ class setbit: public setableChannel,
 		value = aValue;
 		fStore(value);
 		char buf = value ? '1' : '0';
-		pwrite(fd,&buf,1,0);
+		pwrite(fd, &buf, 1, 0);
 	}
   public:
-	setbit(rgbw& aMaster,const std::string& baseName, const std::string& aName, int indicatorPin):
-		setableChannel(aMaster,aName) {
+	setbit(rgbw& aMaster, const std::string& baseName, const std::string& aName, int indicatorPin):
+		setableChannel(aMaster, aName) {
 		lClassName.fSetFromString(__func__);
 		fInitializeUid(baseName + aName);
 		fConfigure();
@@ -230,7 +230,7 @@ class rgbw {
 		hue(*this, nameBase, "hue", 360.0),
 		value(*this, nameBase, "value"),
 		saturation(*this, nameBase, "saturation"),
-		autoHue(*this, nameBase, "autoHue",4) {
+		autoHue(*this, nameBase, "autoHue", 4) {
 		std::string compoundName(nameBase);
 		compoundName += "light";
 
@@ -420,7 +420,7 @@ class stateButton {
 	void update() {
 		//		lseek(fd, 0, SEEK_SET);
 		char buffer;
-		if (pread(fd, &buffer, 1,0) < 1) {
+		if (pread(fd, &buffer, 1, 0) < 1) {
 			throw slowcontrol::exception("can't read gpio", slowcontrol::exception::level::kContinue);
 		}
 		value = buffer == '0'; // we are active low...
@@ -461,7 +461,7 @@ class rotary {
 	};
 	float getIncrement(int pushFd, float step) {
 		if (pushFd == a.getFd()) {
-			std::cerr << "trig a " << a.getName() << ": " << a << " " << b.getName() << ": " <<b << "\n";
+			std::cerr << "trig a " << a.getName() << ": " << a << " " << b.getName() << ": " << b << "\n";
 			if (a) { // rising edge
 				if (b) { // ccw
 					return -step;
@@ -476,7 +476,7 @@ class rotary {
 				}
 			}
 		} else {
-			std::cerr << "trig b " << a.getName() << ": " << a << " " << b.getName() << ": " <<b << "\n";
+			std::cerr << "trig b " << a.getName() << ": " << a << " " << b.getName() << ": " << b << "\n";
 
 			if (b) { // riding edge
 				if (a) { // cw
@@ -535,13 +535,23 @@ int main(int argc, const char *argv[]) {
 		auto result = poll(pfds.data(), pfds.size(), 1000);
 		if (result > 0) {
 			std::cerr << "result " << result << " ";
-			for (auto& pfd:pfds) {
+			for (auto& pfd : pfds) {
 				std::cerr << pfd.fd << ": ";
-				if (pfd.revents & POLLIN) { std::cerr<< "IN|";}
-				if (pfd.revents & POLLPRI) { std::cerr<< "PRI|";}
-				if (pfd.revents & POLLOUT) { std::cerr<< "OUT|";}
-				if (pfd.revents & POLLERR) { std::cerr<< "ERR|";}
-				if (pfd.revents & POLLNVAL) { std::cerr<< "NVAL|";}
+				if (pfd.revents & POLLIN) {
+					std::cerr << "IN|";
+				}
+				if (pfd.revents & POLLPRI) {
+					std::cerr << "PRI|";
+				}
+				if (pfd.revents & POLLOUT) {
+					std::cerr << "OUT|";
+				}
+				if (pfd.revents & POLLERR) {
+					std::cerr << "ERR|";
+				}
+				if (pfd.revents & POLLNVAL) {
+					std::cerr << "NVAL|";
+				}
 			}
 			std::cerr << "\tc";
 			std::this_thread::sleep_for(std::chrono::milliseconds(1)); // stabilize input
@@ -584,18 +594,18 @@ int main(int argc, const char *argv[]) {
 					auto dt = now - lastRotTick;
 					std::cerr << std::chrono::duration_cast<std::chrono::duration<float>>(dt).count() << "\n";
 					if (dt > std::chrono::milliseconds(25)) {
-							lastRotTick = now;
-							auto it = fdRotMap.find(pfd.fd);
-							auto incr = it->second.getIncrement(pfd.fd, channel.getMax() / 512);
-							if (dt < std::chrono::seconds(1) &&
-									(incr > 0 == wasIncreasing)) {
-								auto f= 1./std::chrono::duration_cast<std::chrono::duration<float>>(dt).count();
-								incr *= f;
-							}
-							std::cerr << "set "<< channel.getName() << " to " << channel.getValue() + incr <<" dt is " << std::chrono::duration_cast<std::chrono::duration<float>>(dt).count() << "\n";
-							channel.set(channel.getValue() + incr);
-							wasIncreasing = incr > 0;
+						lastRotTick = now;
+						auto it = fdRotMap.find(pfd.fd);
+						auto incr = it->second.getIncrement(pfd.fd, channel.getMax() / 512);
+						if (dt < std::chrono::seconds(1) &&
+						        (incr > 0 == wasIncreasing)) {
+							auto f = 1. / std::chrono::duration_cast<std::chrono::duration<float>>(dt).count();
+							incr *= f;
 						}
+						std::cerr << "set " << channel.getName() << " to " << channel.getValue() + incr << " dt is " << std::chrono::duration_cast<std::chrono::duration<float>>(dt).count() << "\n";
+						channel.set(channel.getValue() + incr);
+						wasIncreasing = incr > 0;
+					}
 					pfd.revents = 0;
 				}
 			}

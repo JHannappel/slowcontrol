@@ -17,6 +17,7 @@
 #include "slowcontrolDaemon.h"
 #include "slowcontrol.h"
 #include "states.h"
+#include "pgsqlWrapper.h"
 
 namespace slowcontrol {
 
@@ -297,8 +298,7 @@ namespace slowcontrol {
 			query += " * INTERVAL '1 second'),";
 			query += std::to_string(aValue.lValue);
 			query += " );";
-			auto result = PQexec(base::fGetDbconn(), query.c_str());
-			PQclear(result);
+			pgsql::request result(query);
 		};
 	};
 
@@ -392,8 +392,7 @@ namespace slowcontrol {
 			query += " * INTERVAL '1 second'),";
 			query += aValue.lValue ? "'t'" : "'f'";
 			query += " );";
-			auto result = PQexec(base::fGetDbconn(), query.c_str());
-			PQclear(result);
+			pgsql::request result(query);
 		};
 	};
 

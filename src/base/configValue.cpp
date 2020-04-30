@@ -3,7 +3,7 @@
 #include <set>
 #include <iostream>
 #include <OptionsChrono.h>
-
+#include "pgsqlWrapper.h"
 namespace slowcontrol {
 	void configValueBase::fSave(const char *aTable, const char *aIdColumn, int aId, const char *aComment) const {
 		std::string query("INSERT INTO ");
@@ -13,16 +13,15 @@ namespace slowcontrol {
 		query += ",name,value,comment) VALUES (";
 		query += std::to_string(aId);
 		query += ",";
-		base::fAddEscapedStringToQuery(fGetName(), query);
+		pgsql::fAddEscapedStringToQuery(fGetName(), query);
 		query += ",";
 		std::string valueRaw;
 		fAsString(valueRaw);
-		base::fAddEscapedStringToQuery(valueRaw, query);
+		pgsql::fAddEscapedStringToQuery(valueRaw, query);
 		query += ",";
-		base::fAddEscapedStringToQuery(aComment, query);
+		pgsql::fAddEscapedStringToQuery(aComment, query);
 		query += ");";
-		auto result = PQexec(base::fGetDbconn(), query.c_str());
-		PQclear(result);
+		pgsql::request result(query);
 	}
 	void configValueBase::fUpdate(const char *aTable, const char *aIdColumn, int aId, const char *aComment) const {
 		std::string query = "UPDATE ";
@@ -30,18 +29,17 @@ namespace slowcontrol {
 		query += " SET value=";
 		std::string valueRaw;
 		fAsString(valueRaw);
-		base::fAddEscapedStringToQuery(valueRaw, query);
+		pgsql::fAddEscapedStringToQuery(valueRaw, query);
 		query += ", comment=";
-		base::fAddEscapedStringToQuery(aComment, query);
+		pgsql::fAddEscapedStringToQuery(aComment, query);
 		query += ", last_change=now() WHERE ";
 		query += aIdColumn;
 		query += "=";
 		query += std::to_string(aId);
 		query += " AND name=";
-		base::fAddEscapedStringToQuery(fGetName(), query);
+		pgsql::fAddEscapedStringToQuery(fGetName(), query);
 		query += ";";
-		auto result = PQexec(base::fGetDbconn(), query.c_str());
-		PQclear(result);
+		pgsql::request(query);
 	}
 	void configValueBase::fConfigure(const char *aTable, const char *aIdColumn, int aId, mapType& aMap) {
 		std::string query("SELECT name,value,comment FROM ");
@@ -53,16 +51,16 @@ namespace slowcontrol {
 		query += ";";
 		std::set<std::string> optionsInDb;
 		std::cout << query << "\n";
-		auto result = PQexec(base::fGetDbconn(), query.c_str());
-		for (int i = 0; i < PQntuples(result); ++i) {
-			std::string name(PQgetvalue(result, i, PQfnumber(result, "name")));
+		pgsql::request result(query);
+		for (int i = 0; i < result.size(); ++i) {
+			std::string name(result.getValue(i, "name"));
 			auto it = aMap.find(name);
 			if (it != aMap.end()) {
 				auto cfgVal = it->second;
 				std::string valueRaw;
-				auto valueInDb = PQgetvalue(result, i, PQfnumber(result, "value"));
+				auto valueInDb = result.getValue(i, "value");
 				cfgVal->fAsString(valueRaw);
-				std::string comment(PQgetvalue(result, i, PQfnumber(result, "comment")));
+				std::string comment(result.getValue(i, "comment"));
 				if (comment.size() >= 7
 				        && comment.rfind("default") == comment.size() - 7
 				        && valueRaw.compare(valueInDb) != 0) {
@@ -75,7 +73,6 @@ namespace slowcontrol {
 				std::cerr << "unknown cfg option '" << name << "' with value '" << PQgetvalue(result, i, PQfnumber(result, "value")) << "' encountered for " << aIdColumn << " " << aId << std::endl;
 			}
 		}
-		PQclear(result);
 		for (auto it : aMap) {
 			auto name = it.first;
 			if (optionsInDb.find(name) == optionsInDb.end()) {

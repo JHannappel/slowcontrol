@@ -441,6 +441,16 @@ ALTER SEQUENCE public.state_types_type_seq OWNED BY public.state_types.type;
 --
 --
 
+CREATE TABLE public.test (
+    bla integer,
+    bli text
+);
+
+
+
+--
+--
+
 CREATE TABLE public.time_intervals (
     tdiff interval,
     name text
@@ -873,24 +883,28 @@ CREATE RULE rule_config_history_saver AS
 --
 
 CREATE RULE ruleprocessornotify AS
-    ON INSERT TO public.measurements_trigger DO
- NOTIFY ruleprocessor_measurements_trigger;
+    ON INSERT TO public.measurements_trigger DO  SELECT pg_notify('ruleprocessor_measurements_trigger'::text, (new.uid)::text) AS pg_notify;
 
 
 --
 --
 
 CREATE RULE ruleprocessornotify AS
-    ON INSERT TO public.measurements_float DO
- NOTIFY ruleprocessor_measurements_float;
+    ON INSERT TO public.measurements_float DO  SELECT pg_notify('ruleprocessor_measurements_float'::text, (new.uid)::text) AS pg_notify;
 
 
 --
 --
 
 CREATE RULE ruleprocessornotify AS
-    ON INSERT TO public.measurements_bool DO
- NOTIFY ruleprocessor_measurements_bool;
+    ON INSERT TO public.measurements_bool DO  SELECT pg_notify('ruleprocessor_measurements_bool'::text, (new.uid)::text) AS pg_notify;
+
+
+--
+--
+
+CREATE RULE setvalue_request_notify AS
+    ON INSERT TO public.setvalue_requests DO  SELECT pg_notify('setvalue_request'::text, (new.uid)::text) AS pg_notify;
 
 
 --
@@ -905,8 +919,14 @@ CREATE RULE setvalue_resquest_notify AS
 --
 
 CREATE RULE setvalue_update_notify AS
-    ON UPDATE TO public.setvalue_requests DO
- NOTIFY setvalue_update;
+    ON UPDATE TO public.setvalue_requests DO  SELECT pg_notify('setvalue_update'::text, (new.uid)::text) AS pg_notify;
+
+
+--
+--
+
+CREATE RULE testnotify AS
+    ON INSERT TO public.test DO  SELECT pg_notify('mist'::text, ((new.bla)::text || new.bli)) AS pg_notify;
 
 
 --
@@ -921,8 +941,7 @@ CREATE RULE uid_config_history_saver AS
 --
 
 CREATE RULE uid_config_notify AS
-    ON UPDATE TO public.uid_configs DO
- NOTIFY uid_configs_update;
+    ON UPDATE TO public.uid_configs DO  SELECT pg_notify('uid_configs_update'::text, (new.uid)::text) AS pg_notify;
 
 
 --
