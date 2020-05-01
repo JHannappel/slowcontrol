@@ -890,7 +890,10 @@ CREATE RULE ruleprocessornotify AS
 --
 
 CREATE RULE ruleprocessornotify AS
-    ON INSERT TO public.measurements_float DO  SELECT pg_notify('ruleprocessor_measurements_float'::text, (new.uid)::text) AS pg_notify;
+    ON UPDATE TO public.measurements_float DO  SELECT pg_notify('ruleprocessor_measurements_float'::text, (new.uid)::text) AS pg_notify
+   FROM (public.uid_list
+     JOIN public.rule_nodes ON ((uid_list.description = rule_nodes.nodename)))
+  WHERE ((rule_nodes.nodetype = 'measurement'::text) AND (uid_list.uid = new.uid));
 
 
 --
@@ -910,9 +913,10 @@ CREATE RULE setvalue_request_notify AS
 --
 --
 
-CREATE RULE setvalue_resquest_notify AS
-    ON INSERT TO public.setvalue_requests DO
- NOTIFY setvalue_request;
+CREATE RULE setvalue_request_specific AS
+    ON UPDATE TO public.setvalue_requests DO  SELECT pg_notify(('setvalue_request_'::text || (uid_daemon_connection.daemonid)::text), (new.uid)::text) AS pg_notify
+   FROM public.uid_daemon_connection
+  WHERE (uid_daemon_connection.uid = new.uid);
 
 
 --
@@ -942,6 +946,15 @@ CREATE RULE uid_config_history_saver AS
 
 CREATE RULE uid_config_notify AS
     ON UPDATE TO public.uid_configs DO  SELECT pg_notify('uid_configs_update'::text, (new.uid)::text) AS pg_notify;
+
+
+--
+--
+
+CREATE RULE uid_config_notify_spcific AS
+    ON UPDATE TO public.uid_configs DO  SELECT pg_notify(('uid_configs_update_'::text || (uid_daemon_connection.daemonid)::text), (new.uid)::text) AS pg_notify
+   FROM public.uid_daemon_connection
+  WHERE (uid_daemon_connection.uid = new.uid);
 
 
 --

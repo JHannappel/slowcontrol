@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <typeinfo>
+#include "pgsqlWrapper.h"
 
 
 #define debugthis std::cerr << __FILE__ << ":" << __LINE__ << ": " << __func__ << "@" << (void*)this << ", a " << typeid(*this).name() << "\n"
@@ -89,8 +90,8 @@ class ruleNode {
 			query += " WHERE typeid=";
 			query += std::to_string(id);
 			query += ";";
-			auto result = PQexec(slowcontrol::base::fGetDbconn(), query.c_str());
-			PQclear(result);
+
+			pgsql::request{query};
 		};
 	};
 	template <typename T> static void fRegisterNodeTypeCreator(const std::string& aNodeType) {
@@ -286,12 +287,12 @@ template <unsigned nParents = 0> class ruleNodeWithParents: public ruleNode {
 		ruleNode::fInit();
 		std::string query("SELECT parent,slot FROM rule_node_parents WHERE nodeid=");
 		query += std::to_string(lNodeId);
-		auto result = PQexec(slowcontrol::base::fGetDbconn(), query.c_str());
-		if (nParents != 0 && nParents != PQntuples(result)) {
+		pgsql::request result(query);
+		if (nParents != 0 && nParents != result.size()) {
 			throw "wrong number of parents.";
 		};
-		for (int i = 0; i < PQntuples(result); ++i) {
-			auto parentId = std::stoi(PQgetvalue(result, i, PQfnumber(result, "parent")));
+		for (unsigned int i = 0; i < result.size(); ++i) {
+			auto parentId = std::stoi(result.getValue(i, "parent"));
 			auto parent = fGetNodeById(parentId);
 			parent->fRegisterDependentNode(this);
 			if (nParents == 0) {
@@ -299,11 +300,10 @@ template <unsigned nParents = 0> class ruleNodeWithParents: public ruleNode {
 			} else if (nParents == 1) {
 				fRegisterParent(lParent, parent, "");
 			} else {
-				std::string slot = PQgetvalue(result, i, PQfnumber(result, "slot"));
+				std::string slot(result.getValue(i, "slot"));
 				fRegisterParent(lParents, parent, slot);
 			}
 		}
-		PQclear(result);
 	};
 };
 
@@ -679,11 +679,10 @@ class ruleNodeMeasurement: public ruleNode {
 		lQuery += " ORDER BY time DESC LIMIT 1;";
 	}
 	void getFromDb() {
-		auto result = PQexec(slowcontrol::base::fGetDbconn(), lQuery.c_str());
-		fSetFromString(PQgetvalue(result, 0, PQfnumber(result, "value")));
-		slowcontrol::measurementBase::timeType time(std::chrono::duration_cast<slowcontrol::measurementBase::timeType::duration>(std::chrono::duration<double>(std::stod(PQgetvalue(result, 0, PQfnumber(result, "time"))))));
+		pgsql::request result(lQuery);
+		fSetFromString(result.getValue(0, "value"));
+		slowcontrol::measurementBase::timeType time(std::chrono::duration_cast<slowcontrol::measurementBase::timeType::duration>(std::chrono::duration<double>(std::stod(result.getValue(0, "time")))));
 		fSetTime(time);
-		PQclear(result);
 	}
 };
 
@@ -785,10 +784,9 @@ template <typename T> class ruleNodeTypedAction: public ruleNodeAction {
 		query += ",";
 		std::string request("set ");
 		request += std::to_string(static_cast<T>(fGetValueAsDouble()));
-		slowcontrol::base::fAddEscapedStringToQuery(request, query);
+		pgsql::fAddEscapedStringToQuery(request, query);
 		query += ",'by rule processor');";
-		auto result = PQexec(slowcontrol::base::fGetDbconn(), query.c_str());
-		PQclear(result);
+		pgsql::request{query};
 		ruleNodeAction::fProcess();
 	};
 };
@@ -825,8 +823,7 @@ class ruleNodeTriggerAction: public ruleNodeAction {
 		std::string query("INSERT INTO setvalue_requests (uid,request,comment) VALUES (");
 		query += std::to_string(lUid);
 		query += ",'set','by rule processor');";
-		auto result = PQexec(slowcontrol::base::fGetDbconn(), query.c_str());
-		PQclear(result);
+		pgsql::request{query};
 		ruleNodeAction::fProcess();
 	};
 };
@@ -951,22 +948,22 @@ int main(int argc, const char *argv[]) {
 
 	std::map<slowcontrol::base::uidType, ruleNodeMeasurement*> measurements;
 	{
-		auto result = PQexec(slowcontrol::base::fGetDbconn(), "SELECT nodetype, nodename,nodeid FROM rule_nodes;");
-		for (int i = 0; i < PQntuples(result); ++i) {
-			std::string type(PQgetvalue(result, i, PQfnumber(result, "nodetype")));
-			std::string name(PQgetvalue(result, i, PQfnumber(result, "nodename")));
-			auto id = std::stoi(PQgetvalue(result, i, PQfnumber(result, "nodeid")));
+		pgsql::request result("SELECT nodetype, nodename,nodeid FROM rule_nodes;");
+		for (unsigned int i = 0; i < result.size(); ++i) {
+			std::string type(result.getValue(i, "nodetype"));
+			std::string name(result.getValue(i, "nodename"));
+			auto id = std::stoi(result.getValue(i, "nodeid"));
 			bool isMeasurement = type.compare("measurement") == 0;
 			bool isAction = type.compare("action") == 0;
 			if (isMeasurement || isAction) { // special treatment for measurements
 
 				std::string query("SELECT uid, data_table, is_write_value FROM uid_list WHERE description = ");
-				slowcontrol::base::fAddEscapedStringToQuery(name, query);
+				pgsql::fAddEscapedStringToQuery(name, query);
 				query += ";";
-				auto res2 = PQexec(slowcontrol::base::fGetDbconn(), query.c_str());
-				if (PQntuples(res2) == 1) {
-					auto table = PQgetvalue(res2, 0, PQfnumber(res2, "data_table"));
-					auto uid = std::stoi(PQgetvalue(res2, 0, PQfnumber(res2, "uid")));
+				pgsql::request res2(query);
+				if (res2.size() == 1u) {
+					auto table = res2.getValue(0, "data_table");
+					auto uid = std::stoi(res2.getValue(0, "uid"));
 					if (isMeasurement) {
 						auto node = ruleNode::fCreateNode(table, name, id);
 						auto measurement = dynamic_cast<ruleNodeMeasurement*>(node);
@@ -987,13 +984,11 @@ int main(int argc, const char *argv[]) {
 				ruleNode::fCreateNode(type, name, id);
 			}
 		}
-		PQclear(result);
 	}
 
 	ruleNode::fInitAll();
 	{
-		auto result = PQexec(slowcontrol::base::fGetDbconn(), "LISTEN ruleProcessor_measurements_float; LISTEN ruleProcessor_measurements_bool; LISTEN ruleProcessor_measurements_trigger;");
-		PQclear(result);
+		pgsql::request{"LISTEN ruleProcessor_measurements_float; LISTEN ruleProcessor_measurements_bool; LISTEN ruleProcessor_measurements_trigger;"};
 	}
 
 
@@ -1007,28 +1002,23 @@ int main(int argc, const char *argv[]) {
 		nextTimeinMs = std::min(nextTimeinMs, 1000);
 		nextTimeinMs = std::max(nextTimeinMs, 10);
 		struct pollfd pfd;
-		pfd.fd = PQsocket(slowcontrol::base::fGetDbconn());
+		pfd.fd = pgsql::getFd();
 		pfd.events = POLLIN | POLLPRI;
 		if (poll(&pfd, 1, nextTimeinMs) == 0) {
 			continue;
 		}
 		if (pfd.revents & (POLLIN | POLLPRI)) {
-			PQconsumeInput(slowcontrol::base::fGetDbconn());
-			while (true) {
-				auto notification = PQnotifies(slowcontrol::base::fGetDbconn());
-				if (notification == nullptr) {
-					break;
-				}
-				std::cout << "got notification '" << notification->relname << "' for " << notification->extra << std::endl;
-				auto uid = std::stoi(notification->extra);
-				std::string table(notification->relname + strlen("ruleProcessor_"));
+			pgsql::consumeInput();
+			while (auto notification = pgsql::notification::get()) {
+				std::cout << "got notification '" << notification->channel() << "' for " << notification->payload() << std::endl;
+				auto uid = std::stoi(notification->payload());
+				std::string table(notification->channel() + strlen("ruleProcessor_"));
 				auto it = measurements.find(uid);
 				if (it != measurements.end()) {
 					std::cout << "checking table '" << table << " with " << uid << "'\n";
 					it->second->getFromDb();
 					it->second->fProcess();
 				}
-				PQfreemem(notification);
 			}
 		}
 	}

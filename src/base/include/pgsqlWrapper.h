@@ -17,11 +17,21 @@ namespace pgsql {
 		void update(const std::string& command);
 		const char* getValue(int row, int column);
 		const char* getValue(int row, const std::string& column);
+		bool isNull(int row, const std::string& column);
 		size_t size() const;
 	};
 	int getFd();
 	void consumeInput();
-	std::unique_ptr<pgNotify, void(*)(void*)> getNotifcation();
+	class notification {
+	  protected:
+		pgNotify* notify;
+		notification(pgNotify* aNotify);
+	  public:
+		static std::unique_ptr<notification> get();
+		~notification();
+		const char* channel() const;
+		const char* payload() const;
+	};
 	void fAddEscapedStringToQuery(const std::string& aString, std::string& aQuery);
 
 }; // end of pqsql namespace

@@ -59,6 +59,9 @@ namespace pgsql {
 	const char* request::getValue(int row, const std::string& column) {
 		return PQgetvalue(result, row, PQfnumber(result, column.c_str()));
 	}
+	bool request::isNull(int row, const std::string& column) {
+		return PQgetisnull(result, row, PQfnumber(result, column.c_str())) != 0;
+	}
 	size_t request::size() const {
 		return PQntuples(result);
 	}
@@ -69,9 +72,21 @@ namespace pgsql {
 		PQconsumeInput(fGetDbconn());
 	}
 
-	std::unique_ptr<PGnotify, void(*)(void*)> getNotifcation() {
-		return std::unique_ptr<PGnotify, void(*)(void*)>(PQnotifies(fGetDbconn()), PQfreemem);
+	notification::notification(pgNotify *aNotify): notify(aNotify) {};
+	notification::~notification() {
+		if (notify) {
+			PQfreemem(notify);
+		}
+	}
+	std::unique_ptr<notification> notification::get() {
+		return std::unique_ptr<notification>(new notification(PQnotifies(fGetDbconn())));
 	};
+	const char* notification::channel() const {
+		return notify->relname;
+	}
+	const char* notification::payload() const {
+		return notify->extra;
+	}
 
 	void fAddEscapedStringToQuery(const std::string& aString, std::string& aQuery) {
 		auto escaped = PQescapeLiteral(fGetDbconn(), aString.c_str(), aString.size());

@@ -402,7 +402,7 @@ namespace slowcontrol {
 		query += std::to_string(lId);
 		query += ") ORDER BY request_time;";
 		pgsql::request result(query);
-		for (int i = 0; i < result.size(); i++) {
+		for (unsigned int i = 0; i < result.size(); i++) {
 			auto uid = std::stol(result.getValue(i, "uid"));
 			std::string request(result.getValue(i, "request"));
 			auto id = std::stol(result.getValue(i, "id"));
@@ -447,8 +447,8 @@ namespace slowcontrol {
 	}
 
 	void daemon::fConfigChangeListener() {
-		pgsql::request("LISTEN uid_configs_update");
-		pgsql::request("LISTEN setvalue_request");
+		pgsql::request("LISTEN uid_configs_update_" + std::to_string(lId));
+		pgsql::request("LISTEN setvalue_request_" + std::to_string(lId));
 		while (true) {
 			struct pollfd pfd;
 			pfd.fd = pgsql::getFd();
@@ -462,15 +462,15 @@ namespace slowcontrol {
 
 			if (pfd.revents & (POLLIN | POLLPRI)) {
 				pgsql::consumeInput();
-				while (auto notification = pgsql::getNotifcation()) {
-					auto uid = std::stoi(notification->extra);
-					std::cout << "got notification '" << notification->relname << "' " << uid << std::endl;
-					if (strcmp(notification->relname, "uid_configs_update") == 0) {
+				while (auto notification = pgsql::notification::get()) {
+					auto uid = std::stoi(notification->payload());
+					std::cout << "got notification '" << notification->channel() << "' " << uid << std::endl;
+					if (strcmp(notification->channel(), "uid_configs_update") == 0) {
 						auto it = lMeasurements.find(uid);
 						if (it != lMeasurements.end()) {
 							it->second->fConfigure();
 						}
-					} else if (strcmp(notification->relname, "setvalue_request") == 0) {
+					} else if (strcmp(notification->channel(), "setvalue_request") == 0) {
 						fProcessPendingRequests(uid);
 					}
 				}

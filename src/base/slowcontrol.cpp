@@ -157,31 +157,26 @@ namespace slowcontrol {
 			poll(&pfd, 1, -1);
 			if (pfd.revents & (POLLIN | POLLPRI)) {
 				pgsql::consumeInput();
-				while (auto notification = pgsql::getNotifcation()) {
-					auto uid = std::stoi(notification->extra);
-					std::cout << "got notification '" << notification->relname << "' " << uid << std::endl;
+				while (auto notification = pgsql::notification::get()) {
+					auto uid = std::stoi(notification->payload());
+					std::cout << "got notification '" << notification->channel() << "' " << uid << std::endl;
 					if (aUid == uid) {
 						query = "SELECT * FROM setvalue_requests WHERE id=";
 						query += std::to_string(id);
 						query += ";";
-						result = PQexec(fGetDbconn(), query.c_str());
-						if (PQgetisnull(result, 0, PQfnumber(result, "result")) != 0) {
-							PQclear(result);
+						pgsql::request result(query);
+						if (result.isNull(0, "result")) {
 							std::cout << "no result yet" << std::endl;
 							break; // spuriuos notification or not yet ready
 						}
-						aResponse = PQgetvalue(result, 0, PQfnumber(result, "response"));
-						auto outcome = strcmp(PQgetvalue(result, 0, PQfnumber(result, "result")), "t") == 0;
-						std::cout << "result is '" << PQgetvalue(result, 0, PQfnumber(result, "response")) << "'" << std::endl;
-						PQclear(result);
+						aResponse = result.getValue(0, "response");
+						auto outcome = strcmp(result.getValue(0, "result"), "t") == 0;
+						std::cout << "result is '" << result.getValue(0, "response") << "'" << std::endl;
 						std::cout << "result is now '" << aResponse << "'" << std::endl;
 						return (outcome);
 					}
-					PQfreemem(notification);
-
 				}
 			}
-
 		}
 	}
 
