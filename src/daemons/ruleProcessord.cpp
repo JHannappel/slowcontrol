@@ -969,6 +969,7 @@ int main(int argc, const char *argv[]) {
 						auto measurement = dynamic_cast<ruleNodeMeasurement*>(node);
 						measurement->setUpQuery(table, uid);
 						measurements.emplace(uid, measurement);
+						measurement->getFromDb();
 					} else { // it must be an action
 						std::string detailled_type(table);
 						detailled_type.replace(0, strlen("measurements"), "actions");
