@@ -79,7 +79,12 @@ namespace pgsql {
 		}
 	}
 	std::unique_ptr<notification> notification::get() {
-		return std::unique_ptr<notification>(new notification(PQnotifies(fGetDbconn())));
+		auto note = PQnotifies(fGetDbconn());
+		if (note != nullptr) {
+			return std::unique_ptr<notification>(new notification(note));
+		} else {
+			return nullptr;
+		}
 	};
 	const char* notification::channel() const {
 		return notify->relname;
