@@ -883,14 +883,7 @@ CREATE RULE rule_config_history_saver AS
 --
 
 CREATE RULE ruleprocessornotify AS
-    ON INSERT TO public.measurements_trigger DO  SELECT pg_notify('ruleprocessor_measurements_trigger'::text, (new.uid)::text) AS pg_notify;
-
-
---
---
-
-CREATE RULE ruleprocessornotify AS
-    ON INSERT TO public.measurements_float DO  SELECT pg_notify('ruleprocessor_measurements_float'::text, (new.uid)::text) AS pg_notify
+    ON INSERT TO public.measurements_trigger DO  SELECT pg_notify('ruleprocessor_measurements'::text, (new.uid)::text) AS pg_notify
    FROM (public.uid_list
      JOIN public.rule_nodes ON ((uid_list.description = rule_nodes.nodename)))
   WHERE ((rule_nodes.nodetype = 'measurement'::text) AND (uid_list.uid = new.uid));
@@ -900,7 +893,50 @@ CREATE RULE ruleprocessornotify AS
 --
 
 CREATE RULE ruleprocessornotify AS
-    ON INSERT TO public.measurements_bool DO  SELECT pg_notify('ruleprocessor_measurements_bool'::text, (new.uid)::text) AS pg_notify;
+    ON INSERT TO public.measurements_float DO  SELECT pg_notify('ruleprocessor_measurements'::text, (new.uid)::text) AS pg_notify
+   FROM (public.uid_list
+     JOIN public.rule_nodes ON ((uid_list.description = rule_nodes.nodename)))
+  WHERE ((rule_nodes.nodetype = 'measurement'::text) AND (uid_list.uid = new.uid));
+
+
+--
+--
+
+CREATE RULE ruleprocessornotify AS
+    ON INSERT TO public.measurements_bool DO  SELECT pg_notify('ruleprocessor_measurements'::text, (new.uid)::text) AS pg_notify
+   FROM (public.uid_list
+     JOIN public.rule_nodes ON ((uid_list.description = rule_nodes.nodename)))
+  WHERE ((rule_nodes.nodetype = 'measurement'::text) AND (uid_list.uid = new.uid));
+
+
+--
+--
+
+CREATE RULE ruleprocessornotify AS
+    ON INSERT TO public.measurements_int2 DO  SELECT pg_notify('ruleprocessor_measurements'::text, (new.uid)::text) AS pg_notify
+   FROM (public.uid_list
+     JOIN public.rule_nodes ON ((uid_list.description = rule_nodes.nodename)))
+  WHERE ((rule_nodes.nodetype = 'measurement'::text) AND (uid_list.uid = new.uid));
+
+
+--
+--
+
+CREATE RULE ruleprocessornotify AS
+    ON INSERT TO public.measurements_int4 DO  SELECT pg_notify('ruleprocessor_measurements'::text, (new.uid)::text) AS pg_notify
+   FROM (public.uid_list
+     JOIN public.rule_nodes ON ((uid_list.description = rule_nodes.nodename)))
+  WHERE ((rule_nodes.nodetype = 'measurement'::text) AND (uid_list.uid = new.uid));
+
+
+--
+--
+
+CREATE RULE ruleprocessornotify AS
+    ON INSERT TO public.measurements_int8 DO  SELECT pg_notify('ruleprocessor_measurements'::text, (new.uid)::text) AS pg_notify
+   FROM (public.uid_list
+     JOIN public.rule_nodes ON ((uid_list.description = rule_nodes.nodename)))
+  WHERE ((rule_nodes.nodetype = 'measurement'::text) AND (uid_list.uid = new.uid));
 
 
 --
