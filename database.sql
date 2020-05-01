@@ -890,7 +890,7 @@ CREATE RULE ruleprocessornotify AS
 --
 
 CREATE RULE ruleprocessornotify AS
-    ON UPDATE TO public.measurements_float DO  SELECT pg_notify('ruleprocessor_measurements_float'::text, (new.uid)::text) AS pg_notify
+    ON INSERT TO public.measurements_float DO  SELECT pg_notify('ruleprocessor_measurements_float'::text, (new.uid)::text) AS pg_notify
    FROM (public.uid_list
      JOIN public.rule_nodes ON ((uid_list.description = rule_nodes.nodename)))
   WHERE ((rule_nodes.nodetype = 'measurement'::text) AND (uid_list.uid = new.uid));

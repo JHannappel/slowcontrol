@@ -987,9 +987,9 @@ int main(int argc, const char *argv[]) {
 	}
 
 	ruleNode::fInitAll();
-	{
-		pgsql::request{"LISTEN ruleProcessor_measurements_float; LISTEN ruleProcessor_measurements_bool; LISTEN ruleProcessor_measurements_trigger;"};
-	}
+
+	pgsql::request{"LISTEN ruleProcessor_measurements;"};
+
 
 
 
