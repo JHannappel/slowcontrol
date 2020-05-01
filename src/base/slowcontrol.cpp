@@ -164,12 +164,12 @@ namespace slowcontrol {
 						query = "SELECT * FROM setvalue_requests WHERE id=";
 						query += std::to_string(id);
 						query += ";";
-						pgsql::request result(query);
-						if (result.isNull(0, "result")) {
+						pgsql::request result2(query);
+						if (result2.isNull(0, "result")) {
 							std::cout << "no result yet" << std::endl;
 							break; // spuriuos notification or not yet ready
 						}
-						aResponse = result.getValue(0, "response");
+						aResponse = result2.getValue(0, "response");
 						auto outcome = strcmp(result.getValue(0, "result"), "t") == 0;
 						std::cout << "result is '" << result.getValue(0, "response") << "'" << std::endl;
 						std::cout << "result is now '" << aResponse << "'" << std::endl;

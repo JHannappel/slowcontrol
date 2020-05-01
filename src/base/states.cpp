@@ -8,7 +8,7 @@ measurement_state::stateType measurement_state::fGetState(const std::string& aSt
 	std::lock_guard<decltype(gStatesMutex)> mapLock(gStatesMutex);
 	if (gStates.empty()) { // populate the map from the database
 		pgsql::request result("SELECT typename,type FROM state_types;");
-		for (int i = 0; i < result.size(); i++) {
+		for (unsigned int i = 0; i < result.size(); i++) {
 			gStates.emplace(result.getValue(i, "typename"),
 			                std::stoi(result.getValue(i, "type")));
 		}

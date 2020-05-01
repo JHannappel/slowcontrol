@@ -52,7 +52,7 @@ namespace slowcontrol {
 		std::set<std::string> optionsInDb;
 		std::cout << query << "\n";
 		pgsql::request result(query);
-		for (int i = 0; i < result.size(); ++i) {
+		for (unsigned int i = 0; i < result.size(); ++i) {
 			std::string name(result.getValue(i, "name"));
 			auto it = aMap.find(name);
 			if (it != aMap.end()) {

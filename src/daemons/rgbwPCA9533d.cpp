@@ -598,7 +598,7 @@ int main(int argc, const char *argv[]) {
 						auto it = fdRotMap.find(pfd.fd);
 						auto incr = it->second.getIncrement(pfd.fd, channel.getMax() / 512);
 						if (dt < std::chrono::seconds(1) &&
-						        (incr > 0 == wasIncreasing)) {
+						        ((incr > 0) == wasIncreasing)) {
 							auto f = 1. / std::chrono::duration_cast<std::chrono::duration<float>>(dt).count();
 							incr *= f;
 						}
