@@ -465,12 +465,14 @@ namespace slowcontrol {
 				while (auto notification = pgsql::notification::get()) {
 					auto uid = std::stoi(notification->payload());
 					std::cout << "got notification '" << notification->channel() << "' " << uid << std::endl;
-					if (strcmp(notification->channel(), "uid_configs_update") == 0) {
+					//                                    1234567890123456789
+					if (strncmp(notification->channel(), "uid_configs_update_", 19) == 0) {
 						auto it = lMeasurements.find(uid);
 						if (it != lMeasurements.end()) {
 							it->second->fConfigure();
 						}
-					} else if (strcmp(notification->channel(), "setvalue_request") == 0) {
+						//                                         12345678901234567
+					} else if (strncmp(notification->channel(), "setvalue_request_", 17) == 0) {
 						fProcessPendingRequests(uid);
 					}
 				}

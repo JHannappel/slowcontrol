@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 11.5 (Raspbian 11.5-1+deb10u1)
+-- Dumped from database version 11.7 (Raspbian 11.7-0+deb10u1)
 -- Dumped by pg_dump version 12.2
 
 SET statement_timeout = 0;
@@ -942,15 +942,8 @@ CREATE RULE ruleprocessornotify AS
 --
 --
 
-CREATE RULE setvalue_request_notify AS
-    ON INSERT TO public.setvalue_requests DO  SELECT pg_notify('setvalue_request'::text, (new.uid)::text) AS pg_notify;
-
-
---
---
-
 CREATE RULE setvalue_request_specific AS
-    ON UPDATE TO public.setvalue_requests DO  SELECT pg_notify(('setvalue_request_'::text || (uid_daemon_connection.daemonid)::text), (new.uid)::text) AS pg_notify
+    ON INSERT TO public.setvalue_requests DO  SELECT pg_notify(('setvalue_request_'::text || (uid_daemon_connection.daemonid)::text), (new.uid)::text) AS pg_notify
    FROM public.uid_daemon_connection
   WHERE (uid_daemon_connection.uid = new.uid);
 
