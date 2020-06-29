@@ -67,7 +67,7 @@ while ($row = pg_fetch_assoc($result)) {
   $v=pg_fetch_assoc($r2);
   echo "<td class=\"${state['class']}\"> ${v['value']}</td>";
 	echo "<td class=\"${state['class']}\"> ${row['unit']}</td>\n";
-  echo "<td class=\"${state['class']}\"> <a href=\"graph.php?uid=${row['uid']}\">${v['time']}</a> </td>\n";
+  echo "<td class=\"${state['class']}\"> <a href=\"dressed_graph.php?uid=${row['uid']}\">${v['time']}</a> </td>\n";
 	echo "<td><input type=\"checkbox\" name=\"u$uid\" $checkstate></td>\n";
   echo "</tr>\n";
  }
