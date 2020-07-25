@@ -79,8 +79,8 @@ while ($row = pg_fetch_assoc($result)) {
   $row2=pg_fetch_assoc($result2);
   echo "${row2['value']} $unit measured at ${row2['time']}</br>";
 	echo "<a href=\"dressed_graph.php?uid=${row['uid']}\">graph</a>\n";
-	echo "<a href=\"dressed_graph.php?uid=${row['uid']}&starttime='today'\">graph since today</a>\n";
-	echo "<a href=\"dressed_graph.php?uid=${row['uid']}&starttime='yesterday'\">graph since yesterday</a>\n";
+	echo "<a href=\"dressed_graph.php?uid=${row['uid']}&starttime=today\">graph since today</a>\n";
+	echo "<a href=\"dressed_graph.php?uid=${row['uid']}&starttime=yesterday\">graph since yesterday</a>\n";
 	
 	echo "<h3>States</h3>\n";
 	echo "<table>\n";
