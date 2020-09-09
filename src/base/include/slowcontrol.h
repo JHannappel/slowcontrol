@@ -4,6 +4,7 @@
 
 #include <thread>
 #include <map>
+#include <string>
 #include <unistd.h>
 
 namespace slowcontrol {

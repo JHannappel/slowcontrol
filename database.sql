@@ -3,7 +3,7 @@
 --
 
 -- Dumped from database version 11.7 (Raspbian 11.7-0+deb10u1)
--- Dumped by pg_dump version 12.2
+-- Dumped by pg_dump version 12.4
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
