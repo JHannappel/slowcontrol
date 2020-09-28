@@ -450,7 +450,7 @@ protected:
 		r -= rgmin;
 		g -= rgmin;
 		white.set(2 * min, false);
-		red.set(2 * g, false);
+		red.set(2 * r, false);
 		green.set(2 * g, false);
 		blue.set(2 * b, false);
 	}
@@ -701,7 +701,7 @@ int main(int argc, const char *argv[]) {
 				}
 			}
 			std::cerr << "\tc";
-			std::this_thread::sleep_for(std::chrono::milliseconds(1)); // stabilize input
+			std::this_thread::sleep_for(std::chrono::milliseconds(5)); // stabilize input
 			for (auto& b : buttons) {
 				b.update();
 				std::cerr << b << " ";
@@ -740,20 +740,14 @@ int main(int argc, const char *argv[]) {
 					auto now = std::chrono::system_clock::now();
 					auto dt = now - lastRotTick;
 					std::cerr << "dt is " << std::chrono::duration_cast<std::chrono::duration<float>>(dt).count() << "\n";
-					if (dt > std::chrono::milliseconds(12)) {
+					if (dt > std::chrono::milliseconds(5)) {
 						lastRotTick = now;
 						auto it = fdRotMap.find(pfd.fd);
-						auto incr = it->second.getIncrement(pfd.fd, channel.getMax() / 4096);
-						if (dt < std::chrono::seconds(1) &&
-						        ((incr > 0) == wasIncreasing)) {
-							auto f = 1. / std::chrono::duration_cast<std::chrono::duration<float>>(dt).count();
-							std::cerr << "f: " << f << " incr: " << incr << "\n";
-							incr *= f * f * f * f;
-						}
+						auto incr = it->second.getIncrement(pfd.fd, channel.getMax() / 20.);
 						wasIncreasing = incr > 0;
 						auto old = channel.getValue();
-						if (old < 0.01) {
-							channel.set(old + incr);
+						if (old == 0) {
+						  channel.set(channel.getMax() / 2048);
 						} else {
 							channel.set(old * (1.0 + incr));
 						}
@@ -770,7 +764,7 @@ int main(int argc, const char *argv[]) {
 					auto nowAsTime_t = std::chrono::system_clock::to_time_t(now);
 					auto lt = localtime(&nowAsTime_t);
 					float hour = lt->tm_hour + lt->tm_min / 60.0 + lt->tm_sec / 3600.0;
-					if (hour > 20.0) {
+					if (hour > 19.0) {
 						auto phase = (hour - 19.0) / (24. - 19.);
 						controller.hue.set(60 - 60*phase);
 						controller.saturation.set(phase);
