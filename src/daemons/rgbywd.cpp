@@ -195,6 +195,7 @@ class lightChannel: public channelBase {
 		lClassName.fSetFromString(__func__);
 		fInitializeUid(baseName + colour);
 		fConfigure();
+		set(0,false);
 	}
 	void set(float aValue, bool recalc = true) override;
 	bool fProcessRequest(const request* aRequest, std::string& aResponse) override {
@@ -701,7 +702,7 @@ int main(int argc, const char *argv[]) {
 				}
 			}
 			std::cerr << "\tc";
-			std::this_thread::sleep_for(std::chrono::milliseconds(5)); // stabilize input
+			std::this_thread::sleep_for(std::chrono::milliseconds(2)); // stabilize input
 			for (auto& b : buttons) {
 				b.update();
 				std::cerr << b << " ";
@@ -740,14 +741,18 @@ int main(int argc, const char *argv[]) {
 					auto now = std::chrono::system_clock::now();
 					auto dt = now - lastRotTick;
 					std::cerr << "dt is " << std::chrono::duration_cast<std::chrono::duration<float>>(dt).count() << "\n";
-					if (dt > std::chrono::milliseconds(5)) {
+					if (dt > std::chrono::milliseconds(10)) {
 						lastRotTick = now;
 						auto it = fdRotMap.find(pfd.fd);
 						auto incr = it->second.getIncrement(pfd.fd, channel.getMax() / 20.);
 						wasIncreasing = incr > 0;
 						auto old = channel.getValue();
 						if (old == 0) {
-						  channel.set(channel.getMax() / 2048);
+							if (&channel == &controller.value && incr < 0) {
+								channel.set(1);
+							} else {
+								channel.set(channel.getMax() / 2048);
+							}
 						} else {
 							channel.set(old * (1.0 + incr));
 						}
