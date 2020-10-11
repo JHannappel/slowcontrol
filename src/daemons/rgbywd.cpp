@@ -266,13 +266,13 @@ class setbit: public setableChannel,
 		return false;
 	}
 
+  public:
 	void fSet(bool aValue) {
 		value = aValue;
 		fStore(value);
 		char buf = value ? '1' : '0';
 		pwrite(fd, &buf, 1, 0);
 	}
-  public:
 	setbit(rgbw& aMaster, const std::string& baseName, const std::string& aName, int indicatorPin):
 		setableChannel(aMaster, aName) {
 		lClassName.fSetFromString(__func__);
@@ -300,9 +300,7 @@ class setbit: public setableChannel,
 		}
 		return 0;
 	}
-	void set(float aValue, bool recalc = true) override {
-		fSet(aValue > getValue());
-	};
+	void set(float aValue, bool recalc = true) override;
 	operator bool() const {
 		return value;
 	}
@@ -312,6 +310,7 @@ class setbit: public setableChannel,
 
 class rgbw {
 protected:
+	const double whiteLevelForFullBrightness = 0.8;
   public:
 	remotePCA9685 pca9685;
 	lightChannel red;
@@ -326,8 +325,8 @@ protected:
 	rgbw(const std::string& i2cDevname,
 	     const std::string& nameBase):
 		red(*this, nameBase, "red", 1),
-		green(*this, nameBase, "green", 2),
-		blue(*this, nameBase, "blue", 0),
+		green(*this, nameBase, "green", 0),
+		blue(*this, nameBase, "blue", 2),
 		yellow(*this, nameBase, "yellow", 3),
 		white(*this, nameBase, "white", 4,5),
 		hue(*this, nameBase, "hue", 360.0),
@@ -366,13 +365,13 @@ protected:
 			case 2: // green
 				return green;
 			case 3: // red and green
-				return hue;
+				return yellow;
 			case 4: // blue
 				return blue;
 			case 5: // red and blue
-				return saturation;
+				return hue;
 			case 6: // green and blue
-				return autoHue;
+				return saturation;
 			case 7: // red, green and blue
 				return white;
 		}
@@ -385,7 +384,7 @@ protected:
 		auto s = saturation.fGetCurrentValue();
 		auto v = value.fGetCurrentValue();
 		if ( s == 0 ) { // achromatisch (Grau)
-			if (v < 0.5) {
+			if (v < whiteLevelForFullBrightness) {
 				white.set(v * 2, false);
 				red.set(0, false);
 				green.set(0, false);
@@ -393,10 +392,10 @@ protected:
 				yellow.set(0, false);
 			} else {
 				white.set(1, false);
-				//	yellow.set((v - 0.5) * 2, false);
-				red.set((v - 0.5) * 2, false);
-				green.set((v - 0.5) * 2, false);
-				blue.set((v - 0.5) * 2, false);
+				//	yellow.set((v - whiteLevelForFullBrightness) * 2, false);
+				red.set((v - whiteLevelForFullBrightness) * 2, false);
+				green.set((v - whiteLevelForFullBrightness) * 2, false);
+				blue.set((v - whiteLevelForFullBrightness) * 2, false);
 			}
 			return;
 		}
@@ -440,8 +439,8 @@ protected:
 				break;
 		}
 		auto min = std::min(b, std::min(r,g));
-		if (min > 0.5) {
-			min = 0.5;
+		if (min > whiteLevelForFullBrightness) {
+			min = whiteLevelForFullBrightness;
 		}
 		r -= min;
 		g -= min;
@@ -457,11 +456,11 @@ protected:
 	}
 	void rgbToHsv() {
 		std::cerr << __func__ << "\n";
-		auto w = white.fGetCurrentValue() * 0.5;
-		auto y = yellow.fGetCurrentValue() *0.5;
-		auto r = std::min(red.fGetCurrentValue() * 0.5 + w + y, 1.0);
-		auto g = std::min(green.fGetCurrentValue() * 0.5 + w + y, 1.0);
-		auto b = std::min(blue.fGetCurrentValue() * 0.5 + w, 1.0);
+		auto w = white.fGetCurrentValue() * whiteLevelForFullBrightness;
+		auto y = yellow.fGetCurrentValue() *(1-whiteLevelForFullBrightness);
+		auto r = std::min(red.fGetCurrentValue() * (1-whiteLevelForFullBrightness) + w + y, 1.0);
+		auto g = std::min(green.fGetCurrentValue() * (1-whiteLevelForFullBrightness) + w + y, 1.0);
+		auto b = std::min(blue.fGetCurrentValue() * (1-whiteLevelForFullBrightness) + w, 1.0);
 		float min, max, delta;
 		min = std::min(r, std::min(g, b ));
 		max = std::max(r, std::max(g, b ));
@@ -506,6 +505,13 @@ protected:
 								<< " s: " << saturation.fGetCurrentValue() << "\n"; 
 	};
 };
+
+void setbit::set(float aValue, bool recalc) {
+		fSet(aValue > getValue());
+		if (value) {
+			master.hsvToRgb();
+		}
+	};
 
 
 void lightChannel::set(float aValue, bool recalc) {
@@ -720,11 +726,18 @@ int main(int argc, const char *argv[]) {
 			if (pfds.at(0).revents != 0) {
 				if (onOff) {
 					std::cerr << "onOff pressed\n";
-					if (controller.value.fGetCurrentValue() > 0.0) {
-						oldValue = controller.value.fGetCurrentValue();
-						controller.value.set(0);
-					} else {
-						controller.value.set(oldValue);
+					if (redButton) { // toglle autoHue
+						controller.autoHue.fSet(! controller.autoHue);
+						if (controller.autoHue) {
+							controller.hsvToRgb();
+						}
+					} else { // switch on/off
+						if (controller.value.fGetCurrentValue() > 0.0) {
+							oldValue = controller.value.fGetCurrentValue();
+							controller.value.set(0);
+						} else {
+							controller.value.set(oldValue);
+						}
 					}
 				} else {
 					std::cerr << "onOff relased\n";
@@ -756,7 +769,9 @@ int main(int argc, const char *argv[]) {
 						} else {
 							channel.set(old * (1.0 + incr));
 						}
-							
+						if (&channel != &controller.value) {
+							controller.autoHue.fSet(false);
+						}
 								std::cerr << "set " << channel.getName() << " to " << channel.getValue() << " from " << old << " dt is " << std::chrono::duration_cast<std::chrono::duration<float>>(dt).count() << "\n";
 					}
 					pfd.revents = 0;
