@@ -25,8 +25,9 @@ class remotePCA9685 {
 	std::mutex pcaMutex;
 	std::condition_variable condVar;
 	CURL *curl;
-	curl_mime *mime;
-	unsigned int nMimeParts;
+  //curl_mime *mime;
+  //unsigned int nMimeParts;
+  std::string regvalues;
 	std::array<unsigned short,16> values;
 	std::thread senderThread;
 public:
@@ -88,24 +89,15 @@ public:
 
 	
 	void setRegister(unsigned char reg, unsigned char value) {
-		if (mime == nullptr) {
-			mime = curl_mime_init(curl);
-		}
-		auto *part = curl_mime_addpart(mime);
-		std::string name("reg");
-		name += std::to_string(reg);
-		std::string v(std::to_string(value));
-		curl_mime_data(part, v.c_str(), CURL_ZERO_TERMINATED);
-		curl_mime_name(part, name.c_str());
-		std::cerr << name << " : " << v << "\n";
-		if (nMimeParts > 16) {
-			sendRequest();
-		}
+	  static const char hexchars[]="0123456789abcdef";
+	  regvalues.push_back(hexchars[(reg >> 4) & 0x0f]);
+	  regvalues.push_back(hexchars[(reg >> 0) & 0x0f]);
+	  regvalues.push_back(hexchars[(value >> 4) & 0x0f]);
+	  regvalues.push_back(hexchars[(value >> 0) & 0x0f]);
 	}
 public:
-	remotePCA9685(): nMimeParts(0) {
+	remotePCA9685() {
 		curl = curl_easy_init();
-		mime = nullptr;
 		curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 		std::cerr << "url: " << url << "\n";
 	}
@@ -117,6 +109,12 @@ public:
 		condVar.notify_one();
 	}
 	void sendRequest(){
+	    
+	  auto 	mime = curl_mime_init(curl);
+	  auto *part = curl_mime_addpart(mime);
+	  curl_mime_data(part, regvalues.c_str(), CURL_ZERO_TERMINATED);
+	  curl_mime_name(part, "compact");
+	
 		auto now = std::chrono::system_clock::now();
 		curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
 		char curlErrorBuffer[CURL_ERROR_SIZE];
@@ -129,8 +127,7 @@ public:
 			std::cerr << "fine after " << std::chrono::duration_cast<std::chrono::duration<float>>(dt).count() << "s\n";
 		}
 		curl_mime_free(mime);
-		nMimeParts = 0;
-		mime = nullptr;
+		regvalues.clear();
 	}
 	void set(int channel, float value) {
 		std::lock_guard<decltype(pcaMutex)> lock(pcaMutex);
