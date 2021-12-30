@@ -2,8 +2,8 @@
 -- PostgreSQL database dump
 --
 
--- Dumped from database version 11.7 (Raspbian 11.7-0+deb10u1)
--- Dumped by pg_dump version 12.4
+-- Dumped from database version 11.12 (Raspbian 11.12-0+deb10u1)
+-- Dumped by pg_dump version 14.1
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -451,6 +451,34 @@ CREATE TABLE public.test (
 --
 --
 
+CREATE TABLE public.test2 (
+    n bigint NOT NULL,
+    name text
+);
+
+
+
+--
+--
+
+CREATE SEQUENCE public.test2_n_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+
+--
+--
+
+ALTER SEQUENCE public.test2_n_seq OWNED BY public.test2.n;
+
+
+--
+--
+
 CREATE TABLE public.time_intervals (
     tdiff interval,
     name text
@@ -584,6 +612,12 @@ ALTER TABLE ONLY public.setvalue_requests ALTER COLUMN id SET DEFAULT nextval('p
 --
 
 ALTER TABLE ONLY public.state_types ALTER COLUMN type SET DEFAULT nextval('public.state_types_type_seq'::regclass);
+
+
+--
+--
+
+ALTER TABLE ONLY public.test2 ALTER COLUMN n SET DEFAULT nextval('public.test2_n_seq'::regclass);
 
 
 --

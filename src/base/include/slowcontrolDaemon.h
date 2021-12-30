@@ -57,7 +57,7 @@ namespace slowcontrol {
 		heartBeatSkew* lHeartBeatSkew;
 		static daemon* gInstance;
 		void fSignalCatcherThread();
-		void fReaderThread();
+		virtual void fReaderThread();
 		void fPollerThread();
 		void fScheduledWriterThread();
 		void fStorerThread();

@@ -16,29 +16,29 @@
 #include <curl/curl.h>
 #include <mutex>
 #include <condition_variable>
-		
 
-static options::single<std::string> url('u', "url", "url to post request to"); 
+
+static options::single<std::string> url('u', "url", "url to post request to");
 
 class remotePCA9685 {
   protected:
 	std::mutex pcaMutex;
 	std::condition_variable condVar;
 	CURL *curl;
-  //curl_mime *mime;
-  //unsigned int nMimeParts;
-  std::string regvalues;
-	std::array<unsigned short,16> values;
+	//curl_mime *mime;
+	//unsigned int nMimeParts;
+	std::string regvalues;
+	std::array<unsigned short, 16> values;
 	std::thread senderThread;
-public:
+  public:
 	void senderFunction() {
 		std::cerr << "this is " << (void*) this << "\n";
-		setRegister(1,4);
+		setRegister(1, 4);
 		sendRequest();
-		std::array<unsigned short,16> valuesRemote;
-		while(true) {
-			std::array<unsigned short,16> valuesNew;
-					std::this_thread::sleep_for(std::chrono::milliseconds(50));
+		std::array<unsigned short, 16> valuesRemote;
+		while (true) {
+			std::array<unsigned short, 16> valuesNew;
+			std::this_thread::sleep_for(std::chrono::milliseconds(50));
 			{
 				std::unique_lock<decltype(pcaMutex)> lock;
 				//	std::cerr << __LINE__ << "this is " << (void*) this << "\n";
@@ -50,23 +50,25 @@ public:
 				}
 				valuesNew = values;
 			}
-			auto nPulsing = std::count_if(valuesNew.cbegin(), valuesNew.cend(), [](unsigned short v){return v > 0 && v<4096;});
-			int nPulsingSoFar=0;
-			unsigned short totalPulse=0;
-			for (unsigned int i=0; i<valuesNew.size(); i++) {
+			auto nPulsing = std::count_if(valuesNew.cbegin(), valuesNew.cend(), [](unsigned short v) {
+				return v > 0 && v < 4096;
+			});
+			int nPulsingSoFar = 0;
+			unsigned short totalPulse = 0;
+			for (unsigned int i = 0; i < valuesNew.size(); i++) {
 				if (valuesNew.at(i) == valuesRemote.at(i)) { // nothing to do
 					if (valuesNew.at(i) > 0 && valuesNew.at(i) < 4096) {
 						nPulsingSoFar++;
-						totalPulse+=valuesNew.at(i);
+						totalPulse += valuesNew.at(i);
 					}
 					continue;
 				}
 				if (valuesNew.at(i) == 0) {
-					setRegister(7+4*i, 0x00);
-					setRegister(9+4*i, 0x10);
+					setRegister(7 + 4 * i, 0x00);
+					setRegister(9 + 4 * i, 0x10);
 				} else if (valuesNew.at(i) == 4096) {
-					setRegister(7+4*i, 0x10);
-					setRegister(9+4*i, 0x00);
+					setRegister(7 + 4 * i, 0x10);
+					setRegister(9 + 4 * i, 0x00);
 				} else {
 					unsigned short start;
 					if (totalPulse + valuesNew.at(i) < 4096) {
@@ -74,12 +76,12 @@ public:
 					} else {
 						start = 0;
 					}
-					unsigned short stop=start + valuesNew.at(i);
-					setRegister(6+4*i,start & 0xffu);
-					setRegister(7+4*i,(start >> 8) & 0x0fu);
-					setRegister(8+4*i,stop & 0xffu);
-					setRegister(9+4*i,(stop >> 8) & 0x0fu);
-					totalPulse+=valuesNew.at(i);
+					unsigned short stop = start + valuesNew.at(i);
+					setRegister(6 + 4 * i, start & 0xffu);
+					setRegister(7 + 4 * i, (start >> 8) & 0x0fu);
+					setRegister(8 + 4 * i, stop & 0xffu);
+					setRegister(9 + 4 * i, (stop >> 8) & 0x0fu);
+					totalPulse += valuesNew.at(i);
 				}
 				valuesRemote.at(i) = valuesNew.at(i);
 			}
@@ -87,34 +89,34 @@ public:
 		}
 	}
 
-	
+
 	void setRegister(unsigned char reg, unsigned char value) {
-	  static const char hexchars[]="0123456789abcdef";
-	  regvalues.push_back(hexchars[(reg >> 4) & 0x0f]);
-	  regvalues.push_back(hexchars[(reg >> 0) & 0x0f]);
-	  regvalues.push_back(hexchars[(value >> 4) & 0x0f]);
-	  regvalues.push_back(hexchars[(value >> 0) & 0x0f]);
+		static const char hexchars[] = "0123456789abcdef";
+		regvalues.push_back(hexchars[(reg >> 4) & 0x0f]);
+		regvalues.push_back(hexchars[(reg >> 0) & 0x0f]);
+		regvalues.push_back(hexchars[(value >> 4) & 0x0f]);
+		regvalues.push_back(hexchars[(value >> 0) & 0x0f]);
 	}
-public:
+  public:
 	remotePCA9685() {
 		curl = curl_easy_init();
 		curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
 		std::cerr << "url: " << url << "\n";
 	}
 	void startThread() {
-		senderThread = std::move(std::thread(&remotePCA9685::senderFunction,this));
+		senderThread = std::move(std::thread(&remotePCA9685::senderFunction, this));
 	}
 	void act() {
 		std::lock_guard<decltype(pcaMutex)> lock(pcaMutex);
 		condVar.notify_one();
 	}
-	void sendRequest(){
-	    
-	  auto 	mime = curl_mime_init(curl);
-	  auto *part = curl_mime_addpart(mime);
-	  curl_mime_data(part, regvalues.c_str(), CURL_ZERO_TERMINATED);
-	  curl_mime_name(part, "compact");
-	
+	void sendRequest() {
+
+		auto 	mime = curl_mime_init(curl);
+		auto *part = curl_mime_addpart(mime);
+		curl_mime_data(part, regvalues.c_str(), CURL_ZERO_TERMINATED);
+		curl_mime_name(part, "compact");
+
 		auto now = std::chrono::system_clock::now();
 		curl_easy_setopt(curl, CURLOPT_MIMEPOST, mime);
 		char curlErrorBuffer[CURL_ERROR_SIZE];
@@ -132,11 +134,11 @@ public:
 	void set(int channel, float value) {
 		std::lock_guard<decltype(pcaMutex)> lock(pcaMutex);
 		if (value < 1.0 / 4096) { // set to off
-			values.at(channel)=0;
+			values.at(channel) = 0;
 		} else if (value > 1.0 - 1.0 / 4096 ) {
-			values.at(channel)=4096;
+			values.at(channel) = 4096;
 		} else {
-			values.at(channel)=value * 4096;
+			values.at(channel) = value * 4096;
 		}
 	}
 };
@@ -192,7 +194,7 @@ class lightChannel: public channelBase {
 		lClassName.fSetFromString(__func__);
 		fInitializeUid(baseName + colour);
 		fConfigure();
-		set(0,false);
+		set(0, false);
 	}
 	void set(float aValue, bool recalc = true) override;
 	bool fProcessRequest(const request* aRequest, std::string& aResponse) override {
@@ -208,15 +210,15 @@ class lightChannel: public channelBase {
 };
 
 class whiteChannel: public lightChannel {
-protected:
+  protected:
 	int channel2;
-public:
+  public:
 	whiteChannel(rgbw& aMaster,
 	             const std::string& baseName,
 	             const std::string& colour,
 	             int aChannel,
-							 int aChannel2): lightChannel(aMaster,baseName,colour,aChannel),
-															 channel2(aChannel2) {
+	             int aChannel2): lightChannel(aMaster, baseName, colour, aChannel),
+		channel2(aChannel2) {
 	}
 	void set(float aValue, bool recalc = true) override;
 };
@@ -306,7 +308,7 @@ class setbit: public setableChannel,
 
 
 class rgbw {
-protected:
+  protected:
 	const double whiteLevelForFullBrightness = 0.8;
   public:
 	remotePCA9685 pca9685;
@@ -325,7 +327,7 @@ protected:
 		green(*this, nameBase, "green", 0),
 		blue(*this, nameBase, "blue", 2),
 		yellow(*this, nameBase, "yellow", 3),
-		white(*this, nameBase, "white", 4,5),
+		white(*this, nameBase, "white", 4, 5),
 		hue(*this, nameBase, "hue", 360.0),
 		value(*this, nameBase, "value"),
 		saturation(*this, nameBase, "saturation"),
@@ -435,15 +437,15 @@ protected:
 				b = q;
 				break;
 		}
-		auto min = std::min(b, std::min(r,g));
+		auto min = std::min(b, std::min(r, g));
 		if (min > whiteLevelForFullBrightness) {
 			min = whiteLevelForFullBrightness;
 		}
 		r -= min;
 		g -= min;
 		b -= min;
-		auto rgmin = std::min(r,g);
-		yellow.set(2*rgmin, false);
+		auto rgmin = std::min(r, g);
+		yellow.set(2 * rgmin, false);
 		r -= rgmin;
 		g -= rgmin;
 		white.set(2 * min, false);
@@ -454,10 +456,10 @@ protected:
 	void rgbToHsv() {
 		std::cerr << __func__ << "\n";
 		auto w = white.fGetCurrentValue() * whiteLevelForFullBrightness;
-		auto y = yellow.fGetCurrentValue() *(1-whiteLevelForFullBrightness);
-		auto r = std::min(red.fGetCurrentValue() * (1-whiteLevelForFullBrightness) + w + y, 1.0);
-		auto g = std::min(green.fGetCurrentValue() * (1-whiteLevelForFullBrightness) + w + y, 1.0);
-		auto b = std::min(blue.fGetCurrentValue() * (1-whiteLevelForFullBrightness) + w, 1.0);
+		auto y = yellow.fGetCurrentValue() * (1 - whiteLevelForFullBrightness);
+		auto r = std::min(red.fGetCurrentValue() * (1 - whiteLevelForFullBrightness) + w + y, 1.0);
+		auto g = std::min(green.fGetCurrentValue() * (1 - whiteLevelForFullBrightness) + w + y, 1.0);
+		auto b = std::min(blue.fGetCurrentValue() * (1 - whiteLevelForFullBrightness) + w, 1.0);
 		float min, max, delta;
 		min = std::min(r, std::min(g, b ));
 		max = std::max(r, std::max(g, b ));
@@ -469,18 +471,18 @@ protected:
 			saturation.set(0.0, false);
 			hue.set(0.0, false);
 			std::cerr << __LINE__ << " w: " << w << " y: " << y << " r: " << r << " g: " << g << " b: " << b
-								<< " v: " << value.fGetCurrentValue() 
-								<< " h: " << hue.fGetCurrentValue() 
-								<< " s: " << saturation.fGetCurrentValue() << "\n"; 
+			          << " v: " << value.fGetCurrentValue()
+			          << " h: " << hue.fGetCurrentValue()
+			          << " s: " << saturation.fGetCurrentValue() << "\n";
 			return;
 		}
 		if (max == min) {                // hier ist alles Grau
 			hue.set(0.0, false);
 			saturation.set(0.0, false);
 			std::cerr << __LINE__ << " w: " << w << " y: " << y << " r: " << r << " g: " << g << " b: " << b
-								<< " v: " << value.fGetCurrentValue() 
-								<< " h: " << hue.fGetCurrentValue() 
-								<< " s: " << saturation.fGetCurrentValue() << "\n"; 
+			          << " v: " << value.fGetCurrentValue()
+			          << " h: " << hue.fGetCurrentValue()
+			          << " s: " << saturation.fGetCurrentValue() << "\n";
 			return;
 		}
 		float h;
@@ -496,19 +498,19 @@ protected:
 			h += 360;
 		}
 		hue.set(h, false);
-	std::cerr << __LINE__ << " w: " << w << " y: " << y << " r: " << r << " g: " << g << " b: " << b
-								<< " v: " << value.fGetCurrentValue() 
-								<< " h: " << hue.fGetCurrentValue() 
-								<< " s: " << saturation.fGetCurrentValue() << "\n"; 
+		std::cerr << __LINE__ << " w: " << w << " y: " << y << " r: " << r << " g: " << g << " b: " << b
+		          << " v: " << value.fGetCurrentValue()
+		          << " h: " << hue.fGetCurrentValue()
+		          << " s: " << saturation.fGetCurrentValue() << "\n";
 	};
 };
 
 void setbit::set(float aValue, bool recalc) {
-		fSet(aValue > getValue());
-		if (value) {
-			master.hsvToRgb();
-		}
-	};
+	fSet(aValue > getValue());
+	if (value) {
+		master.hsvToRgb();
+	}
+};
 
 
 void lightChannel::set(float aValue, bool recalc) {
@@ -769,7 +771,7 @@ int main(int argc, const char *argv[]) {
 						if (&channel != &controller.value) {
 							controller.autoHue.fSet(false);
 						}
-								std::cerr << "set " << channel.getName() << " to " << channel.getValue() << " from " << old << " dt is " << std::chrono::duration_cast<std::chrono::duration<float>>(dt).count() << "\n";
+						std::cerr << "set " << channel.getName() << " to " << channel.getValue() << " from " << old << " dt is " << std::chrono::duration_cast<std::chrono::duration<float>>(dt).count() << "\n";
 					}
 					pfd.revents = 0;
 				}
@@ -783,7 +785,7 @@ int main(int argc, const char *argv[]) {
 					float hour = lt->tm_hour + lt->tm_min / 60.0 + lt->tm_sec / 3600.0;
 					if (hour > 19.0) {
 						auto phase = (hour - 19.0) / (24. - 19.);
-						controller.hue.set(60 - 60*phase);
+						controller.hue.set(60 - 60 * phase);
 						controller.saturation.set(phase);
 					} else if (hour < 6.0) {
 						controller.hue.set(0);
