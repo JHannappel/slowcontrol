@@ -9,7 +9,7 @@ Type=simple
 PrivateTmp=false
 PIDFile=/run/${DAEMON}.pid
 Environment="HOME=/root"
-ExecStart=${CMAKE_INSTALL_PREFIX}/bin/${DAEMON} --nodaemon --pidFile /var/run/${DAEMON}.pid'
+ExecStart=${CMAKE_INSTALL_PREFIX}/bin/${DAEMON} --nodaemon --pidFile /var/run/${DAEMON}.pid
 Restart=always
 ${SERVICE_EXTRALINES}
 
