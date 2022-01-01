@@ -48,7 +48,7 @@ class owTemperature: public slowcontrol::boundCheckerDamper<slowcontrol::boundCh
 			float temperature = -273; // impossible value ...
 			thermometer >> temperature;
 			errMsg::emit(errMsg::level::debug,errMsg::location(),lPath,"temperature",temperature);
-			if (-55 <= temperature || temperature <= 125) { // limits according to DS18B20 data sheet
+			if (-55 <= temperature && temperature <= 125) { // limits according to DS18B20 data sheet
 				medianBuf.push_back(temperature);
 			} else {
 				errMsg::emit(errMsg::level::info,errMsg::location(),lPath,"read temperature",temperature);
