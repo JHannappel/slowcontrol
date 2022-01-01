@@ -1,3 +1,6 @@
 [submodule "src/website/suncalc-php"]
 	path = src/website/suncalc-php
 	url = https://github.com/gregseth/suncalc-php.git
+[submodule "CPlusPlusGoodies"]
+	path = CPlusPlusGoodies
+	url = https://gitlab.desy.de/ewmscp/CPlusPlusGoodies.git

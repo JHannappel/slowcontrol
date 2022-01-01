@@ -4,6 +4,7 @@
 #include <map>
 #include <string>
 #include <thread>
+#include <errMsgQueue.h>
 
 namespace pgsql {
 	static options::single<const char*> gDatabaseString('\0', "dataBaseString", "connection info for database");
@@ -14,10 +15,12 @@ namespace pgsql {
 			unsigned int retries = 0;
 			PGconn *dbc = PQconnectdb(gDatabaseString);
 			while (PQstatus(dbc) == CONNECTION_BAD) {
-				std::cerr << PQerrorMessage(dbc) << std::endl;
+			  errMsg::emit(errMsg::level::info,errMsg::location(),
+				       gDatabaseString.fGetValue(), "PQconnectdb ", PQerrorMessage(dbc));
 				retries = std::min<unsigned int>(retries + 1, 120);
 				std::this_thread::sleep_for(std::chrono::seconds(retries));
-				std::cerr << "retry to create db connection in " << std::this_thread::get_id() << std::endl;
+				errMsg::emit(errMsg::level::info,errMsg::location(),
+						  "connection","retry");
 				dbc = PQconnectdb(gDatabaseString);
 			}
 			gConnections[std::this_thread::get_id()] = dbc;
@@ -26,12 +29,12 @@ namespace pgsql {
 		auto connection = it->second;
 		unsigned int retries = 0;
 		while (PQstatus(connection) != CONNECTION_OK) {
-			std::cerr << PQerrorMessage(connection) << std::endl;
-			std::this_thread::sleep_for(std::chrono::seconds(retries));
+		  errMsg::emit(errMsg::level::info,errMsg::location(),
+			       gDatabaseString.fGetValue(),"status", PQerrorMessage(connection));
+		  std::this_thread::sleep_for(std::chrono::seconds(retries));
 
-			retries = std::min<unsigned int>(retries + 1, 120);
-			std::cerr << "retry to reset db connection in " << std::this_thread::get_id() << std::endl;
-			PQreset(connection);
+		  retries = std::min<unsigned int>(retries + 1, 120);
+		  PQreset(connection);
 		}
 		return connection;
 	}
@@ -50,7 +53,8 @@ namespace pgsql {
 		}
 		result = PQexec(fGetDbconn(), command.c_str());
 		if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-			std::cerr << PQerrorMessage(fGetDbconn()) << "\n";
+		  errMsg::emit(errMsg::level::info,errMsg::location(),
+				    command, "exec", PQerrorMessage(fGetDbconn()));
 		}
 	}
 	const char* request::getValue(int row, int column) {

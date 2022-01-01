@@ -4,6 +4,7 @@
 #include <poll.h>
 #include <Options.h>
 #include "pgsqlWrapper.h"
+#include "errMsgQueue.h"
 
 /*! \mainpage
 	A slowcontrol system for general use, eg. in home automation.
@@ -159,20 +160,25 @@ namespace slowcontrol {
 				pgsql::consumeInput();
 				while (auto notification = pgsql::notification::get()) {
 					auto uid = std::stoi(notification->payload());
-					std::cout << "got notification '" << notification->channel() << "' " << uid << std::endl;
+					errMsg::emit(errMsg::level::info,errMsg::location(),
+							  "notification","got",
+							  notification->channel()," for ",uid);
 					if (aUid == uid) {
 						query = "SELECT * FROM setvalue_requests WHERE id=";
 						query += std::to_string(id);
 						query += ";";
 						pgsql::request result2(query);
 						if (result2.isNull(0, "result")) {
-							std::cout << "no result yet" << std::endl;
+						  errMsg::emit(errMsg::level::debug,errMsg::location(),
+							       "setrequests", "none" ,"oops");
 							break; // spuriuos notification or not yet ready
 						}
 						aResponse = result2.getValue(0, "response");
 						auto outcome = strcmp(result.getValue(0, "result"), "t") == 0;
-						std::cout << "result is '" << result.getValue(0, "response") << "'" << std::endl;
-						std::cout << "result is now '" << aResponse << "'" << std::endl;
+						errMsg::emit(errMsg::level::debug,errMsg::location(),
+								  "request result","got",
+								  result.getValue(0, "response"),
+							     " response ", aResponse);
 						return (outcome);
 					}
 				}

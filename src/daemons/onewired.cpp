@@ -6,7 +6,7 @@
 #include <iostream>
 #include <string.h>
 #include <list>
-
+#include <errMsgQueue.h>
 
 static void populateThermometers();
 
@@ -39,18 +39,19 @@ class owTemperature: public slowcontrol::boundCheckerDamper<slowcontrol::boundCh
 		bool valueHasChanged = false;
 		std::ifstream thermometer(lPath.c_str());
 		if (thermometer.fail()) {
-			std::cerr << "fail on " << lPath << "\n";
+			errMsg::emit(errMsg::level::debug,errMsg::location(),lPath,"open","failed");
+
 			if (lState != lBadFileType) {
 				lBadFileType = fSetState("unreadable", "can't open file" + lPath);
 			}
 		} else {
-			float temperature;
+			float temperature = -273; // impossible value ...
 			thermometer >> temperature;
-			std::cerr << lPath << " " << temperature << " " << step << "\n";
+			errMsg::emit(errMsg::level::debug,errMsg::location(),lPath,"temperature",temperature);
 			if (-55 <= temperature || temperature <= 125) { // limits according to DS18B20 data sheet
 				medianBuf.push_back(temperature);
 			} else {
-				std::cerr << "bad temperature " << temperature << " on " << lPath << std::endl;
+				errMsg::emit(errMsg::level::info,errMsg::location(),lPath,"read temperature",temperature);
 			}
 			if (lBadFileType != 0 && lState != lBadFileType) {
 				// probably recovered from bus problems which might hint at
@@ -137,8 +138,8 @@ int main(int argc, const char *argv[]) {
 
 
 
-	auto daemon = new onewired();
-
+	//	auto daemon = new onewired();
+	auto daemon = new slowcontrol::daemon("onewired");
 	populateThermometers();
 
 	daemon->fStartThreads();

@@ -5,12 +5,11 @@ After=network.target nss-lookup.target time-sync.target
 ${UNIT_EXTRALINES}
 
 [Service]
-Type=forking
+Type=simple
 PrivateTmp=false
 PIDFile=/run/${DAEMON}.pid
 Environment="HOME=/root"
-ExecStart=/bin/bash -c '${CMAKE_INSTALL_PREFIX}/bin/${DAEMON} --pidFile /var/run/${DAEMON}.pid &> /tmp/${DAEMON}.log'
-KillMode=mixed
+ExecStart=${CMAKE_INSTALL_PREFIX}/bin/${DAEMON} --nodaemon --pidFile /var/run/${DAEMON}.pid'
 Restart=always
 ${SERVICE_EXTRALINES}
 

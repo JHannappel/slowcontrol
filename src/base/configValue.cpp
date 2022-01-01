@@ -4,6 +4,7 @@
 #include <iostream>
 #include <OptionsChrono.h>
 #include "pgsqlWrapper.h"
+#include <errMsgQueue.h>
 namespace slowcontrol {
 	void configValueBase::fSave(const char *aTable, const char *aIdColumn, int aId, const char *aComment) const {
 		std::string query("INSERT INTO ");
@@ -50,7 +51,6 @@ namespace slowcontrol {
 		query += std::to_string(aId);
 		query += ";";
 		std::set<std::string> optionsInDb;
-		std::cout << query << "\n";
 		pgsql::request result(query);
 		for (unsigned int i = 0; i < result.size(); ++i) {
 			std::string name(result.getValue(i, "name"));
@@ -70,7 +70,9 @@ namespace slowcontrol {
 				}
 				optionsInDb.emplace(name);
 			} else {
-				std::cerr << "unknown cfg option '" << name << "' with value '" << result.getValue(i, "value") << "' encountered for " << aIdColumn << " " << aId << std::endl;
+			  errMsg::emit(errMsg::level::info,errMsg::location(),name,"config",
+					    "unknown cfg option with value '",result.getValue(i, "value"),
+					    "' encountered for ",aIdColumn," ",aId);
 			}
 		}
 		for (auto it : aMap) {
