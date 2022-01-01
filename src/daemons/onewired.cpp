@@ -39,7 +39,7 @@ class owTemperature: public slowcontrol::boundCheckerDamper<slowcontrol::boundCh
 		bool valueHasChanged = false;
 		std::ifstream thermometer(lPath.c_str());
 		if (thermometer.fail()) {
-			errMsg::emit(errMsg::level::debug,errMsg::location(),lPath,"open","failed");
+			errMsg::emit(errMsg::level::debug, errMsg::location(), lPath, "open", "failed");
 
 			if (lState != lBadFileType) {
 				lBadFileType = fSetState("unreadable", "can't open file" + lPath);
@@ -48,11 +48,11 @@ class owTemperature: public slowcontrol::boundCheckerDamper<slowcontrol::boundCh
 			float temperature = -273; // impossible value ...
 			thermometer >> temperature;
 			if (thermometer) {
-				errMsg::emit(errMsg::level::debug,errMsg::location(),lPath,"temperature",temperature);
+				errMsg::emit(errMsg::level::debug, errMsg::location(), lPath, "temperature", temperature);
 				if (-55 <= temperature && temperature <= 125) { // limits according to DS18B20 data sheet
 					medianBuf.push_back(temperature);
 				} else {
-					errMsg::emit(errMsg::level::info,errMsg::location(),lPath,"read temperature",temperature);
+					errMsg::emit(errMsg::level::info, errMsg::location(), lPath, "read temperature", temperature);
 				}
 				if (lBadFileType != 0 && lState != lBadFileType) {
 					// probably recovered from bus problems which might hint at
@@ -60,7 +60,7 @@ class owTemperature: public slowcontrol::boundCheckerDamper<slowcontrol::boundCh
 					populateThermometers();
 				}
 			} else {
-					errMsg::emit(errMsg::level::debug,errMsg::location(),lPath,"read failure",temperature);
+				errMsg::emit(errMsg::level::debug, errMsg::location(), lPath, "read failure", temperature);
 			}
 		}
 		if (step == 0 && medianBuf.size() > 0) {

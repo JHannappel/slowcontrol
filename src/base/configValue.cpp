@@ -70,9 +70,9 @@ namespace slowcontrol {
 				}
 				optionsInDb.emplace(name);
 			} else {
-			  errMsg::emit(errMsg::level::info,errMsg::location(),name,"config",
-					    "unknown cfg option with value '",result.getValue(i, "value"),
-					    "' encountered for ",aIdColumn," ",aId);
+				errMsg::emit(errMsg::level::info, errMsg::location(), name, "config",
+				             "unknown cfg option with value '", result.getValue(i, "value"),
+				             "' encountered for ", aIdColumn, " ", aId);
 			}
 		}
 		for (auto it : aMap) {

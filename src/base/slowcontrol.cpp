@@ -160,25 +160,25 @@ namespace slowcontrol {
 				pgsql::consumeInput();
 				while (auto notification = pgsql::notification::get()) {
 					auto uid = std::stoi(notification->payload());
-					errMsg::emit(errMsg::level::debug,errMsg::location(),
-							  "notification","got",
-							  notification->channel()," for ",uid);
+					errMsg::emit(errMsg::level::debug, errMsg::location(),
+					             "notification", "got",
+					             notification->channel(), " for ", uid);
 					if (aUid == uid) {
 						query = "SELECT * FROM setvalue_requests WHERE id=";
 						query += std::to_string(id);
 						query += ";";
 						pgsql::request result2(query);
 						if (result2.isNull(0, "result")) {
-						  errMsg::emit(errMsg::level::debug,errMsg::location(),
-							       "setrequests", "none" ,"oops");
+							errMsg::emit(errMsg::level::debug, errMsg::location(),
+							             "setrequests", "none", "oops");
 							break; // spuriuos notification or not yet ready
 						}
 						aResponse = result2.getValue(0, "response");
 						auto outcome = strcmp(result.getValue(0, "result"), "t") == 0;
-						errMsg::emit(errMsg::level::debug,errMsg::location(),
-								  "request result","got",
-								  result.getValue(0, "response"),
-							     " response ", aResponse);
+						errMsg::emit(errMsg::level::debug, errMsg::location(),
+						             "request result", "got",
+						             result.getValue(0, "response"),
+						             " response ", aResponse);
 						return (outcome);
 					}
 				}

@@ -62,13 +62,13 @@ namespace slowcontrol {
 		void fPollerThread();
 		void fScheduledWriterThread();
 		void fStorerThread();
-	  void fPrinterThread();
+		void fPrinterThread();
 		void fConfigChangeListener();
 		void fDaemonize();
 		std::chrono::system_clock::time_point fBeatHeart(bool aLastTime = false);
 		std::set<std::thread*, bool (*)(std::thread*, std::thread *)> lThreads;
 		std::thread* lStorerThread;
-	  std::thread* lPrinterThread;
+		std::thread* lPrinterThread;
 		std::mutex lStorerMutex;
 		std::condition_variable lStorerCondition;
 		void fFlushAllValues();
@@ -101,8 +101,8 @@ namespace slowcontrol {
 			try {
 				aAction();
 			} catch (exception& e) {
-			  errMsg::emit(errMsg::level::warning,errMsg::location(),
-				       "exception","caught",e.what());
+				errMsg::emit(errMsg::level::warning, errMsg::location(),
+				             "exception", "caught", e.what());
 				fRequestStop();
 				return true;
 			}

@@ -182,8 +182,8 @@ namespace slowcontrol {
 			}
 			if (lStopRequested) {
 				fFlushAllValues();
-				errMsg::emit(errMsg::level::info,errMsg::location(),
-						  "signal thread","stoppping");
+				errMsg::emit(errMsg::level::info, errMsg::location(),
+				             "signal thread", "stoppping");
 				return;
 			}
 		}
@@ -201,8 +201,8 @@ namespace slowcontrol {
 			if (lMeasurementsWithDefaultReader.empty()) {
 				if (lStopRequested) {
 					fBeatHeart(true);
-					errMsg::emit(errMsg::level::info,errMsg::location(),
-						  "reader thread","stoppping");
+					errMsg::emit(errMsg::level::info, errMsg::location(),
+					             "reader thread", "stoppping");
 					return;
 				}
 				if (std::chrono::system_clock::now() > nextHeartBeatTime) {
@@ -232,9 +232,9 @@ namespace slowcontrol {
 			{
 				std::lock_guard < decltype(lMeasurementsWithReaderMutex) > lock(lMeasurementsWithReaderMutex);
 				for (auto& measurement : lMeasurementsWithDefaultReader) {
-				  errMsg::emit(errMsg::level::debug,errMsg::location(),
-						    "uid","scheduled",measurement.lBase->fGetUid()," for ",
-						    std::chrono::duration_cast<std::chrono::seconds>(then.time_since_epoch()).count());
+					errMsg::emit(errMsg::level::debug, errMsg::location(),
+					             "uid", "scheduled", measurement.lBase->fGetUid(), " for ",
+					             std::chrono::duration_cast<std::chrono::seconds>(then.time_since_epoch()).count());
 					scheduledMeasurements.emplace(then, measurement);
 					then += maxReadoutInterval;
 				}
@@ -244,8 +244,8 @@ namespace slowcontrol {
 			        == scheduledMeasurements.size()) {
 				if (lStopRequested) {
 					fBeatHeart(true);
-					errMsg::emit(errMsg::level::info,errMsg::location(),
-						  "reader thread","stoppping");
+					errMsg::emit(errMsg::level::info, errMsg::location(),
+					             "reader thread", "stoppping");
 					return;
 				}
 
@@ -274,8 +274,8 @@ namespace slowcontrol {
 		while (true) {
 			if (lMeasurementsWithPollReader.empty()) {
 				if (lStopRequested) {
-				  errMsg::emit(errMsg::level::info,errMsg::location(),
-						  "poller thread","stoppping");
+					errMsg::emit(errMsg::level::info, errMsg::location(),
+					             "poller thread", "stoppping");
 					return;
 				}
 				fWaitFor(std::chrono::seconds(1));
@@ -295,8 +295,8 @@ namespace slowcontrol {
 			while (lMeasurementsWithPollReader.size()
 			        == pfds.size()) {
 				if (lStopRequested) {
-				errMsg::emit(errMsg::level::info,errMsg::location(),
-						  "poller thread","stoppping");
+					errMsg::emit(errMsg::level::info, errMsg::location(),
+					             "poller thread", "stoppping");
 					return;
 				}
 				auto result = poll(pfds.data(), pfds.size(), 1000);
@@ -333,8 +333,8 @@ namespace slowcontrol {
 				measurement->fSendValues();
 			}
 			if (quitNow) {
-				errMsg::emit(errMsg::level::info,errMsg::location(),
-						  "storer thread","stoppping");
+				errMsg::emit(errMsg::level::info, errMsg::location(),
+				             "storer thread", "stoppping");
 				return;
 			}
 			std::unique_lock<decltype(lStorerMutex)> lock(lStorerMutex);
@@ -349,8 +349,8 @@ namespace slowcontrol {
 	void daemon::fScheduledWriterThread() {
 		while (true) {
 			if (lStopRequested) {
-				errMsg::emit(errMsg::level::info,errMsg::location(),
-						  "scheduled writer thread","stoppping");
+				errMsg::emit(errMsg::level::info, errMsg::location(),
+				             "scheduled writer thread", "stoppping");
 				return;
 			}
 			writeValue::request* req;
@@ -464,8 +464,8 @@ namespace slowcontrol {
 			pfd.events = POLLIN | POLLPRI;
 			if (poll(&pfd, 1, 100) == 0) {
 				if (lStopRequested) {
-				errMsg::emit(errMsg::level::info,errMsg::location(),
-						  "cfg change thread","stoppping");
+					errMsg::emit(errMsg::level::info, errMsg::location(),
+					             "cfg change thread", "stoppping");
 					return;
 				}
 			}
@@ -474,9 +474,9 @@ namespace slowcontrol {
 				pgsql::consumeInput();
 				while (auto notification = pgsql::notification::get()) {
 					auto uid = std::stoi(notification->payload());
-					errMsg::emit(errMsg::level::debug,errMsg::location(),
-							  "notification","received",
-							  notification->channel(), " for ", uid);
+					errMsg::emit(errMsg::level::debug, errMsg::location(),
+					             "notification", "received",
+					             notification->channel(), " for ", uid);
 					//                                    1234567890123456789
 					if (strncmp(notification->channel(), "uid_configs_update_", 19) == 0) {
 						auto it = lMeasurements.find(uid);
@@ -492,22 +492,22 @@ namespace slowcontrol {
 		}
 	}
 
-  void daemon::fPrinterThread() {
-    try {
-      while (auto msg = errMsg::message::getQueue().dequeue()) {
-	//	timerInst(produceLogMsg);
-	std::cerr <<  msg->getLoc().getFile() << ":" << msg->getLoc().getLine()
-		  << ": in " << msg->getLoc().getFunc()  << "(): "
-		  << "thread " << msg->getThreadId() << ": ";
-	std::cerr << msg->getObject() << " " << msg->getAction() << " " << msg->getMessage() << "\n";
-      }
-    } catch (...) {
-      lStopRequested=true;;
-    }
-  }
-  
+	void daemon::fPrinterThread() {
+		try {
+			while (auto msg = errMsg::message::getQueue().dequeue()) {
+				//	timerInst(produceLogMsg);
+				std::cerr <<  msg->getLoc().getFile() << ":" << msg->getLoc().getLine()
+				          << ": in " << msg->getLoc().getFunc()  << "(): "
+				          << "thread " << msg->getThreadId() << ": ";
+				std::cerr << msg->getObject() << " " << msg->getAction() << " " << msg->getMessage() << "\n";
+			}
+		} catch (...) {
+			lStopRequested = true;;
+		}
+	}
+
 	void daemon::fStartThreads() {
-	  lPrinterThread = new std::thread(&daemon::fPrinterThread, this);
+		lPrinterThread = new std::thread(&daemon::fPrinterThread, this);
 		lThreads.insert(new std::thread(&daemon::fSignalCatcherThread, this));
 		lThreads.insert(new std::thread(&daemon::fReaderThread, this));
 		lThreads.insert(new std::thread(&daemon::fPollerThread, this));
