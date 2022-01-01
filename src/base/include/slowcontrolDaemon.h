@@ -101,7 +101,7 @@ namespace slowcontrol {
 			try {
 				aAction();
 			} catch (exception& e) {
-			  errMsg::emit(errMsg::level::info,errMsg::location(),
+			  errMsg::emit(errMsg::level::warning,errMsg::location(),
 				       "exception","caught",e.what());
 				fRequestStop();
 				return true;

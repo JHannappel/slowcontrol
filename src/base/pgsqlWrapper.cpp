@@ -15,11 +15,11 @@ namespace pgsql {
 			unsigned int retries = 0;
 			PGconn *dbc = PQconnectdb(gDatabaseString);
 			while (PQstatus(dbc) == CONNECTION_BAD) {
-			  errMsg::emit(errMsg::level::info,errMsg::location(),
+			  errMsg::emit(errMsg::level::debug,errMsg::location(),
 				       gDatabaseString.fGetValue(), "PQconnectdb ", PQerrorMessage(dbc));
 				retries = std::min<unsigned int>(retries + 1, 120);
 				std::this_thread::sleep_for(std::chrono::seconds(retries));
-				errMsg::emit(errMsg::level::info,errMsg::location(),
+				errMsg::emit(errMsg::level::debug,errMsg::location(),
 						  "connection","retry");
 				dbc = PQconnectdb(gDatabaseString);
 			}
@@ -29,7 +29,7 @@ namespace pgsql {
 		auto connection = it->second;
 		unsigned int retries = 0;
 		while (PQstatus(connection) != CONNECTION_OK) {
-		  errMsg::emit(errMsg::level::info,errMsg::location(),
+		  errMsg::emit(errMsg::level::warning,errMsg::location(),
 			       gDatabaseString.fGetValue(),"status", PQerrorMessage(connection));
 		  std::this_thread::sleep_for(std::chrono::seconds(retries));
 
@@ -53,7 +53,7 @@ namespace pgsql {
 		}
 		result = PQexec(fGetDbconn(), command.c_str());
 		if (PQresultStatus(result) != PGRES_COMMAND_OK) {
-		  errMsg::emit(errMsg::level::info,errMsg::location(),
+		  errMsg::emit(errMsg::level::warning,errMsg::location(),
 				    command, "exec", PQerrorMessage(fGetDbconn()));
 		}
 	}

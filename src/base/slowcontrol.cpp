@@ -160,7 +160,7 @@ namespace slowcontrol {
 				pgsql::consumeInput();
 				while (auto notification = pgsql::notification::get()) {
 					auto uid = std::stoi(notification->payload());
-					errMsg::emit(errMsg::level::info,errMsg::location(),
+					errMsg::emit(errMsg::level::debug,errMsg::location(),
 							  "notification","got",
 							  notification->channel()," for ",uid);
 					if (aUid == uid) {
