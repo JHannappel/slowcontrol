@@ -23,7 +23,7 @@ class owTemperature: public slowcontrol::boundCheckerDamper<slowcontrol::boundCh
 		defaultReaderInterface(lConfigValues, std::chrono::seconds(30)),
 		unitInterface(lConfigValues, "deg C") {
 		lClassName.fSetFromString(__func__);
-		std::string basePath = "/1w/";
+		std::string basePath = "/1w/uncached/";
 		basePath += aPath;
 		basePath += "/";
 		lPath = basePath;
@@ -38,11 +38,15 @@ class owTemperature: public slowcontrol::boundCheckerDamper<slowcontrol::boundCh
 	bool fReadCurrentValueMedian(int step)  {
 		bool valueHasChanged = false;
 		std::ifstream thermometer(lPath.c_str());
-		if (thermometer.fail() && lState != lBadFileType) {
-			lBadFileType = fSetState("unreadable", "can't open file" + lPath);
+		if (thermometer.fail()) {
+			std::cerr << "fail on " << lPath << "\n";
+			if (lState != lBadFileType) {
+				lBadFileType = fSetState("unreadable", "can't open file" + lPath);
+			}
 		} else {
 			float temperature;
 			thermometer >> temperature;
+			std::cerr << lPath << " " << temperature << " " << step << "\n";
 			if (-55 <= temperature || temperature <= 125) { // limits according to DS18B20 data sheet
 				medianBuf.push_back(temperature);
 			} else {
@@ -54,7 +58,7 @@ class owTemperature: public slowcontrol::boundCheckerDamper<slowcontrol::boundCh
 				populateThermometers();
 			}
 		}
-		if (step == 0) {
+		if (step == 0 && medianBuf.size() > 0) {
 			std::sort(medianBuf.begin(), medianBuf.end());
 			valueHasChanged = fStore(medianBuf.at(medianBuf.size() / 2));
 			medianBuf.clear();
@@ -67,7 +71,7 @@ class owTemperature: public slowcontrol::boundCheckerDamper<slowcontrol::boundCh
 static void populateThermometers() {
 	static std::set<std::string> knownThermometers;
 
-	DIR *owdir = opendir("/1w");
+	DIR *owdir = opendir("/1w/uncached");
 	for (;;) {
 		struct dirent *de = readdir(owdir);
 		if (de == nullptr) {
@@ -133,7 +137,7 @@ int main(int argc, const char *argv[]) {
 
 
 
-	auto daemon = new slowcontrol::daemon("onewired");
+	auto daemon = new onewired();
 
 	populateThermometers();
 

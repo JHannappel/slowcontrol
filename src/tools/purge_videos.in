@@ -15,3 +15,5 @@ for directory in ${directories}; do
 	done
     done
 done
+
+find /data/video/camera* -links 2 -exec rm {} \;
