@@ -498,7 +498,7 @@ namespace slowcontrol {
 	//	timerInst(produceLogMsg);
 	std::cerr <<  msg->getLoc().getFile() << ":" << msg->getLoc().getLine()
 		  << ": in " << msg->getLoc().getFunc()  << "(): "
-		  << "thread " << msg->getThreadId() << ":";
+		  << "thread " << msg->getThreadId() << ": ";
 	std::cerr << msg->getObject() << " " << msg->getAction() << " " << msg->getMessage() << "\n";
       }
     } catch (...) {
