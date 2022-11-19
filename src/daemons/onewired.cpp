@@ -125,7 +125,7 @@ class onewired: public slowcontrol::daemon {
 				std::this_thread::sleep_for(std::chrono::seconds(1));
 			}
 			std::this_thread::sleep_for(std::chrono::seconds(30));
-
+			populateThermometers();
 			if (std::chrono::system_clock::now() > nextHeartBeatTime) {
 				nextHeartBeatTime = fBeatHeart();
 			}
